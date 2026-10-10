@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>BackupWatch Operational Specification & Architecture</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+	<script>
+		mermaid.initialize({
+			startOnLoad: true,
+			theme: 'default',
+			themeVariables: {
+				primaryColor: '#ea580c',
+				primaryTextColor: '#ffffff',
+				primaryBorderColor: '#c2410c',
+				lineColor: '#64748b',
+				secondaryColor: '#f1f5f9',
+				tertiaryColor: '#ffffff'
+			},
+			flowchart: { curve: 'basis' }
+		});
+	</script>
+	<style>
+		:root {
+			--primary: #ea580c;
+			--primary-dark: #c2410c;
+			--primary-light: #ffedd5;
+			--slate-900: #0f172a;
+			--slate-800: #1e293b;
+			--slate-700: #334155;
+			--slate-600: #475569;
+			--slate-500: #64748b;
+			--slate-400: #94a3b8;
+			--slate-200: #e2e8f0;
+			--slate-100: #f1f5f9;
+			--slate-50: #f8fafc;
+			--success: #10b981;
+			--warning: #f59e0b;
+			--danger: #ef4444;
+			--info: #3b82f6;
+			--bg-card: #ffffff;
+			--border: #e2e8f0;
+			--text-main: #1e293b;
+			--text-muted: #64748b;
+			--sidebar-width: 320px;
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+
+		html {
+			scroll-behavior: smooth;
+			scroll-padding-top: 30px;
+		}
+
+		body {
+			font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			line-height: 1.65;
+			color: var(--text-main);
+			background-color: #f8fafc;
+			display: flex;
+			min-height: 100vh;
+		}
+
+		/* Left Sidebar Navigation */
+		aside.sidebar {
+			width: var(--sidebar-width);
+			background-color: var(--slate-900);
+			color: #f8fafc;
+			position: fixed;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			overflow-y: auto;
+			padding: 28px 20px;
+			border-right: 1px solid var(--slate-800);
+			z-index: 100;
+			display: flex;
+			flex-direction: column;
+			scrollbar-width: thin;
+			scrollbar-color: var(--slate-700) transparent;
+		}
+
+		.brand-header {
+			padding-bottom: 20px;
+			border-bottom: 1px solid var(--slate-800);
+			margin-bottom: 20px;
+		}
+
+		.brand-logo {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			font-size: 1.25rem;
+			font-weight: 800;
+			color: #ffffff;
+			letter-spacing: -0.02em;
+		}
+
+		.brand-logo span.badge {
+			background-color: var(--primary);
+			color: #fff;
+			font-size: 0.7rem;
+			padding: 2px 7px;
+			border-radius: 9999px;
+			font-weight: 700;
+		}
+
+		.brand-subtitle {
+			font-size: 0.8rem;
+			color: var(--slate-400);
+			margin-top: 4px;
+		}
+
+		.toc-title {
+			font-size: 0.75rem;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: var(--slate-400);
+			font-weight: 700;
+			margin-bottom: 12px;
+		}
+
+		nav.toc-nav {
+			flex: 1;
+		}
+
+		nav.toc-nav ul {
+			list-style: none;
+		}
+
+		nav.toc-nav > ul > li {
+			margin-bottom: 14px;
+		}
+
+		nav.toc-nav a {
+			color: var(--slate-300);
+			text-decoration: none;
+			font-size: 0.86rem;
+			display: block;
+			padding: 6px 10px;
+			border-radius: 6px;
+			transition: all 0.15s ease;
+			line-height: 1.4;
+		}
+
+		nav.toc-nav a:hover {
+			color: #ffffff;
+			background-color: rgba(255, 255, 255, 0.08);
+			transform: translateX(3px);
+		}
+
+		nav.toc-nav > ul > li > a {
+			font-weight: 600;
+			color: #e2e8f0;
+		}
+
+		nav.toc-nav ul ul {
+			padding-left: 14px;
+			margin-top: 6px;
+			border-left: 1px solid var(--slate-800);
+		}
+
+		nav.toc-nav ul ul li {
+			margin-bottom: 4px;
+		}
+
+		nav.toc-nav ul ul a {
+			font-size: 0.8rem;
+			color: var(--slate-400);
+			padding: 4px 8px;
+		}
+
+		nav.toc-nav ul ul a:hover {
+			color: var(--primary-light);
+			background-color: rgba(234, 88, 12, 0.15);
+		}
+
+		/* Main Content Container */
+		main.content-wrapper {
+			margin-left: var(--sidebar-width);
+			flex: 1;
+			max-width: 1080px;
+			padding: 48px 56px;
+		}
+
+		/* Header Banner */
+		.doc-header {
+			background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+			color: #ffffff;
+			padding: 36px 40px;
+			border-radius: 16px;
+			box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+			margin-bottom: 40px;
+			border-left: 6px solid var(--primary);
+		}
+
+		.doc-header h1 {
+			font-size: 2.1rem;
+			font-weight: 800;
+			letter-spacing: -0.03em;
+			line-height: 1.25;
+			margin-bottom: 16px;
+		}
+
+		.doc-meta-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 16px;
+			margin-top: 20px;
+			padding-top: 20px;
+			border-top: 1px solid rgba(255, 255, 255, 0.12);
+		}
+
+		.meta-item {
+			font-size: 0.85rem;
+		}
+
+		.meta-label {
+			color: var(--slate-400);
+			font-size: 0.75rem;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			font-weight: 600;
+			margin-bottom: 3px;
+		}
+
+		.meta-val {
+			color: #f8fafc;
+			font-weight: 600;
+		}
+
+		/* Content Typography */
+		h2 {
+			font-size: 1.55rem;
+			font-weight: 700;
+			color: var(--slate-900);
+			margin-top: 48px;
+			margin-bottom: 18px;
+			padding-bottom: 10px;
+			border-bottom: 2px solid var(--slate-200);
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			letter-spacing: -0.02em;
+		}
+
+		h3 {
+			font-size: 1.22rem;
+			font-weight: 600;
+			color: var(--slate-800);
+			margin-top: 32px;
+			margin-bottom: 14px;
+			letter-spacing: -0.01em;
+		}
+
+		h4 {
+			font-size: 1.05rem;
+			font-weight: 600;
+			color: var(--slate-700);
+			margin-top: 24px;
+			margin-bottom: 10px;
+		}
+
+		p {
+			margin-bottom: 16px;
+			color: var(--slate-700);
+			font-size: 0.98rem;
+		}
+
+		ul, ol {
+			margin-bottom: 20px;
+			padding-left: 24px;
+			color: var(--slate-700);
+		}
+
+		li {
+			margin-bottom: 8px;
+			font-size: 0.96rem;
+		}
+
+		hr {
+			border: 0;
+			height: 1px;
+			background: var(--slate-200);
+			margin: 40px 0;
+		}
+
+		/* Alert Callouts */
+		.callout {
+			padding: 16px 20px;
+			border-radius: 10px;
+			margin: 20px 0;
+			border-left: 4px solid var(--info);
+			background-color: #eff6ff;
+			font-size: 0.95rem;
+		}
+
+		.callout-title {
+			font-weight: 700;
+			margin-bottom: 4px;
+			color: var(--slate-900);
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.callout.warning {
+			border-left-color: var(--warning);
+			background-color: #fffbeb;
+		}
+
+		.callout.danger {
+			border-left-color: var(--danger);
+			background-color: #fef2f2;
+		}
+
+		.callout.success {
+			border-left-color: var(--success);
+			background-color: #ecfdf5;
+		}
+
+		/* Tables */
+		.table-container {
+			overflow-x: auto;
+			margin: 24px 0;
+			background: #ffffff;
+			border-radius: 10px;
+			border: 1px solid var(--border);
+			box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			text-align: left;
+			font-size: 0.92rem;
+		}
+
+		th {
+			background-color: var(--slate-100);
+			color: var(--slate-800);
+			font-weight: 600;
+			padding: 12px 16px;
+			border-bottom: 2px solid var(--border);
+		}
+
+		td {
+			padding: 12px 16px;
+			border-bottom: 1px solid var(--border);
+			color: var(--slate-700);
+			vertical-align: top;
+		}
+
+		tr:last-child td {
+			border-bottom: none;
+		}
+
+		tr:hover td {
+			background-color: var(--slate-50);
+		}
+
+		/* Code and Pre */
+		code {
+			font-family: 'Fira Code', monospace;
+			font-size: 0.88em;
+			background-color: #f1f5f9;
+			color: #c2410c;
+			padding: 2px 6px;
+			border-radius: 4px;
+			border: 1px solid #e2e8f0;
+		}
+
+		pre {
+			background-color: #0f172a;
+			color: #f8fafc;
+			padding: 20px 24px;
+			border-radius: 12px;
+			overflow-x: auto;
+			margin: 20px 0;
+			font-family: 'Fira Code', monospace;
+			font-size: 0.88rem;
+			line-height: 1.6;
+			border: 1px solid #1e293b;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+		}
+
+		pre code {
+			background-color: transparent;
+			color: #e2e8f0;
+			padding: 0;
+			border: none;
+		}
+
+		/* Mermaid Diagram Containers */
+		.mermaid-card {
+			background: #ffffff;
+			border: 1px solid var(--border);
+			border-radius: 14px;
+			padding: 28px;
+			margin: 28px 0;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+			overflow-x: auto;
+			text-align: center;
+		}
+
+		.mermaid-card .mermaid {
+			display: flex;
+			justify-content: center;
+		}
+
+		.diagram-caption {
+			margin-top: 14px;
+			font-size: 0.85rem;
+			color: var(--slate-500);
+			font-weight: 500;
+		}
+
+		/* Tier Cards */
+		.tier-grid {
+			display: grid;
+			grid-template-columns: 1fr;
+			gap: 16px;
+			margin: 24px 0;
+		}
+
+		.tier-card {
+			background: #ffffff;
+			border-radius: 10px;
+			border: 1px solid var(--border);
+			padding: 20px 24px;
+			border-left: 5px solid var(--slate-500);
+			box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+		}
+
+		.tier-card.tier-1 { border-left-color: var(--danger); }
+		.tier-card.tier-2 { border-left-color: var(--warning); }
+		.tier-card.tier-3 { border-left-color: var(--info); }
+
+		.tier-badge {
+			font-size: 0.75rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			padding: 3px 8px;
+			border-radius: 4px;
+			display: inline-block;
+			margin-bottom: 8px;
+		}
+
+		.tier-1 .tier-badge { background: #fee2e2; color: #b91c1c; }
+		.tier-2 .tier-badge { background: #fef3c7; color: #b45309; }
+		.tier-3 .tier-badge { background: #dbeafe; color: #1d4ed8; }
+
+		/* Floating Back to Top Button */
+		.back-to-top {
+			position: fixed;
+			bottom: 30px;
+			right: 30px;
+			background-color: var(--slate-900);
+			color: white;
+			width: 44px;
+			height: 44px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			text-decoration: none;
+			box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+			transition: all 0.2s ease;
+			font-size: 1.2rem;
+			z-index: 999;
+		}
+
+		.back-to-top:hover {
+			background-color: var(--primary);
+			transform: translateY(-3px);
+		}
+
+		/* Responsive Adjustments */
+		@media (max-width: 1024px) {
+			aside.sidebar {
+				display: none;
+			}
+			main.content-wrapper {
+				margin-left: 0;
+				padding: 30px 20px;
+				max-width: 100%;
+			}
+		}
+	</style>
+</head>
+<body>
+
+	<!-- Floating Back To Top -->
+	<a href="#top" class="back-to-top" title="Back to Top">↑</a>
+
+	<!-- Left Sidebar Navigation -->
+	<aside class="sidebar">
+		<div class="brand-header">
+			<div class="brand-logo">
+				Fifosys BackupWatch
+				<span class="badge">v1.17.0</span>
+			</div>
+			<div class="brand-subtitle">Operational Architecture &amp; Lifecycle</div>
+		</div>
+
+		<div class="toc-title">Table of Contents</div>
+		<nav class="toc-nav">
+			<ul>
+				<li><a href="#1-system-architecture--operational-topology">1. System Architecture &amp; Topology</a></li>
+				<li>
+					<a href="#2-core-operational-workflows">2. Core Operational Workflows</a>
+					<ul>
+						<li><a href="#21-real-time-dashboard-ingestion--caching-workflow">2.1 Ingestion &amp; Caching</a></li>
+						<li><a href="#22-3-tier-silence--exclusion-system">2.2 3-Tier Silence Hierarchy</a></li>
+						<li><a href="#23-proactive-volume-pre-exclusion-workflow-v1160">2.3 Proactive Pre-Exclusion</a></li>
+						<li><a href="#24-interactive-issue-escalation-workflow">2.4 Issue Escalation</a></li>
+						<li><a href="#25-audit-trail--governance-logging">2.5 Audit Trail &amp; Governance</a></li>
+					</ul>
+				</li>
+				<li>
+					<a href="#3-system-rules--behavioral-guardrails">3. System Rules &amp; Guardrails</a>
+					<ul>
+						<li><a href="#rule-1-production-safety--read-only-ingestion">Rule 1: Production Safety</a></li>
+						<li><a href="#rule-2-3-tier-silence-cascading--total-blackout-hierarchy">Rule 2: Silence Cascading</a></li>
+						<li><a href="#rule-3-temporary-vs-permanent-exclusion-policies">Rule 3: Temp vs Perm Policies</a></li>
+						<li><a href="#rule-4-ticket-deduplication--single-ticket-integrity">Rule 4: Ticket Deduplication</a></li>
+						<li><a href="#rule-5-active-vs-cancelled-subscription-segregation">Rule 5: Subscription Segregation</a></li>
+						<li><a href="#rule-6-diagnostic-thresholds--alert-triggers">Rule 6: Diagnostic Thresholds</a></li>
+					</ul>
+				</li>
+				<li>
+					<a href="#4-automatic-background-scanner-30-minute-cycle">4. Background Scanner (30-Min)</a>
+					<ul>
+						<li><a href="#41-execution-trigger--cache-bypass">4.1 Execution Trigger</a></li>
+						<li><a href="#42-step-by-step-scanner-pipeline-execution">4.2 Pipeline Execution Steps</a></li>
+						<li><a href="#43-expiry-sweep-engine-temporary-exclusions">4.3 Expiry Sweep Engine</a></li>
+						<li><a href="#44-auto-ticketing-engine-for-native-unprotected-volumes">4.4 Auto-Ticketing Engine</a></li>
+						<li><a href="#45-auto-heal-engine-self-healing-resolved-incidents">4.5 Auto-Heal Engine</a></li>
+						<li><a href="#46-scan-status--heartbeat-tracking">4.6 Scan Status &amp; Heartbeats</a></li>
+					</ul>
+				</li>
+				<li>
+					<a href="#5-visual-lifecycle-charts--state-machines">5. Visual Lifecycle Charts</a>
+					<ul>
+						<li><a href="#chart-1-end-to-end-system-ingestion--background-scan-pipeline">Chart 1: End-to-End Ingestion</a></li>
+						<li><a href="#chart-2-3-tier-silence--cascading-blackout-hierarchy">Chart 2: Silence Hierarchy</a></li>
+						<li><a href="#chart-3-volume-exclusion-lifecycle--expiry-sweep-decision-tree">Chart 3: Volume Expiry Tree</a></li>
+						<li><a href="#chart-4-auto-heal--alert-remediation-lifecycle">Chart 4: Auto-Heal Remediation</a></li>
+						<li><a href="#chart-5-manual--automated-ticket-escalation-pipeline">Chart 5: Escalation Pipeline</a></li>
+					</ul>
+				</li>
+				<li><a href="#6-data-models--azure-table-storage-schema">6. Data Models &amp; Storage Schema</a></li>
+				<li><a href="#7-current-operational-status--reliability-features">7. Operational Status &amp; Resilience</a></li>
+			</ul>
+		</nav>
+	</aside>
+
+	<!-- Main Content Area -->
+	<main class="content-wrapper" id="top">
+
+		<!-- Document Header -->
+		<header class="doc-header">
+			<h1>BackupWatch Operational Architecture &amp; Specification</h1>
+			<p style="color: #cbd5e1; font-size: 1.05rem; margin-bottom: 0;">Complete engineering reference detailing real-time workflows, business rules, 3-tier silence hierarchy, automatic background scan behaviors, Auto-Heal engines, compliance ticketing, and end-to-end lifecycle state diagrams.</p>
+			
+			<div class="doc-meta-grid">
+				<div class="meta-item">
+					<div class="meta-label">Product Name</div>
+					<div class="meta-val">Fifosys BackupWatch</div>
+				</div>
+				<div class="meta-item">
+					<div class="meta-label">Active Version</div>
+					<div class="meta-val">v1.17.0</div>
+				</div>
+				<div class="meta-item">
+					<div class="meta-label">Frontend Runtime</div>
+					<div class="meta-val">SharePoint Online SPFx v1.19.0</div>
+				</div>
+				<div class="meta-item">
+					<div class="meta-label">Backend Platform</div>
+					<div class="meta-val">Azure Functions (Flex Consumption)</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- Section 1 -->
+		<section>
+			<h2 id="1-system-architecture--operational-topology">1. System Architecture &amp; Operational Topology</h2>
+			<p>BackupWatch operates as a hybrid serverless cloud monitoring platform connecting <strong>Microsoft 365 / SharePoint Online</strong>, <strong>Azure Serverless Functions</strong>, <strong>Azure Table Storage</strong>, <strong>Datto BCDR API</strong>, and <strong>Datto Autotask PSA</strong>.</p>
+
+			<pre><code>+-----------------------------------------------------------------------------------+
+|                            SHAREPOINT ONLINE (SPFx v1.19.0)                       |
+|  - Modern Light/Dark Glassmorphic UI                                              |
+|  - Real-time filtering, interactive metric cards, full-screen portal mode         |
+|  - Entra ID SSO User Impersonation (Easy Auth)                                   |
++------------------------------------------+----------------------------------------+
+                                           | HTTPS / Azure AD Bearer Token
+                                           v
++-----------------------------------------------------------------------------------+
+|                        AZURE FUNCTION APP (Flex Consumption)                      |
+|                                                                                   |
+|  [HTTP API: /api/backupWatchTrigger]   &lt;--- Interactive Dashboard Requests        |
+|  [HTTP API: /api/exclusions]           &lt;--- Mute/Unmute &amp; Policy Management       |
+|  [HTTP API: /api/escalateTrigger]      &lt;--- Manual Autotask Escalations           |
+|  [HTTP API: /api/auditLogs]            &lt;--- Audit Trail Retrieval                 |
+|  [Timer Trigger: 0 */30 * * * *]      &lt;--- Autonomous 30-Minute Background Scanner|
+|                                                                                   |
+|  In-Memory Processing Engine:                                                     |
+|  - Ephemeral 5-Min Datto BCDR Cache                                               |
+|  - 3-Tier Silence Evaluator (volumeUtils.ts)                                      |
+|  - 4-Tier Autotask CI Lookup Chain (autotask.ts)                                  |
+|  - Expiry Sweep Engine                                                            |
+|  - Auto-Heal Engine                                                               |
++------------------+-----------------------------+-------------------+--------------+
+                   |                             |                   |
+                   v                             v                   v
++-----------------------------+   +-----------------------+   +---------------------+
+|     AZURE TABLE STORAGE     |   |    DATTO BCDR REST    |   | DATTO AUTOTASK PSA  |
+| - Exclusions (Rules)        |   | - /v1/bcdr/device     |   | - /v1.0/Tickets     |
+| - TrackedTickets (Incidents)|   | - /v1/bcdr/device/    |   | - /v1.0/TicketNotes |
+| - ScanStatus (Heartbeats)   |   |   {serial}/asset      |   | - /v1.0/Companies   |
+| - AuditLogs (Governance)    |   | (Basic Auth, Page 250)|   | - /v1.0/Contracts   |
++-----------------------------+   +-----------------------+   +---------------------+</code></pre>
+
+			<h3>Live Operational Endpoints &amp; Environment Details</h3>
+			<ul>
+				<li><strong>Function App</strong>: <code>backupwatch-api</code> (Flex Consumption Linux, Region: UK South)</li>
+				<li><strong>Primary Ingestion URL</strong>: <code>https://backupwatch-api-e7bsfnanaqdhd7f7.uksouth-01.azurewebsites.net/api/backupWatchTrigger</code></li>
+				<li><strong>Exclusions API URL</strong>: <code>https://backupwatch-api-e7bsfnanaqdhd7f7.uksouth-01.azurewebsites.net/api/exclusions</code></li>
+				<li><strong>Escalations API URL</strong>: <code>https://backupwatch-api-e7bsfnanaqdhd7f7.uksouth-01.azurewebsites.net/api/escalateTrigger</code></li>
+				<li><strong>Portal UI Site</strong>: <code>https://fifosys365.sharepoint.com/sites/BackupWatchPortal</code></li>
+				<li><strong>Authentication</strong>: Microsoft Entra ID (Single-Tenant <code>fifosys365</code>, App ID URI: <code>api://04de3dc9-a4e8-4bba-9957-925668bbe027</code>, Scope: <code>user_impersonation</code>)</li>
+			</ul>
+		</section>
+
+		<hr />
+
+		<!-- Section 2 -->
+		<section>
+			<h2 id="2-core-operational-workflows">2. Core Operational Workflows</h2>
+
+			<h3 id="21-real-time-dashboard-ingestion--caching-workflow">2.1 Real-Time Dashboard Ingestion &amp; Caching Workflow</h3>
+			<ol>
+				<li><strong>User Access &amp; SSO</strong>: The engineer navigates to the SharePoint portal. SPFx requests an Entra ID access token for <code>BackupWatch-Backend-API</code> and issues an HTTP GET to <code>/api/backupWatchTrigger</code>.</li>
+				<li><strong>5-Minute Ephemeral Cache Layer</strong>:
+					<ul>
+						<li><strong>Cache HIT (Age &lt; 5 mins)</strong>: Returns the pre-computed Datto BCDR topology immediately. The backend dynamically merges <strong>fresh live exclusion rules</strong> from Azure Table Storage on every cache hit, ensuring newly applied mutes/unmutes reflect instantly without waiting for cache invalidation.</li>
+						<li><strong>Cache MISS (Age &gt;= 5 mins or <code>?refresh=true</code>)</strong>: Concurrently fetches all appliances (<code>/v1/bcdr/device?_page=1&amp;_perPage=250</code>) and child assets/agents (<code>/v1/bcdr/device/{serial}/asset</code>), computes diagnostics, loads active exclusions and ticket tracking tables, evaluates state, updates the in-memory cache, and returns the enriched matrix.</li>
+					</ul>
+				</li>
+				<li><strong>Presentation &amp; Metrics</strong>: The UI renders metric tiles, subscription tabs (Active vs. Cancelled), responsive search filtering, and expandable appliance accordions with agent health grids.</li>
+			</ol>
+
+			<h3 id="22-3-tier-silence--exclusion-system">2.2 3-Tier Silence &amp; Exclusion System</h3>
+			<p>BackupWatch features a strict 3-tier hierarchical suppression system designed to prevent alert fatigue, service desk ticket clutter, and unauthorized notifications.</p>
+
+			<div class="tier-grid">
+				<div class="tier-card tier-1">
+					<div class="tier-badge">Tier 1: Total Blackout</div>
+					<h4>Appliance Silence (<code>type === "Device"</code>)</h4>
+					<p><strong>Target:</strong> DeviceName (e.g. <code>fif-datto-01</code>)</p>
+					<p><strong>Scope:</strong> Total Blackout of entire physical/virtual appliance, all child agents &amp; drives.</p>
+					<p><strong>Behavior:</strong> 0 Autotask calls, 0 tickets, 0 Auto-Heal sweeps, 100% alert suppression across UI and automated scan loops.</p>
+				</div>
+				<div class="tier-card tier-2">
+					<div class="tier-badge">Tier 2: Server Blackout</div>
+					<h4>Agent Silence (<code>type === "Agent"</code>)</h4>
+					<p><strong>Target:</strong> DeviceName:AgentName (e.g. <code>fif-datto-01:fif-dc-01</code>)</p>
+					<p><strong>Scope:</strong> Server Blackout. Silences all backup checks, screenshot tests, and drive exclusions for that guest VM.</p>
+					<p><strong>Behavior:</strong> Sibling servers on the same appliance remain 100% actively monitored.</p>
+				</div>
+				<div class="tier-card tier-3">
+					<div class="tier-badge">Tier 3: Drive Letter Silence</div>
+					<h4>Volume Exclusion (<code>type === "Volume"</code>)</h4>
+					<p><strong>Target:</strong> DeviceName:AgentName:VolumeName (e.g. <code>fif-datto-01:fif-dc-01:D</code>)</p>
+					<p><strong>Scope:</strong> Drive-Letter Silence. Silences ONLY that specific partition/drive.</p>
+					<p><strong>Behavior:</strong> Agent's other drives, OS boot verification &amp; snapshots remain actively monitored.</p>
+				</div>
+			</div>
+
+			<h3 id="23-proactive-volume-pre-exclusion-workflow-v1160">2.3 Proactive Volume Pre-Exclusion Workflow (v1.16.0)</h3>
+			<p>Engineers frequently plan to decommission a secondary drive (e.g., <code>D:\</code> or <code>E:\</code>) or exclude a temporary volume before removing it from Datto backup protection.</p>
+			<ul>
+				<li><strong>Proactive Action:</strong> Engineers can click the <strong><code>✏️</code> (Pencil)</strong> icon directly on <strong>Protected (Included) Volume Rows</strong>.</li>
+				<li><strong>Pre-Exclusion State:</strong> Sets a rule in Table Storage with an optional Autotask ticket number and note.</li>
+				<li><strong>UI Representation:</strong> The dashboard displays an amber indicator (<code>#f59e0b</code>) and a <strong><code>PRE-EXCLUDED (PLANNED)</code></strong> badge.</li>
+				<li><strong>Scanner Interception:</strong> When the volume is subsequently deselected in Datto and becomes <code>unprotected</code>, the 30-minute scanner detects the existing pre-exclusion rule, immediately suppressing new compliance ticket generation and posting maintenance notes to the linked ticket.</li>
+			</ul>
+
+			<h3 id="24-interactive-issue-escalation-workflow">2.4 Interactive Issue Escalation Workflow</h3>
+			<p>When an alert occurs (Backup Failure, Screenshot Failure, Storage Critical, Offline Appliance, Paused Agent, Offsite Sync Failure):</p>
+			<ol>
+				<li><strong>Single-Click or Bulk Selection:</strong> Engineers click <strong><code>Escalate to Autotask</code></strong> on an appliance or agent.</li>
+				<li><strong>4-Tier Asset / Configuration Item Lookup Chain:</strong>
+					<ul>
+						<li><em>Level 1:</em> Queries Autotask Configuration Items by Agent Hostname (<code>agentName</code>).</li>
+						<li><em>Level 2:</em> Queries Autotask Configuration Items by Appliance Device Name / Serial (<code>deviceName</code> / <code>serialNumber</code>).</li>
+						<li><em>Level 3:</em> Queries Autotask Companies by Client Name (<code>companyName</code> fuzzy + exact match).</li>
+						<li><em>Level 4:</em> Falls back to configured <code>AUTOTASK_CATCHALL_COMPANY_ID</code>.</li>
+					</ul>
+				</li>
+				<li><strong>Contract Resolution:</strong> Resolves active <code>"Datto BCDR"</code> service contracts automatically for zero-billing friction.</li>
+				<li><strong>Ticket Dispatch:</strong> Injects plain-English, jargon-free diagnostic templates with Datto Partner Portal deep links.</li>
+				<li><strong>State Tracking:</strong> Saves the generated Ticket ID, formatted Ticket Number (e.g., <code>T20260819.0012</code>), and URL to <code>TrackedTickets</code> in Table Storage.</li>
+			</ol>
+
+			<h3 id="25-audit-trail--governance-logging">2.5 Audit Trail &amp; Governance Logging</h3>
+			<p>Every state-modifying action is recorded with strict non-repudiation in the <code>AuditLogs</code> table:</p>
+			<ul>
+				<li><strong>Recorded Fields:</strong> <code>userEmail</code> (from Entra ID <code>X-Ms-Client-Principal-Name</code>), <code>action</code> (<code>Mute Device</code>, <code>Mute Agent</code>, <code>Mute Volume</code>, <code>Unmute Volume</code>, <code>Manual Escalation</code>), <code>target</code>, <code>details</code> (notes, duration, ticket reference), and ISO <code>createdTime</code>.</li>
+				<li><strong>SPFx Audit Modal:</strong> Searchable, timestamped audit log viewer available directly from the dashboard header.</li>
+			</ul>
+		</section>
+
+		<hr />
+
+		<!-- Section 3 -->
+		<section>
+			<h2 id="3-system-rules--behavioral-guardrails">3. System Rules &amp; Behavioral Guardrails</h2>
+
+			<h3 id="rule-1-production-safety--read-only-ingestion">Rule 1: Production Safety &amp; Read-Only Ingestion</h3>
+			<ul>
+				<li>All data ingestion from Datto BCDR is strictly read-only (<code>GET</code>).</li>
+				<li>Under no circumstances does BackupWatch perform destructive writes or configuration alterations on Datto devices.</li>
+				<li>Autotask interactions are isolated to standard service desk queues with explicit field categorizations (<code>QueueID</code>, <code>CategoryID</code>, <code>TicketType</code>, <code>Source</code>, <code>WorkType</code>).</li>
+			</ul>
+
+			<h3 id="rule-2-3-tier-silence-cascading--total-blackout-hierarchy">Rule 2: 3-Tier Silence Cascading &amp; Total Blackout Hierarchy</h3>
+			<ol>
+				<li>If <code>isDeviceSilenced(exclusions, deviceName)</code> evaluates to <code>true</code>:
+					<ul>
+						<li>The appliance is marked <code>isSilenced = true</code> with <code>backupStatus = 'Muted'</code>.</li>
+						<li><strong>All child agents</strong> inherit <code>status = 'Silenced'</code> (<code>isSilenced = true</code>).</li>
+						<li><strong>All alert counters</strong> (<code>alertCount</code>, <code>requiresAction</code>) are zeroed out.</li>
+						<li><strong>All automated ticketing</strong> is bypassed (0 tickets created during background sweeps).</li>
+						<li><strong>All Auto-Heal routines</strong> are halted for that appliance.</li>
+						<li><strong>UI Badges:</strong> Suppresses red alert tags (<code>Offline</code>, <code>Backup Fail</code>, <code>Screenshot Fail</code>, <code>Storage Critical</code>) in favor of a single <code>🔇 Silenced</code> pill.</li>
+					</ul>
+				</li>
+				<li>If <code>isAgentSilenced(exclusions, deviceName, agentName)</code> evaluates to <code>true</code>:
+					<ul>
+						<li>That agent is isolated; sibling agents on the same appliance continue active monitoring and ticketing.</li>
+					</ul>
+				</li>
+				<li>If <code>isVolumeExcluded(exclusions, deviceName, agentName, volumeName)</code> evaluates to <code>true</code>:
+					<ul>
+						<li>Only the targeted partition is excluded from appliance exclusion counters; the agent's overall backup health remains active.</li>
+					</ul>
+				</li>
+			</ol>
+
+			<h3 id="rule-3-temporary-vs-permanent-exclusion-policies">Rule 3: Temporary vs. Permanent Exclusion Policies</h3>
+			<ul>
+				<li><strong>Permanent (<code>isPermanent: true</code>):</strong>
+					<ul>
+						<li>Set when a drive or asset will permanently never be backed up.</li>
+						<li>Never expires (<code>expiresAt: null</code>). Suppresses compliance ticketing indefinitely.</li>
+					</ul>
+				</li>
+				<li><strong>Temporary (<code>isPermanent: false</code>):</strong>
+					<ul>
+						<li>Default duration: <strong>3 Days</strong> (selectable: 1, 3, 7, 14, 30 days).</li>
+						<li>Auto-assigns <code>expiresAt</code> ISO timestamp.</li>
+						<li>Subject to automated <strong>Expiry Sweep</strong> processing during 30-minute background cycles.</li>
+					</ul>
+				</li>
+			</ul>
+
+			<h3 id="rule-4-ticket-deduplication--single-ticket-integrity">Rule 4: Ticket Deduplication &amp; Single-Ticket Integrity</h3>
+			<ul>
+				<li><strong>No Duplicate Open Tickets:</strong> <code>TrackedTickets</code> table ensures only ONE active ticket exists per unique issue key (<code>serialNumber</code> + <code>issueKey</code>).</li>
+				<li><strong>Note Updates:</strong> When an engineer edits an exclusion note or duration in the UI, the API looks up the existing Table Storage entity, retains the original <code>ticketNumber</code>, and pushes an internal worklog note to Autotask instead of creating a duplicate ticket.</li>
+				<li><strong>No Premature Auto-Closing:</strong> For volume compliance alerts, BackupWatch never auto-closes tickets; it posts resolution notes and requires engineer confirmation.</li>
+			</ul>
+
+			<h3 id="rule-5-active-vs-cancelled-subscription-segregation">Rule 5: Active vs. Cancelled Subscription Segregation</h3>
+			<ul>
+				<li>A Datto appliance is defined as <strong>Active</strong> (<code>isActive === true</code>) if and only if:
+					<code>device.hidden === false</code> and its service tier is valid (future <code>servicePeriod</code>, or unmetered/empty <code>servicePeriod</code> with active check-ins within 30 days).
+				</li>
+				<li>If <code>device.hidden === true</code> or <code>servicePeriod</code> has expired without an active unmetered exemption, the appliance is classified as <strong>Cancelled / Inactive</strong>.</li>
+				<li><strong>Cancelled appliances are completely skipped in automated compliance ticketing loops.</strong></li>
+			</ul>
+
+			<h3 id="rule-6-diagnostic-thresholds--alert-triggers">Rule 6: Diagnostic Thresholds &amp; Alert Triggers</h3>
+			<div class="table-container">
+				<table>
+					<thead>
+						<tr>
+							<th>Alert Type</th>
+							<th>Evaluation Threshold</th>
+							<th>Auto-Heal Trigger Condition</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><strong>Appliance Storage Critical</strong></td>
+							<td>Local Storage Used &gt; 85%</td>
+							<td>Storage Used &le; 85%</td>
+						</tr>
+						<tr>
+							<td><strong>Appliance Offline</strong></td>
+							<td>Heartbeat check-in &gt; 3600s (1 hour)</td>
+							<td>Heartbeat check-in &le; 3600s</td>
+						</tr>
+						<tr>
+							<td><strong>Backup Failure</strong></td>
+							<td>Latest backup in <code>backups[]</code> has <code>status !== 'success'</code></td>
+							<td>Latest backup in <code>backups[]</code> has <code>status === 'success'</code></td>
+						</tr>
+						<tr>
+							<td><strong>Screenshot Boot Failure</strong></td>
+							<td><code>screenshotVerification.success === false</code></td>
+							<td><code>screenshotVerification.success === true</code></td>
+						</tr>
+						<tr>
+							<td><strong>Paused Agent</strong></td>
+							<td><code>asset.isPaused === true</code></td>
+							<td><code>asset.isPaused === false</code></td>
+						</tr>
+						<tr>
+							<td><strong>Offsite Sync Issue</strong></td>
+							<td><code>offsiteStatus === 'Error'</code> or <code>Critical</code></td>
+							<td>Offsite sync errors clear</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+		<hr />
+
+		<!-- Section 4 -->
+		<section>
+			<h2 id="4-automatic-background-scanner-30-minute-cycle">4. Automatic Background Scanner (30-Minute Cycle)</h2>
+
+			<h3 id="41-execution-trigger--cache-bypass">4.1 Execution Trigger &amp; Cache Bypass</h3>
+			<p>The background scanner is executed by an Azure Timer Trigger (<code>backupWatchTimerTrigger</code>) configured with the CRON expression:</p>
+			<pre><code>0 */30 * * * *</code></pre>
+			<p><em>(Runs at minute 0 and minute 30 of every hour, 24/7).</em></p>
+			<ul>
+				<li>Invokes <code>runPipeline(context, forceRefresh = true, isBackground = true)</code>.</li>
+				<li>Bypasses the in-memory cache, ensuring live Datto and Autotask API communication.</li>
+				<li>Computes UK formatted timestamps (<code>Europe/London</code>) for <code>lastScan</code> and <code>nextScan</code>.</li>
+			</ul>
+
+			<h3 id="42-step-by-step-scanner-pipeline-execution">4.2 Step-by-Step Scanner Pipeline Execution</h3>
+			<pre><code>STEP 1: Load Active State &amp; Configuration
+  ├── Load all Exclusion entities from Azure Table Storage ("Exclusions")
+  ├── Load all Tracked Ticket entities from Azure Table Storage ("TrackedTickets")
+  └── Fetch Autotask dynamic status picklists &amp; verify API reachability
+
+STEP 2: Execute Expiry Sweep Engine (Volume Exclusions)
+  ├── Iterate through all Volume Exclusions where isPermanent === false
+  ├── Identify expired entities where expiresAt &lt;= Date.now()
+  └── For each expired exclusion:
+        ├── Query linked Autotask Ticket status
+        ├── IF Ticket is CLOSED (status === 5):
+        │     ├── DELETE exclusion from Table Storage (restores dashboard alert)
+        │     ├── CREATE NEW follow-up Autotask compliance ticket
+        │     └── LOG audit trail entry ("Unmute Volume - Expired Temp")
+        └── IF Ticket is STILL OPEN:
+              ├── POST Action-Required reminder worklog note to ticket
+              ├── UPDATE Autotask ticket status to "Action Required" (Status ID 8)
+              └── AUTO-EXTEND Table Storage expiresAt by +24 Hours
+
+STEP 3: Sync &amp; Prune Tracked Incident Tickets
+  ├── Query Autotask for all active incident tickets in TrackedTickets
+  └── For each tracked incident:
+        ├── IF Ticket completed in Autotask (status === 5):
+        │     └── DELETE record from TrackedTickets (prunes resolved tracking)
+        └── IF Ticket still active:
+              └── Update cached status (New, In Progress, Active, Waiting)
+
+STEP 4: Fetch Live Datto BCDR Topology
+  ├── Query Datto API /v1/bcdr/device?_page=1&amp;_perPage=250
+  └── Concurrently fetch child assets: /v1/bcdr/device/{serial}/asset (15s timeout)
+
+STEP 5: Execute Auto-Ticketing Engine for Native Unprotected Volumes
+  ├── Iterate through all Active Appliances (isActive === true)
+  ├── Skip silenced appliances (isDeviceSilenced === true)
+  └── For each non-archived agent:
+        ├── Skip silenced agents (isAgentSilenced === true)
+        └── For each volume in unprotectedVolumeNames:
+              ├── Check if volume already exists in Exclusions table
+              └── IF NOT in Exclusions:
+                    ├── CREATE Autotask Compliance Ticket (4-tier fallback CI lookup)
+                    └── Persist in Exclusions (isPermanent: false, isUnconfigured: true, expiresAt: +3 Days)
+
+STEP 6: Execute Auto-Heal Engine
+  ├── Evaluate storage usage, heartbeats, backup statuses, screenshot tests, agent paused states
+  └── For any tracked issue where health has restored:
+        ├── POST [SUCCESS] resolution note to Autotask Ticket
+        └── DELETE tracking record from TrackedTickets
+
+STEP 7: Update Scan Status Heartbeat
+  └── Upsert status, lastScan, and nextScan to Table Storage ("ScanStatus" -&gt; "BCDRScanner")</code></pre>
+
+			<h3 id="43-expiry-sweep-engine-temporary-exclusions">4.3 Expiry Sweep Engine (Temporary Exclusions)</h3>
+			<p>The Expiry Sweep guarantees that temporary exclusions cannot be forgotten:</p>
+			<ul>
+				<li><strong>Case A: Ticket Still Open:</strong>
+					<ul>
+						<li>An automated reminder note is posted to the Autotask ticket reminding engineers to resolve, extend, or permanently exclude the volume.</li>
+						<li>Ticket status is automatically shifted to <strong>Action Required</strong>.</li>
+						<li>Entity <code>expiresAt</code> is extended by <code>+24 hours</code> to prevent spamming on subsequent sweeps.</li>
+					</ul>
+				</li>
+				<li><strong>Case B: Ticket Closed Prematurely:</strong>
+					<ul>
+						<li>If an engineer closes the ticket without re-protecting the drive in Datto, BackupWatch immediately <strong>deletes the exclusion</strong>, restores alert monitoring in the dashboard, and creates a <strong>NEW follow-up ticket</strong> referencing the closed ticket number.</li>
+					</ul>
+				</li>
+			</ul>
+
+			<h3 id="44-auto-ticketing-engine-for-native-unprotected-volumes">4.4 Auto-Ticketing Engine for Native Unprotected Volumes</h3>
+			<ul>
+				<li>Automatically scans for any volume designated as <code>unprotected</code> in Datto.</li>
+				<li>Validates that neither the appliance nor the agent is silenced.</li>
+				<li>Executes the 4-level fallback CI search to match the server asset in Autotask.</li>
+				<li>Generates a standard compliance ticket with deep links to Datto.</li>
+				<li>Stores the record in <code>Exclusions</code> as <code>isUnconfigured: true</code> with a <strong>3-day temporary window</strong>.</li>
+			</ul>
+
+			<h3 id="45-auto-heal-engine-self-healing-resolved-incidents">4.5 Auto-Heal Engine (Self-Healing Resolved Incidents)</h3>
+			<p>When an alert condition resolves organically (storage freed up &le; 85%, agent unpaused, backup snapshot succeeds, screenshot verification passes):</p>
+			<ol>
+				<li>The scanner detects the healthy telemetry.</li>
+				<li>Posts a <code>[SUCCESS]</code> Auto-Heal worklog note to the Autotask ticket.</li>
+				<li>Deletes the tracking entity from <code>TrackedTickets</code>, freeing the system to detect future regressions cleanly.</li>
+			</ol>
+
+			<h3 id="46-scan-status--heartbeat-tracking">4.6 Scan Status &amp; Heartbeat Tracking</h3>
+			<p>Every execution records its operational metrics in <code>ScanStatus</code>:</p>
+			<ul>
+				<li><code>lastScan</code>: Exact UK completion time (e.g., <code>19/08/2026, 14:30:00</code>).</li>
+				<li><code>nextScan</code>: Projected UK time of the next cycle (<code>+30 mins</code>).</li>
+				<li><code>status</code>: <code>'Success'</code> or <code>'Failed'</code>.</li>
+				<li><strong>SharePoint Footer Sync:</strong> The SPFx web part reads <code>ScanStatus</code> and displays a live green/red indicator in the footer.</li>
+			</ul>
+		</section>
+
+		<hr />
+
+		<!-- Section 5 -->
+		<section>
+			<h2 id="5-visual-lifecycle-charts--state-machines">5. Visual Lifecycle Charts &amp; State Machines</h2>
+
+			<h3 id="chart-1-end-to-end-system-ingestion--background-scan-pipeline">Chart 1: End-to-End System Ingestion &amp; Background Scan Pipeline</h3>
+			<div class="mermaid-card">
+				<div class="mermaid">
+flowchart TD
+    Start(["30-Minute Timer Trigger Fires"]) --> LoadState["Step 1: Load DB Exclusions & Tracked Tickets"]
+    LoadState --> ExpiryCheck{"Step 2: Are Any Temp Exclusions Expired?"}
+    
+    ExpiryCheck -- "YES" --> EvalTicketStatus{"Check Autotask Ticket Status"}
+    EvalTicketStatus -- "Ticket CLOSED" --> DeleteExcl["Delete Exclusion from DB\nRestore Alert Monitoring"]
+    DeleteExcl --> CreateFollowUp["Create NEW Follow-Up Ticket in Autotask"]
+    CreateFollowUp --> SyncTickets
+    
+    EvalTicketStatus -- "Ticket STILL OPEN" --> PostReminder["Post Reminder Note to Autotask\nSet Status: Action Required"]
+    PostReminder --> ExtendDeadline["Auto-Extend expiresAt +24h in DB"]
+    ExtendDeadline --> SyncTickets
+    
+    ExpiryCheck -- "NO" --> SyncTickets["Step 3: Sync & Prune Closed Tickets in Autotask"]
+    
+    SyncTickets --> FetchDatto["Step 4: Ingest Datto Devices & Assets (/v1/bcdr)"]
+    FetchDatto --> LoopAppliances{"Step 5: Iterate Appliances"}
+    
+    LoopAppliances -- "Is Appliance Silenced?" --> SkipSilenced["Skip All Ticketing & Auto-Heal (Blackout)"]
+    SkipSilenced --> NextAppliance{"More Appliances?"}
+    
+    LoopAppliances -- "Is Active & Monitored" --> CheckUnprotected{"Any Unprotected Volumes?"}
+    CheckUnprotected -- "YES & No DB Rule" --> CreateCompliance["Create Compliance Ticket in Autotask\nPersist in Exclusions (+3 Days)"]
+    CreateCompliance --> CheckAutoHeal
+    CheckUnprotected -- "NO / Rule Exists" --> CheckAutoHeal{"Step 6: Any Tracked Alerts Now Healthy?"}
+    
+    CheckAutoHeal -- "YES (Issue Resolved)" --> PostAutoHeal["Post [SUCCESS] Auto-Heal Note\nPrune Tracked Ticket Record"]
+    PostAutoHeal --> NextAppliance
+    CheckAutoHeal -- "NO" --> NextAppliance
+    
+    NextAppliance -- "YES" --> LoopAppliances
+    NextAppliance -- "NO" --> UpdateScanStatus["Step 7: Upsert ScanStatus Table (lastScan, nextScan)"]
+    UpdateScanStatus --> EndState(["Scan Completed Successfully"])
+				</div>
+				<div class="diagram-caption">Figure 1: Full 30-Minute Background Autonomous Scan Execution Loop</div>
+			</div>
+
+			<h3 id="chart-2-3-tier-silence--cascading-blackout-hierarchy">Chart 2: 3-Tier Silence &amp; Cascading Blackout Hierarchy</h3>
+			<div class="mermaid-card">
+				<div class="mermaid">
+graph TD
+    subgraph TIER1 ["TIER 1: APPLIANCE SILENCE (type === 'Device')"]
+        A["Appliance Silence Rule in DB"] --> B{"Is Appliance Silenced?"}
+        B -- "YES" --> C["TOTAL BLACKOUT ACTIVATED"]
+        C --> D["0 Autotask API Calls"]
+        C --> E["0 Tickets or Notes Created"]
+        C --> F["0 Auto-Heal Scans Executed"]
+        C --> G["UI: Mute All Red Alerts -> Render 🔇 Silenced Badge"]
+        C --> H["Child Agents inherit 🔇 Silenced with Appliance"]
+    end
+
+    subgraph TIER2 ["TIER 2: AGENT SILENCE (type === 'Agent')"]
+        B -- "NO" --> I{"Is Specific Agent Silenced?"}
+        I -- "YES" --> J["SERVER BLACKOUT ACTIVATED"]
+        J --> K["Mute Backups, Screenshots & Drives for this Server"]
+        J --> L["Sibling Servers on Same Appliance Remain 100% Monitored"]
+    end
+
+    subgraph TIER3 ["TIER 3: VOLUME EXCLUSION (type === 'Volume')"]
+        I -- "NO" --> M{"Is Specific Volume Excluded?"}
+        M -- "YES" --> N["DRIVE BLACKOUT ONLY"]
+        N --> O["Mute Targeted Drive Letter (e.g. D:\\)"]
+        N --> P["Server Backups, Boot Tests & Other Drives Actively Monitored"]
+        M -- "NO" --> Q["FULL ACTIVE MONITORING & ESCALATION"]
+    end
+				</div>
+				<div class="diagram-caption">Figure 2: Cascading Hierarchical Mute &amp; Blackout Rules</div>
+			</div>
+
+			<h3 id="chart-3-volume-exclusion-lifecycle--expiry-sweep-decision-tree">Chart 3: Volume Exclusion Lifecycle &amp; Expiry Sweep Decision Tree</h3>
+			<div class="mermaid-card">
+				<div class="mermaid">
+stateDiagram-v2
+    [*] --> DattoDetection: Scanner detects unprotected drive in Datto
+
+    state DattoDetection {
+        [*] --> CheckDB
+        CheckDB --> PreExcluded: Pre-Exclusion rule already exists (Planned)
+        PreExcluded --> Suppressed: Suppress ticket creation; link existing ticket
+        
+        CheckDB --> NewUnprotected: No rule exists in DB
+        NewUnprotected --> TicketCreated: Auto-create Compliance Ticket in Autotask
+        TicketCreated --> TempActive: Save to DB (isPermanent: false, 3 Days)
+    }
+
+    state EngineerDashboardAction {
+        TempActive --> PermanentPolicy: Engineer selects 'Permanent' in UI
+        PermanentPolicy --> IndefiniteMute: Save isPermanent = true (Never expires)
+        
+        TempActive --> CustomDuration: Engineer selects 1, 7, 14, or 30 days
+        CustomDuration --> TempActive: Update expiresAt & push note to ticket
+        
+        TempActive --> ManualUnmute: Engineer deletes exclusion in UI
+        ManualUnmute --> [*]: Monitoring restored immediately
+    }
+
+    state 30MinExpirySweep {
+        TempActive --> ExpiredCheck: 30-min Timer checks expiresAt <= now()
+        
+        ExpiredCheck --> TicketOpen: Autotask Ticket STILL OPEN
+        TicketOpen --> ActionRequiredNote: Post reminder note & set status 'Action Required'
+        ActionRequiredNote --> AutoExtend: Auto-extend expiresAt +24 hours
+        AutoExtend --> TempActive
+
+        ExpiredCheck --> TicketClosed: Autotask Ticket WAS CLOSED
+        TicketClosed --> DeleteEntity: Delete Exclusion from DB (Alert restores)
+        DeleteEntity --> OpenFollowUp: Open NEW Follow-up Autotask Ticket
+        OpenFollowUp --> [*]
+    }
+
+    state AutoResolution {
+        TempActive --> DriveProtectedInDatto: Engineer re-protects volume in Datto
+        DriveProtectedInDatto --> PostResolutionNote: Post [RESOLVED] note to Autotask
+        PostResolutionNote --> ManualCloseRequired: Leave ticket open for engineer manual close
+        ManualCloseRequired --> [*]: Delete exclusion from DB
+    }
+				</div>
+				<div class="diagram-caption">Figure 3: Temporary vs. Permanent Exclusion State Machine &amp; Expiry Sweep</div>
+			</div>
+
+			<h3 id="chart-4-auto-heal--alert-remediation-lifecycle">Chart 4: Auto-Heal &amp; Alert Remediation Lifecycle</h3>
+			<div class="mermaid-card">
+				<div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Tech as Engineer / Datto System
+    participant D as Datto BCDR Appliance
+    participant S as Azure Background Scanner (30-Min)
+    participant DB as Azure Table Storage (TrackedTickets)
+    participant AT as Autotask PSA
+
+    Note over D,AT: Phase 1: Failure Occurs
+    D->>D: Backup / Screenshot / Storage Failure Triggered
+    S->>D: Ingests Telemetry (finds failure)
+    S->>AT: Creates Incident Ticket (or Tech Escalates manually)
+    S->>DB: Stores Ticket Reference in TrackedTickets (IssueKey: agent:dc01:backup)
+
+    Note over D,AT: Phase 2: Remediation & Auto-Healing
+    Tech->>D: Resolves VSS error / frees disk space / unpauses agent
+    D->>D: Next backup snapshot succeeds (status === 'success')
+    
+    S->>D: Background Scanner polls live telemetry
+    S->>DB: Finds existing active ticket in TrackedTickets
+    S->>S: Evaluates condition: Alert is now 100% HEALTHY
+
+    S->>AT: POST Ticket Note: "[SUCCESS]: Backup Failure has resolved."
+    S->>DB: DELETE entity from TrackedTickets
+    Note over S,AT: Incident Auto-Healed! Future failures will spawn a clean new ticket.
+				</div>
+				<div class="diagram-caption">Figure 4: Self-Healing Incident Auto-Heal Sequence</div>
+			</div>
+
+			<h3 id="chart-5-manual--automated-ticket-escalation-pipeline">Chart 5: Manual &amp; Automated Ticket Escalation Pipeline</h3>
+			<div class="mermaid-card">
+				<div class="mermaid">
+flowchart TD
+    A["Alert Detected in UI / Scanner"] --> B["Initiate Escalation Payload"]
+    B --> C["Check TrackedTickets Table (SerialNumber + IssueKey)"]
+    
+    C -- "Active Ticket Exists in DB" --> D{"Query Autotask Ticket Status"}
+    D -- "Status !== Completed (Still Open)" --> E["Prevent Duplicate Ticket\nAppend Worklog Update Note if error changed"]
+    D -- "Status === Completed (Closed)" --> F["Prune Stale DB Record\nProceed to New Ticket Creation"]
+    
+    C -- "No Ticket Exists" --> G["Execute 4-Tier CI Lookup Chain"]
+    F --> G
+    
+    G --> H{"Level 1: Match Agent CI by Hostname?"}
+    H -- "Found" --> L["Bind CompanyID & AssetID"]
+    H -- "Not Found" --> I{"Level 2: Match Appliance CI by Serial/Name?"}
+    
+    I -- "Found" --> L
+    I -- "Not Found" --> J{"Level 3: Match Company by Name (Fuzzy)?"}
+    
+    J -- "Found" --> M["Bind CompanyID (AssetID undefined)"]
+    J -- "Not Found" --> K["Level 4: Fallback to AUTOTASK_CATCHALL_COMPANY_ID"]
+    K --> M
+    
+    L --> N["Lookup Active 'Datto BCDR' Contract"]
+    M --> N
+    
+    N --> O["Format Jargon-Free Markdown Template"]
+    O --> P["POST to Autotask /v1.0/Tickets\n(Queue, Category, TicketType, Source, WorkType)"]
+    P --> Q["Resolve Formatted Ticket Number (e.g. T20260819.0042)"]
+    Q --> R["Save Record to TrackedTickets & AuditLogs"]
+    R --> S["Return Ticket Reference to Dashboard UI"]
+				</div>
+				<div class="diagram-caption">Figure 5: 4-Tier Autotask Asset &amp; Company Escalation Resolution</div>
+			</div>
+		</section>
+
+		<hr />
+
+		<!-- Section 6 -->
+		<section>
+			<h2 id="6-data-models--azure-table-storage-schema">6. Data Models &amp; Azure Table Storage Schema</h2>
+			<p>BackupWatch utilizes Azure Table Storage for lightweight, resilient, and serverless state persistence across four primary tables:</p>
+
+			<h4>Table 1: <code>Exclusions</code></h4>
+			<p>Stores silence and exclusion rules for Appliances, Agents, and Volumes.</p>
+			<ul>
+				<li><strong>PartitionKey:</strong> <code>"Exclusion"</code></li>
+				<li><strong>RowKey:</strong> URL-Encoded identifier (e.g. <code>Device%3Afif-datto-01</code>, <code>Agent%3Afif-datto-01%3Afif-dc-01</code>, <code>Volume%3Afif-datto-01%3Afif-dc-01%3AF</code>)</li>
+			</ul>
+			<pre><code>interface IExclusionEntity {
+    partitionKey: "Exclusion";
+    rowKey: string;             // Encoded Type:Target
+    type: "Device" | "Agent" | "Volume";
+    target: string;             // Normalized canonical target string
+    reason: string;             // Engineer note or compliance reason
+    isPermanent: boolean;       // true = never expires; false = temporary
+    isUnconfigured?: boolean;   // true = automatically created by background scanner
+    expiresAt: string | null;   // ISO string timestamp (e.g. 2026-08-22T14:30:00.000Z)
+    ticketNumber: string | null;// Formatted Autotask ticket number (e.g. T20260819.0012)
+    ticketUrl: string | null;   // Direct deep-link URL to Autotask ServiceDesk portal
+    createdTime: string;        // ISO creation timestamp
+}</code></pre>
+
+			<h4>Table 2: <code>TrackedTickets</code></h4>
+			<p>Tracks actively open Autotask tickets for deduplication and Auto-Heal evaluation.</p>
+			<ul>
+				<li><strong>PartitionKey:</strong> Appliance Serial Number (e.g. <code>"DATTO123456"</code>)</li>
+				<li><strong>RowKey:</strong> Issue Key (e.g. <code>"storage"</code>, <code>"offline"</code>, <code>"offsitesync"</code>, <code>"agent:fif-dc-01:backup"</code>, <code>"agent:fif-dc-01:screenshot"</code>, <code>"agent:fif-dc-01:paused"</code>)</li>
+			</ul>
+			<pre><code>interface ITrackedTicketEntity {
+    partitionKey: string;       // SerialNumber
+    rowKey: string;             // IssueKey
+    ticketId: string;           // Autotask numeric Ticket ID (e.g. "189421")
+    ticketNumber?: string;      // User-facing ticket string (e.g. "T20260819.0012")
+    ticketUrl?: string;         // Portal ticket link
+    status: string;             // Cached status ("New", "In Progress", "Active", "Waiting")
+    lastSeenMessage?: string;   // Diagnostic error snapshot for change detection
+    createdTime?: string;       // ISO creation timestamp
+}</code></pre>
+
+			<h4>Table 3: <code>ScanStatus</code></h4>
+			<p>Stores background timer execution proofs, picklists, and health heartbeats.</p>
+			<ul>
+				<li><strong>PartitionKey:</strong> <code>"Status"</code></li>
+				<li><strong>RowKey:</strong> <code>"BCDRScanner"</code> | <code>"AutotaskPicklistProof"</code></li>
+			</ul>
+			<pre><code>interface IScanStatusEntity {
+    partitionKey: "Status";
+    rowKey: "BCDRScanner";
+    lastScan: string;           // Formatted UK string (e.g. "19/08/2026, 14:30:00")
+    nextScan: string;           // Formatted UK string (e.g. "19/08/2026, 15:00:00")
+    status: "Success" | "Failed";
+    errorMessage: string;       // Error stack trace on failure
+    updatedTime: string;        // ISO timestamp
+}</code></pre>
+
+			<h4>Table 4: <code>AuditLogs</code></h4>
+			<p>Stores immutable governance records of all administrative and automated actions.</p>
+			<ul>
+				<li><strong>PartitionKey:</strong> <code>"AuditLog"</code></li>
+				<li><strong>RowKey:</strong> <code>${Date.now()}-${randomString}</code></li>
+			</ul>
+			<pre><code>interface IAuditLogEntity {
+    partitionKey: "AuditLog";
+    rowKey: string;
+    userEmail: string;          // Extracted from Entra ID client principal
+    action: string;             // e.g. "Mute Volume", "Unmute Device", "Manual Escalation"
+    target: string;             // Target asset / appliance string
+    details: string;            // Reason, duration, ticket reference
+    createdTime: string;        // ISO timestamp
+}</code></pre>
+		</section>
+
+		<hr />
+
+		<!-- Section 7 -->
+		<section>
+			<h2 id="7-current-operational-status--reliability-features">7. Current Operational Status &amp; Reliability Features</h2>
+			
+			<h3>Operational Metrics &amp; Live Status</h3>
+			<ul>
+				<li><strong>Active Status:</strong> <strong>Production Live (Healthy)</strong></li>
+				<li><strong>Platform Version:</strong> <strong>v1.16.0</strong></li>
+				<li><strong>Deployment Region:</strong> Azure UK South (low latency to UK tenant)</li>
+				<li><strong>Scan Frequency:</strong> Every 30 Minutes (<code>0 */30 * * * *</code>)</li>
+				<li><strong>Interactive Cache TTL:</strong> Strict 5-Minute In-Memory Window</li>
+			</ul>
+
+			<h3>Reliability &amp; Resilience Safeguards</h3>
+			<ol>
+				<li><strong>Zero-API-Throttling Architecture:</strong> Ephemeral in-memory caching in Azure Function host memory buffers Datto REST API rate limits against spikes in SharePoint dashboard traffic.</li>
+				<li><strong>Stateless Fallback Recovery:</strong> If live Datto API calls time out, the backend automatically returns stale cached telemetry marked with <code>X-Cache-Status: STALE_FALLBACK</code> rather than throwing a 500 error to users.</li>
+				<li><strong>Database Fault Tolerance:</strong> If Azure Table Storage encounters transient connectivity issues during a background scan, the auto-ticketing loop safely aborts rather than generating un-tracked duplicate tickets.</li>
+				<li><strong>Emoji Encoding Protection:</strong> All Autotask ticket descriptions, worklog notes, and email payloads strictly use plain ASCII markers to prevent database character corruption (<code>??</code>).</li>
+				<li><strong>Dynamic Timezone Localization:</strong> All scanner metrics, worklog notes, and UI footers use native UK English formatting (<code>Europe/London</code> timezone) with daylight savings awareness.</li>
+			</ol>
+		</section>
+
+	</main>
+
+	<!-- Smooth Navigation ScrollSpy Script -->
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			const navLinks = document.querySelectorAll('nav.toc-nav a');
+			const sections = document.querySelectorAll('h2[id], h3[id]');
+
+			window.addEventListener('scroll', () => {
+				let current = '';
+				sections.forEach(section => {
+					const sectionTop = section.offsetTop - 100;
+					if (window.pageYOffset >= sectionTop) {
+						current = section.getAttribute('id');
+					}
+				});
+
+				navLinks.forEach(link => {
+					link.style.backgroundColor = '';
+					link.style.color = '';
+					if (link.getAttribute('href') === `#${current}`) {
+						link.style.backgroundColor = 'rgba(234, 88, 12, 0.2)';
+						link.style.color = '#ffffff';
+						link.style.fontWeight = '700';
+					}
+				});
+			});
+		});
+	</script>
+</body>
+</html>

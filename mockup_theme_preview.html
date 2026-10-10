@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fifosys BackupWatch — Dark Mode vs Light Mode Theme Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       FIFOSYS ENTERPRISE IDENTITY & CYBER NAVY TOKENS (LIGHT & DARK SYSTEMS)
+       ========================================================================== */
+    :root {
+      /* Signature Brand Accents (Shared across both modes) */
+      --ff-orange:             #EE6823; /* Primary brand mark, primary CTAs, active highlights */
+      --ff-orange-hover:       #D95B1D; /* Hover & pressed state */
+      --ff-orange-subtle:      rgba(238, 104, 35, 0.12); /* Selected pill backgrounds, active tab tint */
+      --ff-orange-border:      rgba(238, 104, 35, 0.28); /* Active stroke boundaries */
+
+      /* Structural Navy Tokens */
+      --ff-navy-darkest:       #0B1E2B;
+      --ff-navy-deep:          #102B3D;
+      --ff-navy-card:          #14354B;
+      --ff-navy-card-border:   #1F4560;
+      --ff-navy-mid:           #193D51;
+      --ff-charcoal:           #4D5052;
+      --ff-muted:              #8295A5;
+      --ff-text-light:         #E2E8F0;
+      --ff-text-white:         #FFFFFF;
+      --ff-teal:               #0F6E56;
+      --ff-teal-light:         #10B981;
+      --ff-amber-warning:      #F59E0B;
+      --ff-red-critical:       #EF4444;
+      --ff-purple:             #A78BFA;
+    }
+
+    /* ── 1. DARK MODE (CYBER NAVY DEFAULT) ── */
+    .backup-watch-root[data-theme="dark"] {
+      --bg-app:                #0B1E2B; /* Deep structural canvas */
+      --bg-glass:              #14354B; /* Elevated card surface */
+      --bg-panel:              #102B3D; /* Header, cache bar, sub-panels */
+      --bg-hover:              rgba(25, 61, 81, 0.55);
+      --bg-agent-panel:        #091a25; /* Nested agent accordion */
+      --border-glass:          #1F4560; /* Structural borders */
+      --border-element:        #1F4560;
+      --text-main:             #E2E8F0; /* High-contrast reading text */
+      --text-muted:            #8295A5; /* Metadata, column labels */
+      --text-heading:          #FFFFFF; /* Pure white headers & metrics */
+
+      --color-primary:         #EE6823;
+      --color-success:         #10B981;
+      --color-danger:          #EF4444;
+      --color-warning:         #F59E0B;
+      --color-purple:          #A78BFA;
+
+      --badge-success-bg:      rgba(15, 110, 86, 0.28);
+      --badge-success-color:   #34D399;
+      --badge-success-border:  rgba(15, 110, 86, 0.5);
+
+      --badge-danger-bg:       rgba(239, 68, 68, 0.18);
+      --badge-danger-color:    #F87171;
+      --badge-danger-border:   rgba(239, 68, 68, 0.4);
+
+      --badge-warning-bg:      rgba(245, 158, 11, 0.18);
+      --badge-warning-color:   #FBBF24;
+      --badge-warning-border:  rgba(245, 158, 11, 0.4);
+
+      --badge-purple-bg:       rgba(167, 139, 250, 0.18);
+      --badge-purple-color:    #C4B5FD;
+      --badge-purple-border:   rgba(167, 139, 250, 0.4);
+
+      --header-gradient:       linear-gradient(135deg, #102B3D 0%, #0d2536 50%, #14354B 100%);
+      --header-title-color:    #FFFFFF;
+      --table-header-bg:       #0d2332;
+      --shadow-sm:             0 2px 8px rgba(5, 15, 23, 0.4);
+      --shadow-md:             0 8px 32px rgba(5, 15, 23, 0.55);
+      --shadow-lg:             0 12px 40px rgba(5, 15, 23, 0.7);
+    }
+
+    /* ── 2. LIGHT MODE (FIFOSYS ENTERPRISE LIGHT) ── */
+    .backup-watch-root[data-theme="light"] {
+      --bg-app:                #F4F6F9; /* Clean crisp canvas */
+      --bg-glass:              #FFFFFF; /* Elevated pure white card */
+      --bg-panel:              #F8FAFC; /* Secondary surfaces */
+      --bg-hover:              rgba(16, 43, 61, 0.04);
+      --bg-agent-panel:        #F1F5F9; /* Inset agent panel */
+      --border-glass:          #D8E2EC; /* Soft structural navy border */
+      --border-element:        #D8E2EC;
+      --text-main:             #0F1E2A; /* Deep navy reading text */
+      --text-muted:            #5A6E7F; /* Slate secondary */
+      --text-heading:          #0B1E2B; /* Deepest navy headers */
+
+      --color-primary:         #EE6823;
+      --color-success:         #0F6E56;
+      --color-danger:          #DC2626;
+      --color-warning:         #D97706;
+      --color-purple:          #7C3AED;
+
+      --badge-success-bg:      rgba(15, 110, 86, 0.1);
+      --badge-success-color:   #0F6E56;
+      --badge-success-border:  rgba(15, 110, 86, 0.3);
+
+      --badge-danger-bg:       rgba(220, 38, 38, 0.1);
+      --badge-danger-color:    #DC2626;
+      --badge-danger-border:   rgba(220, 38, 38, 0.3);
+
+      --badge-warning-bg:      rgba(217, 119, 6, 0.1);
+      --badge-warning-color:   #B45309;
+      --badge-warning-border:  rgba(217, 119, 6, 0.3);
+
+      --badge-purple-bg:       rgba(124, 58, 237, 0.1);
+      --badge-purple-color:    #6D28D9;
+      --badge-purple-border:   rgba(124, 58, 237, 0.3);
+
+      --header-gradient:       linear-gradient(135deg, #102B3D 0%, #14354B 100%);
+      --header-title-color:    #FFFFFF; /* Keep hero banner bold and authoritative */
+      --table-header-bg:       #EDF2F7;
+      --shadow-sm:             0 1px 4px rgba(11, 30, 43, 0.06);
+      --shadow-md:             0 4px 16px rgba(11, 30, 43, 0.08);
+      --shadow-lg:             0 10px 30px rgba(11, 30, 43, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #061119;
+      color: #E2E8F0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding: 1.5rem;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Sticky Switcher Top Bar ── */
+    .theme-top-bar {
+      max-width: 1680px;
+      margin: 0 auto 1.25rem;
+      background: #102B3D;
+      border: 1px solid #1F4560;
+      border-radius: 10px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .theme-top-bar-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .theme-top-bar-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .theme-mode-btn {
+      background: #14354B;
+      border: 1px solid #1F4560;
+      color: #E2E8F0;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s;
+    }
+    .theme-mode-btn:hover {
+      border-color: #EE6823;
+      color: #FFFFFF;
+    }
+    .theme-mode-btn.active {
+      background: #EE6823;
+      border-color: #EE6823;
+      color: #FFFFFF;
+      box-shadow: 0 0 12px rgba(238, 104, 35, 0.4);
+    }
+
+    /* View Containers */
+    .view-container {
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+    .side-by-side-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      max-width: 100%;
+    }
+
+    /* ── BackupWatch Root Shell ── */
+    .backup-watch-root {
+      background: var(--bg-app);
+      color: var(--text-main);
+      padding: 1.5rem 1.8rem;
+      border-radius: 14px;
+      border: 1px solid var(--border-glass);
+      transition: background 0.25s ease, color 0.25s ease;
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* Header Card */
+    .bw-header-card {
+      background: var(--header-gradient);
+      border-radius: 16px;
+      padding: 1.5rem 1.8rem;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1.25rem;
+    }
+    .bw-fifosys-icon {
+      height: 48px;
+      width: 48px;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(238, 104, 35, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .bw-fifosys-icon:hover {
+      transform: scale(1.04);
+      box-shadow: 0 6px 18px rgba(238, 104, 35, 0.38);
+    }
+    .bw-header-badge {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(238, 104, 35, 0.18);
+      border: 1px solid rgba(238, 104, 35, 0.35);
+      color: #ffffff;
+      padding: 0.2rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .bw-header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.2rem;
+      color: var(--header-title-color);
+    }
+    .bw-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .bw-segmented-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .bw-seg-btn {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.45rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.18s ease;
+    }
+    .bw-seg-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .bw-seg-btn.active {
+      background: rgba(255, 255, 255, 0.16);
+      color: #FFFFFF;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    }
+    .bw-btn-action {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #E2E8F0;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.48rem 0.82rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.18s ease;
+    }
+    .bw-btn-action:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.28);
+      color: #FFFFFF;
+      transform: translateY(-1px);
+    }
+    .bw-btn-action.admin {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #FCA5A5;
+    }
+    .bw-btn-action.admin:hover {
+      background: rgba(239, 68, 68, 0.24);
+      border-color: rgba(239, 68, 68, 0.55);
+      color: #FFFFFF;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+    }
+    .bw-icon-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .bw-icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: #94A3B8;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .bw-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+    }
+    .bw-user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 0.32rem 0.75rem 0.32rem 0.38rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+    }
+    .bw-user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #EE6823, #D85614);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.72rem;
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+    .bw-user-meta {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+    .bw-user-name {
+      font-weight: 600;
+      color: #FFFFFF;
+      font-size: 0.78rem;
+    }
+    .bw-user-role {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Cache status bar */
+    .bw-status-bar {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 8px;
+      padding: 0.55rem 1.15rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+    .bw-btn-refresh {
+      background: none;
+      border: none;
+      color: var(--color-primary);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Main Card Container */
+    .bw-main-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 1.4rem;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+
+    /* Controls Row */
+    .bw-controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-element);
+      padding-bottom: 0.75rem;
+    }
+    .bw-tabs-group {
+      display: flex;
+      background: var(--bg-panel);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-element);
+    }
+    .bw-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.45rem 1.1rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .bw-tab-btn.active {
+      background: var(--bg-glass);
+      color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--ff-orange-border);
+    }
+
+    .bw-search-wrapper {
+      position: relative;
+      width: 280px;
+    }
+    .bw-search-input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 0.5rem 1rem 0.5rem 2.2rem;
+      border-radius: 7px;
+      border: 1px solid var(--border-element);
+      background: var(--bg-panel);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.82rem;
+      outline: none;
+    }
+    .bw-search-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--ff-orange-border);
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+
+    /* 8 Metric Cards Grid */
+    .bw-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .bw-metric-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 10px;
+      padding: 1rem 0.85rem;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      user-select: none;
+    }
+    .bw-metric-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+    .bw-metric-card.primary::after { background: var(--color-primary); }
+    .bw-metric-card.success::after { background: var(--color-success); }
+    .bw-metric-card.warning::after { background: var(--color-warning); }
+    .bw-metric-card.danger::after  { background: var(--color-danger); }
+    .bw-metric-card.purple::after  { background: var(--color-purple); }
+
+    .bw-metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--ff-orange-border);
+    }
+    .bw-metric-card.active {
+      transform: scale(0.96);
+      box-shadow: inset 0 0 0 2px var(--color-primary), 0 0 12px rgba(238, 104, 35, 0.3);
+      border-color: var(--color-primary);
+    }
+
+    .bw-metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 0.2rem;
+    }
+    .bw-metric-value.primary { color: var(--color-primary); }
+    .bw-metric-value.success { color: var(--color-success); }
+    .bw-metric-value.warning { color: var(--color-warning); }
+    .bw-metric-value.danger  { color: var(--color-danger); }
+    .bw-metric-value.purple  { color: var(--color-purple); }
+
+    .bw-metric-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    /* 8-Column High-Density Table */
+    .bw-table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-element);
+      background: var(--bg-panel);
+    }
+    .bw-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .bw-table th {
+      padding: 0.8rem 0.9rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.07em;
+      border-bottom: 2px solid var(--border-element);
+      background: var(--table-header-bg);
+      white-space: nowrap;
+    }
+    .bw-table td {
+      padding: 0.8rem 0.9rem;
+      border-bottom: 1px solid var(--border-element);
+      vertical-align: middle;
+    }
+    .bw-appliance-row {
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+    .bw-appliance-row:hover {
+      background-color: var(--bg-hover);
+    }
+    .bw-appliance-row.expanded {
+      background-color: var(--ff-orange-subtle);
+    }
+
+    /* Progress bar */
+    .bw-progress-bar-track {
+      width: 130px;
+      height: 7px;
+      background: rgba(130, 149, 165, 0.2);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    .bw-progress-bar-fill {
+      height: 100%;
+      border-radius: 9999px;
+    }
+    .bw-progress-bar-fill.success { background: var(--color-success); }
+    .bw-progress-bar-fill.warning { background: var(--color-warning); }
+    .bw-progress-bar-fill.danger  { background: var(--color-danger); }
+
+    /* Badge Pills */
+    .bw-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.55rem;
+      border-radius: 5px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .bw-badge-pill.success {
+      background: var(--badge-success-bg);
+      color: var(--badge-success-color);
+      border: 1px solid var(--badge-success-border);
+    }
+    .bw-badge-pill.danger {
+      background: var(--badge-danger-bg);
+      color: var(--badge-danger-color);
+      border: 1px solid var(--badge-danger-border);
+    }
+    .bw-badge-pill.warning {
+      background: var(--badge-warning-bg);
+      color: var(--badge-warning-color);
+      border: 1px solid var(--badge-warning-border);
+    }
+    .bw-badge-pill.purple {
+      background: var(--badge-purple-bg);
+      color: var(--badge-purple-color);
+      border: 1px solid var(--badge-purple-border);
+    }
+
+    /* Button */
+    .bw-btn {
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      border: 1px solid var(--border-element);
+      background: var(--bg-panel);
+      color: var(--text-main);
+      transition: all 0.15s;
+    }
+    .bw-btn:hover {
+      border-color: var(--ff-orange-border);
+      color: var(--color-primary);
+    }
+
+    /* Expanded Agents Panel */
+    .bw-agents-panel {
+      background: var(--bg-agent-panel);
+      padding: 1.25rem 1.5rem;
+      border-left: 5px solid var(--color-primary);
+    }
+    .bw-agents-panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-primary);
+      margin-bottom: 0.85rem;
+    }
+    .bw-agents-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 0.85rem;
+    }
+    .bw-agent-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .bw-volume-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 5px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.74rem;
+      margin-bottom: 0.25rem;
+    }
+    .bw-volume-row.excluded {
+      border-color: rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.06);
+    }
+
+    /* Pulse */
+    .pulse-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--color-success);
+      box-shadow: 0 0 6px var(--color-success);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.6; }
+    }
+
+    /* ── Interactive Modal, Drawer & Dialog System (Exact Theme Tokens) ── */
+    .bw-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(6, 17, 25, 0.78);
+      backdrop-filter: blur(5px);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+    }
+    .bw-modal-overlay.open {
+      display: flex;
+    }
+    .bw-dialog {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: var(--shadow-lg);
+      color: var(--text-main);
+      overflow: hidden;
+      animation: dialogIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes dialogIn {
+      from { transform: scale(0.96) translateY(10px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .bw-dialog-header {
+      padding: 1.15rem 1.4rem;
+      border-bottom: 1px solid var(--border-element);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+    }
+    .bw-dialog-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-heading);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .bw-dialog-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+    }
+    .bw-dialog-close:hover {
+      color: var(--text-heading);
+      background: var(--bg-hover);
+    }
+    .bw-dialog-body {
+      padding: 1.4rem;
+      max-height: 75vh;
+      overflow-y: auto;
+    }
+    .bw-dialog-footer {
+      padding: 1rem 1.4rem;
+      border-top: 1px solid var(--border-element);
+      background: var(--bg-panel);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.65rem;
+    }
+    .bw-form-group {
+      margin-bottom: 1rem;
+    }
+    .bw-form-label {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+    }
+    .bw-form-input, .bw-form-select, .bw-form-textarea {
+      width: 100%;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 6px;
+      padding: 0.55rem 0.85rem;
+      font-size: 0.82rem;
+      color: var(--text-main);
+      font-family: inherit;
+      outline: none;
+    }
+    .bw-form-input:focus, .bw-form-select:focus, .bw-form-textarea:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--ff-orange-border);
+    }
+
+    /* Drawer */
+    .bw-drawer {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 100%;
+      max-width: 620px;
+      background: var(--bg-glass);
+      border-left: 1px solid var(--border-glass);
+      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.55);
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      color: var(--text-main);
+    }
+    .bw-drawer.open {
+      transform: translateX(0);
+    }
+    .bw-drawer-header {
+      padding: 1.25rem 1.4rem;
+      border-bottom: 1px solid var(--border-element);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+    }
+    .bw-drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.4rem;
+    }
+
+    /* Toast Notification */
+    .bw-toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 20000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .bw-toast {
+      background: #0B1E2B;
+      border: 1px solid #1F4560;
+      border-left: 4px solid var(--ff-orange);
+      color: #FFFFFF;
+      padding: 0.8rem 1.15rem;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: toastIn 0.2s ease;
+    }
+    @keyframes toastIn {
+      from { transform: translateY(8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Mode Switcher Bar -->
+  <div class="theme-top-bar">
+    <div class="theme-top-bar-title">
+      <span>🛡️ Fifosys Enterprise Identity</span> — Dark Mode vs Light Mode System
+    </div>
+    <div class="theme-top-bar-controls">
+      <button class="theme-mode-btn active" id="btn-mode-dark" onclick="switchThemeView('dark')">
+        <span>🌙</span> Dark Mode (Cyber Navy)
+      </button>
+      <button class="theme-mode-btn" id="btn-mode-light" onclick="switchThemeView('light')">
+        <span>☀️</span> Light Mode (Enterprise Clean)
+      </button>
+      <button class="theme-mode-btn" id="btn-mode-split" onclick="switchThemeView('split')">
+        <span>🌓</span> Side-by-Side Comparison
+      </button>
+    </div>
+  </div>
+
+  <!-- Main View Container -->
+  <div id="main-view" class="view-container">
+
+    <!-- Primary Dashboard Component Render -->
+    <div class="backup-watch-root" id="single-dashboard" data-theme="dark">
+
+      <!-- Header Hero Card -->
+      <div class="bw-header-card">
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <!-- Official Fifosys Icon Mark from fifosys.com -->
+          <a href="https://www.fifosys.com" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; text-decoration: none;" title="Fifosys">
+            <img src="fifosys-icon.png" alt="Fifosys Logo Mark" class="bw-fifosys-icon" style="height: 48px; width: 48px; border-radius: 10px; box-shadow: 0 4px 14px rgba(238, 104, 35, 0.35); border: 1.5px solid rgba(255, 255, 255, 0.15);" />
+          </a>
+          <div style="width: 1px; height: 44px; background: rgba(255, 255, 255, 0.2);"></div>
+          <div>
+            <div style="font-family: 'Outfit', sans-serif; font-size: 1.95rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; display: flex; align-items: baseline; gap: 0.45rem;">
+              <span style="color: #FFFFFF;">Fifosys</span>
+              <span style="color: #EE6823;">BackupWatch</span>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; font-weight: 600; color: #8AA4B8; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 0.3rem;">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981;"></span>
+              <span>Unified Data Protection Desk • v1.23.0</span>
+            </div>
+          </div>
+        </div>
+        <div class="bw-header-controls">
+          <!-- Cluster 1: Mode Switcher (Fleet Desk vs. Exclusions) -->
+          <div class="bw-segmented-group">
+            <button class="bw-seg-btn active" id="btn-seg-fleet" onclick="switchToFleetView()">
+              <svg style="width: 15px; height: 15px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              Fleet Desk
+            </button>
+            <button class="bw-seg-btn" id="btn-seg-exclusions" onclick="toggleExclusionsView()">
+              <svg style="width: 15px; height: 15px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+              Exclusions
+            </button>
+          </div>
+
+          <!-- Cluster 2: Governance & Admin Tools -->
+          <button class="bw-btn-action" onclick="openAuditModal()" title="System Audit Logs">
+            <svg style="width: 15px; height: 15px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            Audit Trail
+          </button>
+
+          <button class="bw-btn-action admin" onclick="openAdminModal()" title="Administrator Console">
+            <svg style="width: 15px; height: 15px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Admin Console
+          </button>
+
+          <!-- Cluster 3: Utility Icon Group -->
+          <div class="bw-icon-group">
+            <button class="bw-icon-btn" id="btn-header-theme-toggle" onclick="toggleDashboardTheme()" title="Toggle Light/Dark Theme">
+              <svg style="width: 15px; height: 15px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+            <button class="bw-icon-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+              <svg style="width: 15px; height: 15px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round;" viewBox="0 0 24 24">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Cluster 4: Operator Avatar Pill -->
+          <div class="bw-user-pill">
+            <div class="bw-user-avatar">MW</div>
+            <div class="bw-user-meta">
+              <span class="bw-user-name">Malith Wijesinghe</span>
+              <span class="bw-user-role" style="color: #F87171;">Administrator</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cache Status Bar -->
+      <div class="bw-status-bar">
+        <span>In-Memory Cache Status: <strong style="color: var(--color-primary)" id="cache-status-text">Loaded from Datto API (1m ago)</strong></span>
+        <button class="bw-btn-refresh" id="btn-cache-refresh" onclick="triggerForceRefresh(this)">🔄 Force Refresh</button>
+      </div>
+
+      <!-- Main Operations Card (Fleet Dashboard View) -->
+      <div class="bw-main-card" id="bw-dashboard-view">
+        <div class="bw-controls-row">
+          <div class="bw-tabs-group">
+            <button class="bw-tab-btn active" id="tab-active-appliances" onclick="switchApplianceTab('active', this)">Active Appliances</button>
+            <button class="bw-tab-btn" id="tab-cancelled-appliances" onclick="switchApplianceTab('cancelled', this)">Cancelled Appliances</button>
+          </div>
+          <div class="bw-search-wrapper">
+            <input type="text" class="bw-search-input" id="table-search-input" placeholder="Search appliance, client, model..." oninput="filterAppliances(this.value)">
+            <span class="search-icon">🔍</span>
+          </div>
+        </div>
+
+        <!-- 8 Metric Cards Grid -->
+        <div class="bw-metrics-grid">
+          <div class="bw-metric-card success" onclick="filterMetric('all', this)">
+            <div class="bw-metric-value success">48</div>
+            <div class="bw-metric-label">Total Appliances</div>
+          </div>
+          <div class="bw-metric-card danger" onclick="filterMetric('screenshot', this)">
+            <div class="bw-metric-value danger">3</div>
+            <div class="bw-metric-label">Screenshot Failures</div>
+          </div>
+          <div class="bw-metric-card warning" onclick="filterMetric('storage', this)">
+            <div class="bw-metric-value warning">5</div>
+            <div class="bw-metric-label">Storage Critical (&gt;85%)</div>
+          </div>
+          <div class="bw-metric-card purple" onclick="filterMetric('exclusions', this)">
+            <div class="bw-metric-value purple">12</div>
+            <div class="bw-metric-label">Volume Exclusions</div>
+          </div>
+          <div class="bw-metric-card success" onclick="filterMetric('offline', this)">
+            <div class="bw-metric-value success">0</div>
+            <div class="bw-metric-label">Offline Appliances</div>
+          </div>
+          <div class="bw-metric-card danger" onclick="filterMetric('backup-fail', this)">
+            <div class="bw-metric-value danger">2</div>
+            <div class="bw-metric-label">Local Backup Failures</div>
+          </div>
+          <div class="bw-metric-card warning" onclick="filterMetric('sync-issue', this)">
+            <div class="bw-metric-value warning">4</div>
+            <div class="bw-metric-label">Offsite Sync Issues</div>
+          </div>
+          <div class="bw-metric-card warning" onclick="filterMetric('overdue', this)">
+            <div class="bw-metric-value warning">1</div>
+            <div class="bw-metric-label">Overdue Backups (&gt;24h)</div>
+          </div>
+        </div>
+
+        <!-- 8-Column Table -->
+        <div class="bw-table-container">
+          <table class="bw-table">
+            <thead>
+              <tr>
+                <th style="width: 36px; text-align: center;"></th>
+                <th>Appliance Name</th>
+                <th>Model / Serial</th>
+                <th>Local Storage</th>
+                <th>Last Seen</th>
+                <th>Backup Status</th>
+                <th>Exclusions</th>
+                <th style="width: 170px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Row 1: Active & Expanded -->
+              <tr class="bw-appliance-row expanded" id="row-LON-DATTO-01" onclick="toggleApplianceRow('LON-DATTO-01')" data-status="overdue" data-type="active">
+                <td style="text-align: center; color: var(--color-primary); font-size: 0.75rem;" id="chev-LON-DATTO-01">▼</td>
+                <td>
+                  <div style="font-weight: 700; color: var(--text-heading);">LON-DATTO-01</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Apex Global Wealth Management</div>
+                </td>
+                <td>
+                  <div style="font-weight: 600; color: var(--text-heading);">SIRIS 4 Enterprise</div>
+                  <div style="font-size: 0.73rem; color: var(--text-muted);">D4E-994821-GB</div>
+                </td>
+                <td>
+                  <div class="bw-progress-bar-track">
+                    <div class="bw-progress-bar-fill warning" style="width: 82%;"></div>
+                  </div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">
+                    9.84 TB / 12 TB (82%)
+                  </div>
+                </td>
+                <td>
+                  <span style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem;">
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--color-success);"></span>
+                    2m ago
+                  </span>
+                </td>
+                <td>
+                  <span class="bw-badge-pill danger">Screenshot Fail</span>
+                </td>
+                <td style="text-align: center;">
+                  <span style="color: var(--color-purple); font-weight: 700; font-size: 0.8rem;">1 excl.</span>
+                </td>
+                <td>
+                  <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                    <button class="bw-btn" style="background: var(--color-primary); color: #fff; border: none; font-size: 0.74rem; justify-content: center;" onclick="event.stopPropagation(); openEscalateModal('LON-DATTO-01', 'APEX-SQL01')">
+                      ⚡ Escalate
+                    </button>
+                    <button class="bw-btn" style="font-size: 0.74rem; justify-content: center; color: var(--color-purple);" onclick="event.stopPropagation(); openSilenceModal('LON-DATTO-01')">
+                      🔇 Silence
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Expanded Agents Panel (LON-DATTO-01) -->
+              <tr id="agents-LON-DATTO-01">
+                <td colspan="8" style="padding: 0;">
+                  <div class="bw-agents-panel">
+                    <div class="bw-agents-panel-title">
+                      Protected Agents — LON-DATTO-01
+                    </div>
+                    <div class="bw-agents-cards-grid">
+                      <!-- Agent 1 -->
+                      <div class="bw-agent-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                          <strong style="color: var(--text-heading);">APEX-SQL01.apex.local</strong>
+                          <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <span class="bw-badge-pill warning">1 excl.</span>
+                            <button title="Silence Server / Agent APEX-SQL01" style="background: none; border: none; cursor: pointer; font-size: 0.8rem; color: var(--text-muted); padding: 0.1rem 0.25rem;" onclick="event.stopPropagation(); openSilenceModal('APEX-SQL01')">🔇</button>
+                          </div>
+                        </div>
+                        <div style="font-size: 0.74rem; color: var(--text-muted);">
+                          Windows Server 2022 Datacenter • Last snap: 12m ago
+                        </div>
+                        <div>
+                          <div class="bw-volume-row">
+                            <span style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-success);"></span>
+                              ● C:
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                              <span style="color: var(--color-success); font-weight: 700; font-size: 0.65rem;">INCLUDED</span>
+                              <button title="Pre-Exclude Volume (Maintenance Mode)" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.72rem; padding: 0.15rem;" onclick="event.stopPropagation(); openExclusionModal('LON-DATTO-01:APEX-SQL01:C', 'Volume', '', 'Pre-exclude for routine maintenance')">✏️</button>
+                            </div>
+                          </div>
+                          <div class="bw-volume-row excluded">
+                            <span style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-danger);"></span>
+                              ● E:
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                              <span style="color: var(--color-danger); font-weight: 700; font-size: 0.65rem;">EXCLUDED</span>
+                              <button title="Edit Volume Note & Exclusion Policy" style="background: none; border: none; color: #f59e0b; cursor: pointer; font-size: 0.72rem; padding: 0.15rem;" onclick="event.stopPropagation(); openExclusionModal('LON-DATTO-01:APEX-SQL01:E', 'Volume', 'T20261001.0001', 'Temp test scratch volume during SQL restructuring')">✏️</button>
+                            </div>
+                          </div>
+                          <div style="display: flex; align-items: center; justify-content: space-between; padding-left: 0.5rem; margin-top: 0.2rem;">
+                            <span style="font-size: 0.68rem; color: var(--text-muted); font-style: italic;">
+                              "Temp test scratch volume during SQL restructuring"
+                            </span>
+                            <a href="https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId=T20261001.0001" target="_blank" style="font-size: 0.68rem; color: var(--color-success); font-weight: 600; text-decoration: none; border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); padding: 0.1rem 0.35rem; border-radius: 3px;">🎫 #T20261001.0001</a>
+                          </div>
+                        </div>
+                        <div style="border-top: 1px solid var(--border-element); padding-top: 0.5rem; font-size: 0.75rem;">
+                          <div style="display: flex; justify-content: space-between;">
+                            <span>Last Backup:</span>
+                            <strong style="color: var(--color-success);">Success (09:48 AM)</strong>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                            <span>Screenshot:</span>
+                            <strong style="color: var(--color-danger);">Failed (06:15 AM)</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Agent 2 -->
+                      <div class="bw-agent-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                          <strong style="color: var(--text-heading);">APEX-DC01.apex.local</strong>
+                          <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <span class="bw-badge-pill success">✓ All vol.</span>
+                            <button title="Silence Server / Agent APEX-DC01" style="background: none; border: none; cursor: pointer; font-size: 0.8rem; color: var(--text-muted); padding: 0.1rem 0.25rem;" onclick="event.stopPropagation(); openSilenceModal('APEX-DC01')">🔇</button>
+                          </div>
+                        </div>
+                        <div style="font-size: 0.74rem; color: var(--text-muted);">
+                          Windows Server 2019 Standard • Last snap: 24m ago
+                        </div>
+                        <div>
+                          <div class="bw-volume-row">
+                            <span style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-success);"></span>
+                              ● C:
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                              <span style="color: var(--color-success); font-weight: 700; font-size: 0.65rem;">INCLUDED</span>
+                              <button title="Pre-Exclude Volume (Maintenance Mode)" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.72rem; padding: 0.15rem;" onclick="event.stopPropagation(); openExclusionModal('LON-DATTO-01:APEX-DC01:C', 'Volume', '', '')">✏️</button>
+                            </div>
+                          </div>
+                          <div class="bw-volume-row">
+                            <span style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-success);"></span>
+                              ● D:
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                              <span style="color: var(--color-success); font-weight: 700; font-size: 0.65rem;">INCLUDED</span>
+                              <button title="Pre-Exclude Volume (Maintenance Mode)" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.72rem; padding: 0.15rem;" onclick="event.stopPropagation(); openExclusionModal('LON-DATTO-01:APEX-DC01:D', 'Volume', '', '')">✏️</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div style="border-top: 1px solid var(--border-element); padding-top: 0.5rem; font-size: 0.75rem;">
+                          <div style="display: flex; justify-content: space-between;">
+                            <span>Last Backup:</span>
+                            <strong style="color: var(--color-success);">Success (09:36 AM)</strong>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                            <span>Screenshot:</span>
+                            <strong style="color: var(--color-success);">Verified (06:00 AM)</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 2: Active (Click to expand) -->
+              <tr class="bw-appliance-row" id="row-MAN-ALTO-04" onclick="toggleApplianceRow('MAN-ALTO-04')" data-status="storage" data-type="active">
+                <td style="text-align: center; color: var(--color-primary); font-size: 0.75rem;" id="chev-MAN-ALTO-04">▶</td>
+                <td>
+                  <div style="font-weight: 700; color: var(--text-heading);">MAN-ALTO-04</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Sterling BioPharma UK</div>
+                </td>
+                <td>
+                  <div style="font-weight: 600; color: var(--text-heading);">ALTO 3 Cloud</div>
+                  <div style="font-size: 0.73rem; color: var(--text-muted);">AL3-448102-UK</div>
+                </td>
+                <td>
+                  <div class="bw-progress-bar-track">
+                    <div class="bw-progress-bar-fill danger" style="width: 93%;"></div>
+                  </div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">
+                    3.72 TB / 4 TB (93%)
+                  </div>
+                </td>
+                <td>
+                  <span style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem;">
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--color-success);"></span>
+                    5m ago
+                  </span>
+                </td>
+                <td>
+                  <span class="bw-badge-pill warning">Storage Warning</span>
+                </td>
+                <td style="text-align: center; color: var(--text-muted);">—</td>
+                <td>
+                  <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                    <button class="bw-btn" style="background: rgba(15,110,86,0.2); color: var(--badge-success-color); border: 1px solid var(--badge-success-border); font-size: 0.72rem; justify-content: center;" onclick="event.stopPropagation(); openEscalateModal('MAN-ALTO-04', 'MAN-APP01')">
+                      🎫 Storage Ticket
+                    </button>
+                    <button class="bw-btn" id="btn-silence-MAN-ALTO-04" style="font-size: 0.74rem; justify-content: center; color: var(--color-purple);" onclick="event.stopPropagation(); toggleApplianceSilence('MAN-ALTO-04', this)">
+                      🔇 Silence Appliance
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Agents Panel 2 (MAN-ALTO-04) -->
+              <tr id="agents-MAN-ALTO-04" style="display: none;">
+                <td colspan="8" style="padding: 0;">
+                  <div class="bw-agents-panel">
+                    <div class="bw-agents-panel-title">
+                      Protected Agents — MAN-ALTO-04
+                    </div>
+                    <div class="bw-agents-cards-grid">
+                      <div class="bw-agent-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                          <strong style="color: var(--text-heading);">MAN-APP01.biopharma.local</strong>
+                          <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <span class="bw-badge-pill success">✓ All vol.</span>
+                            <button title="Silence Server / Agent MAN-APP01" style="background: none; border: none; cursor: pointer; font-size: 0.8rem; color: var(--text-muted); padding: 0.1rem 0.25rem;" onclick="event.stopPropagation(); openSilenceModal('MAN-APP01')">🔇</button>
+                          </div>
+                        </div>
+                        <div style="font-size: 0.74rem; color: var(--text-muted);">
+                          Windows Server 2019 Standard • Last snap: 5m ago
+                        </div>
+                        <div>
+                          <div class="bw-volume-row">
+                            <span style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-success);"></span>
+                              ● C:
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                              <span style="color: var(--color-success); font-weight: 700; font-size: 0.65rem;">INCLUDED</span>
+                              <button title="Pre-Exclude Volume (Maintenance Mode)" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.72rem; padding: 0.15rem;" onclick="event.stopPropagation(); openExclusionModal('MAN-ALTO-04:MAN-APP01:C', 'Volume', '', '')">✏️</button>
+                            </div>
+                          </div>
+                          <div class="bw-volume-row">
+                            <span style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                              <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-success);"></span>
+                              ● D:
+                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                              <span style="color: var(--color-success); font-weight: 700; font-size: 0.65rem;">INCLUDED</span>
+                              <button title="Pre-Exclude Volume (Maintenance Mode)" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.72rem; padding: 0.15rem;" onclick="event.stopPropagation(); openExclusionModal('MAN-ALTO-04:MAN-APP01:D', 'Volume', '', '')">✏️</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div style="border-top: 1px solid var(--border-element); padding-top: 0.5rem; font-size: 0.75rem;">
+                          <div style="display: flex; justify-content: space-between;">
+                            <span>Last Backup:</span>
+                            <strong style="color: var(--color-success);">Success (10:15 AM)</strong>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                            <span>Screenshot:</span>
+                            <strong style="color: var(--color-success);">Verified (05:00 AM)</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 3: Cancelled Appliance (Hidden on Active Tab) -->
+              <tr class="bw-appliance-row" id="row-PEN-DATTO-CANCELLED" style="display: none;" data-type="cancelled">
+                <td style="text-align: center; color: var(--text-muted); font-size: 0.75rem;">—</td>
+                <td>
+                  <div style="font-weight: 700; color: var(--text-heading);">PEN-DATTO-02</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Pendleton Associates (Contract Terminated)</div>
+                </td>
+                <td>
+                  <div style="font-weight: 600; color: var(--text-heading);">SIRIS 3 Cloud</div>
+                  <div style="font-size: 0.73rem; color: var(--text-muted);">S3-PEN-0012-UK</div>
+                </td>
+                <td>
+                  <div class="bw-progress-bar-track">
+                    <div class="bw-progress-bar-fill" style="width: 100%; background: var(--text-muted);"></div>
+                  </div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">
+                    Archived Snapshot Retained
+                  </div>
+                </td>
+                <td>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Offline (Cancelled)</span>
+                </td>
+                <td>
+                  <span class="bw-badge-pill" style="background: rgba(130,149,165,0.2); color: var(--text-muted);">Decommissioned</span>
+                </td>
+                <td style="text-align: center; color: var(--text-muted);">—</td>
+                <td>
+                  <button class="bw-btn" style="font-size: 0.74rem; justify-content: center;" onclick="showToast('Viewing archival retention policy for PEN-DATTO-02 (Retained for 7 years)')">
+                    📁 View Archive
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.78rem; color: var(--text-muted);">
+          <span>© 2026 Fifosys. All rights reserved.</span>
+          <span style="display: flex; align-items: center; gap: 0.4rem;">
+            <span class="pulse-dot"></span>
+            Powered by BackupWatch BCDR Engine v2.1.2
+          </span>
+        </div>
+      </div>
+
+      <!-- ACTIVE EXCLUSIONS SETTINGS VIEW (One-to-One mapping of live dashboard view) -->
+      <div class="bw-main-card" id="bw-exclusions-view" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.2rem;">
+          <div>
+            <h2 style="font-size: 1.35rem; color: var(--color-primary); margin: 0 0 0.4rem 0; font-family: 'Outfit', sans-serif; font-weight: 700;">
+              Active Exclusions List
+            </h2>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.85rem; max-width: 800px; line-height: 1.4;">
+              The following resources are currently excluded from raising alerts. Exclusions are processed on the server-side to support future automation pipelines and synchronized to Azure Table Storage.
+            </p>
+          </div>
+          <button class="bw-btn" style="background: var(--color-primary); color: #fff; border: none; font-weight: 700;" onclick="openExclusionModal('LON-DATTO-01:NEW-AGENT:C', 'Volume', '', '')">
+            + New Exclusion Rule
+          </button>
+        </div>
+
+        <div class="bw-table-container">
+          <table class="bw-table">
+            <thead>
+              <tr>
+                <th style="width: 100px;">Type</th>
+                <th>Target</th>
+                <th>Policy</th>
+                <th>Reason</th>
+                <th>Ticket</th>
+                <th>Created Date</th>
+                <th style="width: 120px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="exclusions-table-body">
+              <tr id="excl-row-1">
+                <td>
+                  <span class="bw-badge-pill purple">Volume</span>
+                </td>
+                <td style="font-weight: 600; color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                  LON-DATTO-01:APEX-SQL01:E
+                </td>
+                <td>
+                  <span class="bw-badge-pill warning" style="color: #f59e0b; border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.1);">
+                    🕒 Temp (5d left)
+                  </span>
+                </td>
+                <td style="color: var(--text-main);">
+                  Temp test scratch volume during SQL restructuring
+                </td>
+                <td>
+                  <a href="https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId=T20261001.0001" target="_blank" style="color: var(--color-success); font-weight: 600; text-decoration: none;">
+                    🎫 T20261001.0001
+                  </a>
+                </td>
+                <td style="color: var(--text-muted); font-size: 0.78rem;">
+                  03/10/2026
+                </td>
+                <td style="text-align: center;">
+                  <button class="bw-btn" style="background: var(--color-danger); color: #ffffff; border: none; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.74rem;" onclick="removeExclusionFromTable('excl-row-1', 'LON-DATTO-01:APEX-SQL01:E')">
+                    Remove
+                  </button>
+                </td>
+              </tr>
+              <tr id="excl-row-2">
+                <td>
+                  <span class="bw-badge-pill success">Device</span>
+                </td>
+                <td style="font-weight: 600; color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                  MAN-ALTO-04
+                </td>
+                <td>
+                  <span class="bw-badge-pill purple">♾️ Permanent</span>
+                </td>
+                <td style="color: var(--text-main);">
+                  Storage re-provisioning project on Sterling NAS
+                </td>
+                <td>
+                  <a href="https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId=T20261007.0392" target="_blank" style="color: var(--color-success); font-weight: 600; text-decoration: none;">
+                    🎫 T20261007.0392
+                  </a>
+                </td>
+                <td style="color: var(--text-muted); font-size: 0.78rem;">
+                  07/10/2026
+                </td>
+                <td style="text-align: center;">
+                  <button class="bw-btn" style="background: var(--color-danger); color: #ffffff; border: none; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.74rem;" onclick="removeExclusionFromTable('excl-row-2', 'MAN-ALTO-04')">
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer for Exclusions View -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.78rem; color: var(--text-muted);">
+          <span>© 2026 Fifosys. All rights reserved.</span>
+          <button class="bw-btn" style="font-size: 0.75rem;" onclick="toggleExclusionsView()">
+            ← Back to Fleet Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Interactive Modals & Drawers (Global) ── -->
+
+  <!-- Modal: Volume Exclusion Wizard -->
+  <div class="bw-modal-overlay" id="modal-exclusion-overlay" onclick="if(event.target===this) closeExclusionModal()">
+    <div class="bw-dialog" role="dialog" aria-modal="true">
+      <div class="bw-dialog-header">
+        <div class="bw-dialog-title">
+          <span>🛡️</span> Volume & Drive Exclusion Wizard
+        </div>
+        <button class="bw-dialog-close" onclick="closeExclusionModal()" aria-label="Close">×</button>
+      </div>
+      <div class="bw-dialog-body">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+          Configure granular BCDR silences for Datto backup agents and specific volume letters. Silences are validated against active Autotask PSA service desk tickets and synchronized to Azure Table Storage.
+        </p>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Target Asset Identifier</label>
+          <input type="text" class="bw-form-input" id="modal-excl-target" value="LON-DATTO-01:APEX-SQL01:E" readonly style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--color-primary);">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="bw-form-group">
+            <label class="bw-form-label">Exclusion Scope</label>
+            <select class="bw-form-select" id="modal-excl-scope">
+              <option value="Volume" selected>Volume (Single Drive Letter)</option>
+              <option value="Agent">Entire Protected Agent</option>
+              <option value="Appliance">Datto Appliance Fleet Silence</option>
+            </select>
+          </div>
+          <div class="bw-form-group">
+            <label class="bw-form-label">Silence Duration</label>
+            <select class="bw-form-select" id="modal-excl-duration">
+              <option value="Permanent">Permanent Exclusion</option>
+              <option value="24h">24 Hours (Temporary)</option>
+              <option value="7d" selected>7 Days (Maintenance)</option>
+              <option value="30d">30 Days (Client Migration)</option>
+            </select>
+          </div>
+        </div>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Autotask Service Desk Ticket #</label>
+          <input type="text" class="bw-form-input" id="modal-excl-ticket" placeholder="e.g. T20261001.0001" value="T20261001.0001" style="font-family: 'JetBrains Mono', monospace;">
+          <div style="font-size: 0.72rem; color: var(--color-success); margin-top: 0.3rem;">
+            ✓ Verified in Autotask PSA (Queue ID: 29683940 • Service Desk)
+          </div>
+        </div>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Reason / Engineering Notes</label>
+          <textarea class="bw-form-textarea" id="modal-excl-notes" rows="3" placeholder="Provide justification for BCDR compliance audit...">Temp test scratch volume during SQL restructuring</textarea>
+        </div>
+      </div>
+      <div class="bw-dialog-footer">
+        <button class="bw-btn" style="background: transparent; color: var(--text-muted);" onclick="closeExclusionModal()">Cancel</button>
+        <button class="bw-btn" style="background: var(--color-primary); color: #fff; border: none; font-weight: 700;" onclick="saveExclusion()">
+          💾 Save Exclusion & Apply
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Admin Console & Diagnostics -->
+  <div class="bw-modal-overlay" id="modal-admin-overlay" onclick="if(event.target===this) closeAdminModal()">
+    <div class="bw-dialog" style="max-width: 660px;" role="dialog" aria-modal="true">
+      <div class="bw-dialog-header">
+        <div class="bw-dialog-title">
+          <span>⚙️</span> BackupWatch Admin Console & System Diagnostics
+        </div>
+        <button class="bw-dialog-close" onclick="closeAdminModal()" aria-label="Close">×</button>
+      </div>
+      <div class="bw-dialog-body">
+        <!-- Subtab Buttons -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.2rem; border-bottom: 1px solid var(--border-element); padding-bottom: 0.5rem;">
+          <button class="bw-btn" id="subtab-diag-btn" style="background: var(--color-primary); color: #fff; font-size: 0.76rem;" onclick="switchAdminSubtab('diag')">System Health</button>
+          <button class="bw-btn" id="subtab-picklist-btn" style="font-size: 0.76rem;" onclick="switchAdminSubtab('picklist')">Autotask Picklist Proof</button>
+          <button class="bw-btn" id="subtab-rules-btn" style="font-size: 0.76rem;" onclick="switchAdminSubtab('rules')">Global Fleet Rules</button>
+        </div>
+
+        <!-- Subtab 1: Diagnostics -->
+        <div id="subtab-diag-pane">
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;">
+            <div style="background: var(--bg-panel); border: 1px solid var(--border-element); padding: 0.75rem 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--color-success);">● Azure Table Storage</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Table: BackupWatchExclusions • RowKey Partition: Healthy</div>
+              </div>
+              <span class="bw-badge-pill success">Connected (24ms)</span>
+            </div>
+            <div style="background: var(--bg-panel); border: 1px solid var(--border-element); padding: 0.75rem 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--color-success);">● Autotask PSA REST API v1.6</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Zone: UK02 • Target Queue: Service Desk (29683940)</div>
+              </div>
+              <span class="bw-badge-pill success">Authenticated</span>
+            </div>
+            <div style="background: var(--bg-panel); border: 1px solid var(--border-element); padding: 0.75rem 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--color-success);">● Datto Fleet API Ingestion</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">48 Appliances Synced • In-Memory Datto Cache Valid</div>
+              </div>
+              <span class="bw-badge-pill success">Operational</span>
+            </div>
+            <div style="background: var(--bg-panel); border: 1px solid var(--border-element); padding: 0.75rem 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--color-primary);">● Engine Architecture</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Azure Functions v4 (Node 20 LTS) • BackupWatch v2.1.2</div>
+              </div>
+              <span class="bw-badge-pill purple">Serverless</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab 2: Autotask Picklist Proof -->
+        <div id="subtab-picklist-pane" style="display: none;">
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+            Live routing verification confirming zero "Ticket Category" or "Sub-Issue" errors in Autotask PSA:
+          </p>
+          <div style="background: var(--bg-panel); border: 1px solid var(--border-element); border-radius: 6px; padding: 0.85rem; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;">
+            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border-element);">
+              <span style="color: var(--text-muted);">Ticket Category:</span>
+              <strong style="color: var(--text-heading);">Backup Failure (ID: 29683)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border-element);">
+              <span style="color: var(--text-muted);">Issue Type:</span>
+              <strong style="color: var(--text-heading);">Datto BCDR Issue (ID: 104)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border-element);">
+              <span style="color: var(--text-muted);">Sub-Issue Type:</span>
+              <strong style="color: var(--text-heading);">Volume Unprotected / Failed (ID: 312)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border-element);">
+              <span style="color: var(--text-muted);">Target Service Queue:</span>
+              <strong style="color: var(--color-success);">Service Desk (Queue ID: 29683940)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+              <span style="color: var(--text-muted);">Work Type:</span>
+              <strong style="color: var(--text-heading);">Proactive BCDR Maintenance</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab 3: Fleet Rules -->
+        <div id="subtab-rules-pane" style="display: none;">
+          <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.6;">
+            <div style="margin-bottom: 0.8rem; background: var(--bg-panel); border: 1px solid var(--border-element); padding: 0.75rem; border-radius: 6px;">
+              <strong style="color: var(--text-heading);">Rule 1: Strict Drive Letter Normalization</strong><br>
+              Drive letters are uppercase and stripped of colons/slashes (e.g. <code>E</code> instead of <code>E:\</code>) to eliminate ghost duplicates in Azure Storage.
+            </div>
+            <div style="background: var(--bg-panel); border: 1px solid var(--border-element); padding: 0.75rem; border-radius: 6px;">
+              <strong style="color: var(--text-heading);">Rule 2: Automated Auto-Heal Re-inclusion</strong><br>
+              When an excluded volume resumes successful snapshot verification without ticket action, auto-heal re-includes it safely.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bw-dialog-footer">
+        <button class="bw-btn" style="background: var(--color-primary); color: #fff; border: none;" onclick="closeAdminModal()">Close Console</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Escalate Ticket to Service Desk -->
+  <div class="bw-modal-overlay" id="modal-escalate-overlay" onclick="if(event.target===this) closeEscalateModal()">
+    <div class="bw-dialog" role="dialog" aria-modal="true">
+      <div class="bw-dialog-header">
+        <div class="bw-dialog-title">
+          <span>🎫</span> Escalate BCDR Issue to Autotask Service Desk
+        </div>
+        <button class="bw-dialog-close" onclick="closeEscalateModal()" aria-label="Close">×</button>
+      </div>
+      <div class="bw-dialog-body">
+        <div class="bw-form-group">
+          <label class="bw-form-label">Target Appliance / Agent</label>
+          <input type="text" class="bw-form-input" id="modal-esc-target" value="LON-DATTO-01 / APEX-SQL01" readonly style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">
+        </div>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Ticket Title</label>
+          <input type="text" class="bw-form-input" id="modal-esc-title" value="[BACKUPWATCH] Screenshot Failure on APEX-SQL01 (LON-DATTO-01)">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="bw-form-group">
+            <label class="bw-form-label">Priority</label>
+            <select class="bw-form-select" id="modal-esc-priority">
+              <option value="Critical">Critical (Immediate Dispatch)</option>
+              <option value="High" selected>High (2-Hour SLA)</option>
+              <option value="Medium">Medium (Normal SLA)</option>
+            </select>
+          </div>
+          <div class="bw-form-group">
+            <label class="bw-form-label">Target Service Desk Queue</label>
+            <input type="text" class="bw-form-input" value="Service Desk (29683940)" readonly style="color: var(--color-success); font-weight: 600;">
+          </div>
+        </div>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Issue Details & Diagnostic Output</label>
+          <textarea class="bw-form-textarea" rows="3" id="modal-esc-desc">Last screenshot test failed with black screen / boot error 0xc000000e. Local snapshot completed successfully 12m ago.</textarea>
+        </div>
+      </div>
+      <div class="bw-dialog-footer">
+        <button class="bw-btn" style="background: transparent; color: var(--text-muted);" onclick="closeEscalateModal()">Cancel</button>
+        <button class="bw-btn" style="background: var(--color-primary); color: #fff; border: none; font-weight: 700;" onclick="submitEscalateTicket()">
+          🚀 Dispatch Autotask Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Silence Appliance Alerts -->
+  <div class="bw-modal-overlay" id="modal-silence-overlay" onclick="if(event.target===this) closeSilenceModal()">
+    <div class="bw-dialog" role="dialog" aria-modal="true">
+      <div class="bw-dialog-header">
+        <div class="bw-dialog-title">
+          <span>🔇</span> Silence Appliance Alerts
+        </div>
+        <button class="bw-dialog-close" onclick="closeSilenceModal()" aria-label="Close">×</button>
+      </div>
+      <div class="bw-dialog-body">
+        <div class="bw-form-group">
+          <label class="bw-form-label">Target Appliance</label>
+          <input type="text" class="bw-form-input" id="modal-silence-target" value="MAN-ALTO-04" readonly style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">
+        </div>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Silence Window</label>
+          <select class="bw-form-select" id="modal-silence-duration">
+            <option value="24h">24 Hours</option>
+            <option value="48h">48 Hours</option>
+            <option value="7d" selected>7 Days (Maintenance)</option>
+            <option value="Permanent">Indefinitely</option>
+          </select>
+        </div>
+        <div class="bw-form-group">
+          <label class="bw-form-label">Reason / Work Note</label>
+          <textarea class="bw-form-textarea" id="modal-silence-reason" rows="3" placeholder="Explain reason for temporary alert mute...">Active storage re-provisioning on Sterling BioPharma NAS.</textarea>
+        </div>
+      </div>
+      <div class="bw-dialog-footer">
+        <button class="bw-btn" style="background: transparent; color: var(--text-muted);" onclick="closeSilenceModal()">Cancel</button>
+        <button class="bw-btn" style="background: var(--color-purple); color: #fff; border: none; font-weight: 700;" onclick="submitSilenceAction()">
+          Apply Silence
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer: Audit Trail -->
+  <div class="bw-drawer" id="drawer-audit">
+    <div class="bw-drawer-header">
+      <div>
+        <div style="font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--text-heading);">
+          📜 Fleet Audit Trail & Compliance Log
+        </div>
+        <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.2rem;">
+          Verified immutable operations record stored in Azure Table Storage
+        </div>
+      </div>
+      <button class="bw-dialog-close" onclick="closeAuditModal()" aria-label="Close">×</button>
+    </div>
+    <div class="bw-drawer-body">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <span style="font-size: 0.78rem; color: var(--text-muted);">Showing recent transactions</span>
+        <button class="bw-btn" style="font-size: 0.75rem; background: var(--ff-orange-subtle); color: var(--color-primary); border-color: var(--ff-orange-border);" onclick="exportAuditCsv()">
+          📥 Export CSV
+        </button>
+      </div>
+      <div id="audit-log-entries" style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="background: var(--bg-panel); border: 1px solid var(--border-element); border-radius: 6px; padding: 0.85rem; font-size: 0.78rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <strong style="color: var(--color-primary);">EXCLUSION_CREATED</strong>
+            <span style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Today, 10:24 AM</span>
+          </div>
+          <div style="color: var(--text-main);">Target: <code>LON-DATTO-01:APEX-SQL01:E</code> (Volume E:)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Ticket: <strong>#T20261001.0001</strong> • Operator: <strong>M. Wijesinghe</strong> • Reason: Scratch volume
+          </div>
+        </div>
+        <div style="background: var(--bg-panel); border: 1px solid var(--border-element); border-radius: 6px; padding: 0.85rem; font-size: 0.78rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <strong style="color: var(--color-success);">FLEET_REFRESH</strong>
+            <span style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Today, 10:20 AM</span>
+          </div>
+          <div style="color: var(--text-main);">Full Datto BCDR Ingestion: 48 appliances synced successfully</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Operator: <strong>System Scheduler</strong> • Execution time: 1.42s
+          </div>
+        </div>
+        <div style="background: var(--bg-panel); border: 1px solid var(--border-element); border-radius: 6px; padding: 0.85rem; font-size: 0.78rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <strong style="color: var(--color-purple);">SILENCE_APPLIED</strong>
+            <span style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Yesterday, 16:45 PM</span>
+          </div>
+          <div style="color: var(--text-main);">Target: <code>MAN-ALTO-04</code> (Storage alerts silenced for 7 days)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Operator: <strong>M. Wijesinghe</strong> • Ticket: <strong>#T20261007.0392</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="bw-toast-container" id="bw-toast-container"></div>
+
+  <script>
+    // ── Theme Switcher Logic ──
+    function switchThemeView(mode) {
+      const single = document.getElementById('single-dashboard');
+      const btnDark = document.getElementById('btn-mode-dark');
+      const btnLight = document.getElementById('btn-mode-light');
+      const btnSplit = document.getElementById('btn-mode-split');
+      const mainView = document.getElementById('main-view');
+
+      btnDark.classList.remove('active');
+      btnLight.classList.remove('active');
+      btnSplit.classList.remove('active');
+
+      if (mode === 'dark') {
+        btnDark.classList.add('active');
+        mainView.className = 'view-container';
+        mainView.innerHTML = '';
+        mainView.appendChild(single);
+        single.setAttribute('data-theme', 'dark');
+        const themeBtn = document.getElementById('btn-header-theme-toggle');
+        if (themeBtn) themeBtn.textContent = '☀️';
+        showToast('Switched to Dark Mode (Cyber Navy)');
+      } else if (mode === 'light') {
+        btnLight.classList.add('active');
+        mainView.className = 'view-container';
+        mainView.innerHTML = '';
+        mainView.appendChild(single);
+        single.setAttribute('data-theme', 'light');
+        const themeBtn = document.getElementById('btn-header-theme-toggle');
+        if (themeBtn) themeBtn.textContent = '🌙';
+        showToast('Switched to Light Mode (Enterprise Clean)');
+      } else if (mode === 'split') {
+        btnSplit.classList.add('active');
+        mainView.className = 'side-by-side-container';
+        mainView.innerHTML = `
+          <div>
+            <div style="font-weight: 800; font-size: 0.85rem; color: #EE6823; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              🌙 Dark Mode (Cyber Navy)
+            </div>
+            ${single.outerHTML}
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 0.85rem; color: #0F6E56; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              ☀️ Light Mode (Enterprise Clean)
+            </div>
+            ${single.outerHTML}
+          </div>
+        `;
+        const children = mainView.querySelectorAll('.backup-watch-root');
+        if (children[0]) children[0].setAttribute('data-theme', 'dark');
+        if (children[1]) children[1].setAttribute('data-theme', 'light');
+        showToast('Switched to Side-by-Side Comparison View');
+      }
+    }
+
+    function toggleDashboardTheme() {
+      const single = document.getElementById('single-dashboard');
+      if (!single) return;
+      const cur = single.getAttribute('data-theme');
+      if (cur === 'dark') {
+        switchThemeView('light');
+      } else {
+        switchThemeView('dark');
+      }
+    }
+
+    // ── Row Expand / Collapse ──
+    function toggleApplianceRow(id) {
+      const panels = document.querySelectorAll('#agents-' + id);
+      const chevrons = document.querySelectorAll('#chev-' + id);
+      const rows = document.querySelectorAll('#row-' + id);
+
+      panels.forEach((panel, idx) => {
+        const isHidden = panel.style.display === 'none' || !panel.style.display;
+        panel.style.display = isHidden ? 'table-row' : 'none';
+        if (chevrons[idx]) chevrons[idx].textContent = isHidden ? '▼' : '▶';
+        if (rows[idx]) {
+          if (isHidden) rows[idx].classList.add('expanded');
+          else rows[idx].classList.remove('expanded');
+        }
+      });
+    }
+
+    // ── Full Exclusions View Toggle (One-to-One Live Mapping) ──
+    let isExclusionsViewOpen = false;
+    function switchToFleetView() {
+      const dashView = document.getElementById('bw-dashboard-view');
+      const exclView = document.getElementById('bw-exclusions-view');
+      const btnFleet = document.getElementById('btn-seg-fleet');
+      const btnExcl = document.getElementById('btn-seg-exclusions');
+
+      if (!dashView || !exclView) return;
+
+      isExclusionsViewOpen = false;
+      dashView.style.display = 'block';
+      exclView.style.display = 'none';
+
+      if (btnFleet) btnFleet.classList.add('active');
+      if (btnExcl) btnExcl.classList.remove('active');
+      showToast('Viewing Fleet Desk Overview');
+    }
+
+    function toggleExclusionsView() {
+      const dashView = document.getElementById('bw-dashboard-view');
+      const exclView = document.getElementById('bw-exclusions-view');
+      const btnFleet = document.getElementById('btn-seg-fleet');
+      const btnExcl = document.getElementById('btn-seg-exclusions');
+
+      if (!dashView || !exclView) return;
+
+      isExclusionsViewOpen = true;
+      dashView.style.display = 'none';
+      exclView.style.display = 'block';
+
+      if (btnExcl) btnExcl.classList.add('active');
+      if (btnFleet) btnFleet.classList.remove('active');
+      showToast('Viewing Active Exclusions Manager');
+    }
+
+    function removeExclusionFromTable(rowId, target) {
+      const row = document.getElementById(rowId);
+      if (row) {
+        row.style.opacity = '0';
+        row.style.transform = 'scale(0.95)';
+        row.style.transition = 'all 0.25s ease';
+        setTimeout(() => {
+          row.remove();
+          showToast('Exclusion removed for ' + target + '. Alerting restored.');
+        }, 250);
+      }
+
+      // Add to audit trail
+      const auditContainer = document.getElementById('audit-log-entries');
+      if (auditContainer) {
+        const newEntry = document.createElement('div');
+        newEntry.style.cssText = 'background: var(--bg-panel); border: 1px solid var(--border-element); border-radius: 6px; padding: 0.85rem; font-size: 0.78rem;';
+        newEntry.innerHTML = `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <strong style="color: var(--color-danger);">EXCLUSION_REMOVED</strong>
+            <span style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Just now</span>
+          </div>
+          <div style="color: var(--text-main);">Target: <code>${target}</code></div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Action: <strong>Revoked by Operator</strong> • Operator: <strong>M. Wijesinghe</strong>
+          </div>
+        `;
+        auditContainer.insertBefore(newEntry, auditContainer.firstChild);
+      }
+    }
+
+    // ── Appliance Silence / Unsilence Toggle ──
+    function toggleApplianceSilence(applianceId, btn) {
+      if (!btn) btn = document.getElementById('btn-silence-' + applianceId);
+      if (!btn) return;
+
+      const isSilenced = btn.classList.contains('silenced');
+      if (!isSilenced) {
+        btn.classList.add('silenced');
+        btn.textContent = '🔊 Unsilence Appliance';
+        btn.style.color = 'var(--color-success)';
+        btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        btn.style.background = 'rgba(16, 185, 129, 0.1)';
+        showToast(applianceId + ' silenced from compliance alerts.');
+      } else {
+        btn.classList.remove('silenced');
+        btn.textContent = '🔇 Silence Appliance';
+        btn.style.color = 'var(--color-purple)';
+        btn.style.borderColor = '';
+        btn.style.background = '';
+        showToast(applianceId + ' unmuted. Active monitoring resumed.');
+      }
+    }
+
+    // ── Modal Handlers ──
+    function openExclusionModal(target, scope, ticket, reason) {
+      const modal = document.getElementById('modal-exclusion-overlay');
+      if (!modal) return;
+      if (target) document.getElementById('modal-excl-target').value = target;
+      if (scope) document.getElementById('modal-excl-scope').value = scope;
+      if (ticket !== undefined) document.getElementById('modal-excl-ticket').value = ticket;
+      if (reason !== undefined) document.getElementById('modal-excl-notes').value = reason;
+      modal.classList.add('open');
+    }
+
+    function closeExclusionModal() {
+      const modal = document.getElementById('modal-exclusion-overlay');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function saveExclusion() {
+      const target = document.getElementById('modal-excl-target').value;
+      const scope = document.getElementById('modal-excl-scope').value;
+      const ticket = document.getElementById('modal-excl-ticket').value || 'T20261008.0101';
+      const notes = document.getElementById('modal-excl-notes').value;
+
+      closeExclusionModal();
+      showToast('Exclusion applied for ' + target + ' (Ticket #' + ticket + ')');
+
+      // Also add to Exclusions List Table if open
+      const exclTable = document.getElementById('exclusions-table-body');
+      if (exclTable) {
+        const tr = document.createElement('tr');
+        const newId = 'excl-row-' + Date.now();
+        tr.id = newId;
+        tr.innerHTML = `
+          <td><span class="bw-badge-pill ${scope === 'Device' ? 'success' : 'purple'}">${scope}</span></td>
+          <td style="font-weight: 600; color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">${target}</td>
+          <td><span class="bw-badge-pill orange" style="color: #f59e0b; border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.1);">🕒 Temp (7d left)</span></td>
+          <td style="color: var(--text-main);">${notes || 'Maintenance mode'}</td>
+          <td><a href="https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId=${ticket}" target="_blank" style="color: var(--color-success); font-weight: 600; text-decoration: none;">🎫 ${ticket}</a></td>
+          <td style="color: var(--text-muted); font-size: 0.78rem;">${new Date().toLocaleDateString()}</td>
+          <td style="text-align: center;">
+            <button class="bw-btn" style="background: var(--color-danger); color: #ffffff; border: none; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.74rem;" onclick="removeExclusionFromTable('${newId}', '${target}')">Remove</button>
+          </td>
+        `;
+        exclTable.insertBefore(tr, exclTable.firstChild);
+      }
+
+      // Add to audit trail
+      const auditContainer = document.getElementById('audit-log-entries');
+      if (auditContainer) {
+        const newEntry = document.createElement('div');
+        newEntry.style.cssText = 'background: var(--bg-panel); border: 1px solid var(--border-element); border-radius: 6px; padding: 0.85rem; font-size: 0.78rem;';
+        newEntry.innerHTML = `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <strong style="color: var(--color-primary);">EXCLUSION_CREATED</strong>
+            <span style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;">Just now</span>
+          </div>
+          <div style="color: var(--text-main);">Target: <code>${target}</code> (${scope})</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Ticket: <strong>#${ticket}</strong> • Operator: <strong>M. Wijesinghe</strong> • Notes: ${notes || 'Verified'}
+          </div>
+        `;
+        auditContainer.insertBefore(newEntry, auditContainer.firstChild);
+      }
+    }
+
+    function openAdminModal() {
+      const modal = document.getElementById('modal-admin-overlay');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeAdminModal() {
+      const modal = document.getElementById('modal-admin-overlay');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function switchAdminSubtab(tab) {
+      const diagBtn = document.getElementById('subtab-diag-btn');
+      const pickBtn = document.getElementById('subtab-picklist-btn');
+      const rulesBtn = document.getElementById('subtab-rules-btn');
+      const diagPane = document.getElementById('subtab-diag-pane');
+      const pickPane = document.getElementById('subtab-picklist-pane');
+      const rulesPane = document.getElementById('subtab-rules-pane');
+
+      [diagBtn, pickBtn, rulesBtn].forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-main)';
+      });
+      [diagPane, pickPane, rulesPane].forEach(p => p.style.display = 'none');
+
+      if (tab === 'diag') {
+        diagBtn.style.background = 'var(--color-primary)';
+        diagBtn.style.color = '#fff';
+        diagPane.style.display = 'block';
+      } else if (tab === 'picklist') {
+        pickBtn.style.background = 'var(--color-primary)';
+        pickBtn.style.color = '#fff';
+        pickPane.style.display = 'block';
+      } else if (tab === 'rules') {
+        rulesBtn.style.background = 'var(--color-primary)';
+        rulesBtn.style.color = '#fff';
+        rulesPane.style.display = 'block';
+      }
+    }
+
+    function openEscalateModal(appliance, agent) {
+      const modal = document.getElementById('modal-escalate-overlay');
+      if (!modal) return;
+      document.getElementById('modal-esc-target').value = appliance + (agent ? ' / ' + agent : '');
+      document.getElementById('modal-esc-title').value = '[BACKUPWATCH] BCDR Alert on ' + (agent || appliance);
+      modal.classList.add('open');
+    }
+
+    function closeEscalateModal() {
+      const modal = document.getElementById('modal-escalate-overlay');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function submitEscalateTicket() {
+      const target = document.getElementById('modal-esc-target').value;
+      closeEscalateModal();
+      showToast('Autotask Ticket #T20261008.0105 dispatched to Service Desk Queue');
+    }
+
+    function openSilenceModal(appliance) {
+      const modal = document.getElementById('modal-silence-overlay');
+      if (!modal) return;
+      document.getElementById('modal-silence-target').value = appliance;
+      modal.classList.add('open');
+    }
+
+    function closeSilenceModal() {
+      const modal = document.getElementById('modal-silence-overlay');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function submitSilenceAction() {
+      const target = document.getElementById('modal-silence-target').value;
+      const dur = document.getElementById('modal-silence-duration').value;
+      closeSilenceModal();
+      showToast(target + ' silenced for ' + dur + '. Alert suppressed.');
+    }
+
+    function openAuditModal() {
+      const drawer = document.getElementById('drawer-audit');
+      if (drawer) drawer.classList.add('open');
+    }
+
+    function closeAuditModal() {
+      const drawer = document.getElementById('drawer-audit');
+      if (drawer) drawer.classList.remove('open');
+    }
+
+    function exportAuditCsv() {
+      const csvContent = "Timestamp,EventType,TargetAsset,TicketNumber,Operator,Reason\n" +
+        "2026-10-08T10:24:00Z,EXCLUSION_CREATED,LON-DATTO-01:APEX-SQL01:E,T20261001.0001,M. Wijesinghe,Temp test scratch volume\n" +
+        "2026-10-08T10:20:00Z,FLEET_REFRESH,ALL_APPLIANCES,,System Scheduler,48 appliances synced\n" +
+        "2026-10-07T16:45:00Z,SILENCE_APPLIED,MAN-ALTO-04,T20261007.0392,M. Wijesinghe,Storage alerts silenced for 7 days\n";
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'BackupWatch_Audit_Trail_2026-10-08.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Exported audit trail to BackupWatch_Audit_Trail_2026-10-08.csv');
+    }
+
+    // ── Cache Force Refresh ──
+    function triggerForceRefresh(btn) {
+      if (!btn) return;
+      const statusText = document.querySelectorAll('#cache-status-text');
+      btn.textContent = '⏳ Scanning Fleet...';
+      btn.style.opacity = '0.7';
+      btn.disabled = true;
+
+      statusText.forEach(st => st.textContent = 'Ingesting live Datto REST API telemetry...');
+
+      setTimeout(() => {
+        btn.textContent = '🔄 Force Refresh';
+        btn.style.opacity = '1';
+        btn.disabled = false;
+        statusText.forEach(st => st.textContent = 'Loaded from Datto API (Just scanned • 48 devices synced)');
+        showToast('Datto fleet sync complete (48 devices verified)');
+      }, 900);
+    }
+
+    // ── Tab Switching ──
+    function switchApplianceTab(tab, btn) {
+      const allActiveTabs = document.querySelectorAll('#tab-active-appliances');
+      const allCancelledTabs = document.querySelectorAll('#tab-cancelled-appliances');
+      const activeRows = document.querySelectorAll('.bw-appliance-row[data-type="active"]');
+      const cancelledRows = document.querySelectorAll('.bw-appliance-row[data-type="cancelled"]');
+
+      if (tab === 'active') {
+        allActiveTabs.forEach(t => t.classList.add('active'));
+        allCancelledTabs.forEach(t => t.classList.remove('active'));
+        activeRows.forEach(r => r.style.display = '');
+        cancelledRows.forEach(r => r.style.display = 'none');
+        showToast('Viewing Active Appliances (46)');
+      } else {
+        allActiveTabs.forEach(t => t.classList.remove('active'));
+        allCancelledTabs.forEach(t => t.classList.add('active'));
+        activeRows.forEach(r => r.style.display = 'none');
+        cancelledRows.forEach(r => r.style.display = '');
+        showToast('Viewing Cancelled / Decommissioned Appliances (2)');
+      }
+    }
+
+    // ── Table Search ──
+    function filterAppliances(query) {
+      const q = (query || '').toLowerCase().trim();
+      const rows = document.querySelectorAll('.bw-appliance-row');
+      rows.forEach(row => {
+        if (!q) {
+          row.style.display = '';
+          return;
+        }
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    // ── KPI Metric Filtering ──
+    let activeMetricFilter = null;
+    function filterMetric(type, cardEl) {
+      const allCards = document.querySelectorAll('.bw-metric-card');
+      if (activeMetricFilter === type) {
+        activeMetricFilter = null;
+        allCards.forEach(c => c.style.outline = 'none');
+        document.querySelectorAll('.bw-appliance-row').forEach(r => r.style.display = '');
+        showToast('Metric filter cleared');
+        return;
+      }
+      activeMetricFilter = type;
+      allCards.forEach(c => c.style.outline = 'none');
+      if (cardEl) cardEl.style.outline = '2px solid var(--color-primary)';
+
+      const rows = document.querySelectorAll('.bw-appliance-row');
+      rows.forEach(r => {
+        if (type === 'all') {
+          r.style.display = '';
+        } else {
+          const status = r.getAttribute('data-status') || '';
+          r.style.display = (status.includes(type) || type === 'all') ? '' : 'none';
+        }
+      });
+      showToast('Filtered table by: ' + type);
+    }
+
+    // ── Fullscreen Toggle ──
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        showToast('Entered Fullscreen Mode');
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        showToast('Exited Fullscreen Mode');
+      }
+    }
+
+    // ── Toast Notification Helper ──
+    function showToast(msg) {
+      const container = document.getElementById('bw-toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'bw-toast';
+      toast.innerHTML = '<span>⚡</span> <span>' + msg + '</span>';
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 250);
+      }, 3000);
+    }
+
+    // ── Keyboard shortcuts ──
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeExclusionModal();
+        closeAdminModal();
+        closeEscalateModal();
+        closeSilenceModal();
+        closeAuditModal();
+      }
+    });
+  </script>
+</body>
+</html>

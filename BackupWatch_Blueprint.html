@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architectural Blueprint: BackupWatch v1.6.1</title>
+    <style>
+        :root {
+            --bg-main: #0b0f19;
+            --bg-card: #131a26;
+            --bg-accent: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --color-primary: #0ea5e9;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-purple: #a371f7;
+            --border-color: #334155;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+        .badge {
+            background-color: rgba(14, 165, 233, 0.15);
+            color: var(--color-primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(14, 165, 233, 0.3);
+        }
+        .badge.green {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--color-success);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .badge.purple {
+            background-color: rgba(163, 113, 247, 0.15);
+            color: var(--color-purple);
+            border-color: rgba(163, 113, 247, 0.3);
+        }
+        h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-muted); font-size: 1.1rem; }
+        h2 { font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin-top: 2rem; margin-bottom: 1rem; border-left: 4px solid var(--color-primary); padding-left: 0.75rem; }
+        h3 { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        p { color: var(--text-muted); margin-bottom: 1rem; font-size: 1rem; }
+        strong { color: var(--text-main); }
+        ul, ol { margin-bottom: 1.5rem; padding-left: 1.5rem; color: var(--text-muted); }
+        li { margin-bottom: 0.5rem; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; }
+        .card.live { border-color: rgba(16, 185, 129, 0.4); }
+        .card.phase2 { border-color: rgba(163, 113, 247, 0.4); }
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: var(--bg-accent);
+            color: #e2e8f0;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        pre {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: var(--bg-accent);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            font-size: 0.88rem;
+            color: #e2e8f0;
+            line-height: 1.7;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 1.5rem; }
+        th { text-align: left; padding: 0.75rem; background-color: var(--bg-accent); color: var(--text-main); font-weight: 600; border-bottom: 2px solid var(--border-color); }
+        td { padding: 0.75rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted); }
+
+        /* Mockup styles */
+        .mockup-container { background-color: #090d16; border: 2px dashed var(--border-color); border-radius: 10px; padding: 1.5rem; margin: 2rem 0; }
+        .mockup-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem; }
+        .mockup-title { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .mockup-user { font-size: 0.85rem; color: var(--text-muted); background: var(--bg-accent); padding: 0.25rem 0.75rem; border-radius: 4px; border: 1px solid var(--border-color); }
+        .tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; }
+        .tab { padding: 0.5rem 1.2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); }
+        .tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+        .mockup-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-box { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; text-align: center; }
+        .stat-val { font-size: 1.5rem; font-weight: 700; }
+        .stat-val.danger { color: var(--color-danger); }
+        .stat-val.warning { color: var(--color-warning); }
+        .stat-val.primary { color: var(--color-primary); }
+        .stat-val.purple { color: var(--color-purple); }
+        .stat-lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-top: 0.25rem; font-weight: 600; }
+        .mockup-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .mockup-table th { text-align: left; padding: 0.6rem 0.75rem; background-color: var(--bg-accent); color: var(--text-main); font-weight: 600; border-bottom: 2px solid var(--border-color); }
+        .mockup-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted); vertical-align: top; }
+        .mockup-table tr.expanded-row td { background-color: rgba(14,165,233,0.03); }
+        .status-pill { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+        .status-pill.danger { background: rgba(239,68,68,0.15); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.3); }
+        .status-pill.success { background: rgba(16,185,129,0.15); color: var(--color-success); border: 1px solid rgba(16,185,129,0.3); }
+        .status-pill.warning { background: rgba(245,158,11,0.15); color: var(--color-warning); border: 1px solid rgba(245,158,11,0.3); }
+        .status-pill.purple { background: rgba(163,113,247,0.15); color: var(--color-purple); border: 1px solid rgba(163,113,247,0.3); }
+        .storage-bar { display: flex; align-items: center; gap: 0.5rem; }
+        .bar-track { width: 80px; background: var(--border-color); height: 6px; border-radius: 3px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 3px; }
+        .agent-sub-row { padding: 0.5rem 0; border-bottom: 1px solid rgba(51,65,85,0.5); }
+        .agent-sub-row:last-child { border-bottom: none; }
+        .vol-excl { font-size: 0.75rem; color: var(--color-purple); margin-top: 0.2rem; }
+        .excl-note { font-size: 0.72rem; color: var(--text-muted); font-style: italic; }
+        .btn-sm { background: none; border: 1px solid var(--border-color); color: var(--text-muted); padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+        .btn-mute { color: var(--color-purple); border-color: rgba(163,113,247,0.4); }
+        .chevron { font-size: 0.8rem; margin-right: 0.4rem; color: var(--color-primary); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <span class="badge">BackupWatch Architecture Blueprint (M365 Native) — v1.6.0</span>
+        <h1>BackupWatch Dashboard Blueprint</h1>
+        <div class="subtitle">Stateless MSP Operations Dashboard — Datto BCDR Appliance Monitor with AutoTask Ticket Escalation & Exclusion Tracking</div>
+    </header>
+
+    <!-- SECTION 1: CURRENT LIVE STATE -->
+    <section>
+        <h2>1. Current Live State (Deployed 2026-06-23)</h2>
+        <div class="grid-3">
+            <div class="card live">
+                <h3>☁️ Azure Function Backend</h3>
+                <ul>
+                    <li><strong>App:</strong> backupwatch-api (Flex Consumption, UK South)</li>
+                    <li><strong>Runtime:</strong> Node.js v20.x / TypeScript</li>
+                    <li><strong>Endpoints:</strong> 
+                        <code>GET /api/backupWatchTrigger</code><br>
+                        <code>POST /api/escalate</code><br>
+                        <code>/api/exclusions</code> (CRUD)
+                    </li>
+                    <li><strong>Cache:</strong> 5-min in-memory TTL</li>
+                    <li><strong>Storage:</strong> Azure Table Storage (<code>Exclusions</code> and <code>TrackedTickets</code> tables)</li>
+                    <li><strong>Auth:</strong> Easy Auth (Entra ID, Single-Tenant)</li>
+                </ul>
+            </div>
+            <div class="card live">
+                <h3>🔑 Entra ID App Registration</h3>
+                <ul>
+                    <li><strong>Name:</strong> BackupWatch-Backend-API</li>
+                    <li><strong>Client ID:</strong> <code>04de3dc9-...</code></li>
+                    <li><strong>App ID URI:</strong> <code>api://04de3dc9-...</code></li>
+                    <li><strong>Scope:</strong> user_impersonation</li>
+                    <li><strong>Type:</strong> Single-Tenant (fifosys365)</li>
+                </ul>
+            </div>
+            <div class="card live">
+                <h3>📦 SharePoint Frontend</h3>
+                <ul>
+                    <li><strong>Site:</strong> BackupWatch Portal (Communication Site)</li>
+                    <li><strong>URL:</strong> <code>fifosys365.sharepoint.com/sites/BackupWatchPortal</code></li>
+                    <li><strong>Package:</strong> backup-watch-scaffold.sppkg (SPFx v1.19.0)</li>
+                    <li><strong>Auth:</strong> AadHttpClient SSO (silent token)</li>
+                    <li><strong>API Permission:</strong> Approved in SP Admin</li>
+                    <li><strong>Deployed Version:</strong> <code>1.5.1.0</code></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 2: SYSTEM ARCHITECTURE & DATA FLOW -->
+    <section>
+        <h2>2. System Architecture & Data Flow</h2>
+        <pre>
+[ SPFx Web Part — SharePoint Online ]
+   ├─ Loads on page render, authenticates silently via AadHttpClient SSO.
+   ├─ Dispatches authenticated GET to Azure Function (with Bearer JWT) to load dashboard data.
+   └─ Dispatches authenticated POST to `/api/escalate` to create tickets for selected issues.
+         │
+         ▼
+[ Azure Function — backupwatch-api ]
+   ├─ Easy Auth validates JWT (tenant ID + audience check).
+   ├─ Cache HIT? → Serve dashboard data from memory cache instantly.
+   ├─ Cache MISS? (for GET) → Executes concurrent async fetches:
+   │     ├─── GET /v1/bcdr/device → List of all BCDR appliances.
+   │     ├─── GET /v1/bcdr/device/{serial}/asset → Agents + volumes per appliance.
+   │     ├─── Table Storage (Exclusions) → Load active exclusion rules.
+   │     └─── Table Storage (TrackedTickets) → Fetch list of tracked tickets.
+   │            └─ Bulk query AutoTask `/Tickets/query` for status of tracked tickets.
+   │            └─ Prune completed tickets (Status ID 5) from Table Storage.
+   │            └─ Enrich payload with active ticket status/URLs (ticketReference).
+   └─ For POST `/api/escalate`:
+         ├─ Lookup device serial number in AutoTask `/ConfigurationItems` to match Company ID & Asset ID.
+         ├─ Fallback: Lookup company by name in AutoTask `/Companies` if no native asset mapping.
+         ├─ Post ticket creation payload to AutoTask `/Tickets` with custom API headers (UserName & Secret).
+         └─ Write stateful entry to `TrackedTickets` table to prevent duplicate escalations.
+         │
+         ▼
+[ AutoTask REST API & Storage Systems ]
+   ├─ AutoTask: Processes REST requests (requires custom `UserName`, `Secret`, and `ApiIntegrationCode` headers).
+   └─ TrackedTickets Table: Tracks active ticket IDs indexed by Serial Number and Issue Key.</pre>
+    </section>
+
+    <!-- SECTION 3: FEATURES OVERVIEW -->
+    <section>
+        <h2>3. Active Features (v1.5.1)</h2>
+        <div class="grid-2">
+            <div class="card phase2">
+                <h3>🗂️ Subscription Tabs & Storage</h3>
+                <p>Separates appliances into active and cancelled tabs, and provides storage bar gauges directly on the appliance rows.</p>
+                <ul>
+                    <li><strong>Active Subscriptions</strong> tab — displays active appliances and their agents.</li>
+                    <li><strong>Cancelled Subscriptions</strong> tab — hides cancelled appliances to avoid clutter.</li>
+                    <li><strong>Storage Metric Bars</strong> — displays Used vs. Total storage color-coded by usage severity.</li>
+                </ul>
+            </div>
+            <div class="card phase2">
+                <h3>⏳ Last Seen heartbeats</h3>
+                <p>Displays exactly when each Datto appliance last checked in with Datto Cloud monitoring:</p>
+                <ul>
+                    <li>Relative time string (e.g. <code>"15m ago"</code>) is rendered in a dedicated column.</li>
+                    <li>Color-coded indicators: Green (checked in &lt; 30m), Amber (30m - 2h), and Red (checked in &gt; 2h ago).</li>
+                </ul>
+            </div>
+            <div class="card phase2">
+                <h3>🎫 AutoTask Ticket Escalation</h3>
+                <p>Enables operators to escalate alerts directly to AutoTask from the dashboard with zero manual mapping:</p>
+                <ul>
+                    <li><strong>Native Asset Linking</strong>: Queries AutoTask for the device configuration item by serial number.</li>
+                    <li><strong>Deduplication</strong>: Prevents duplicate tickets. If an issue is already open, the Escalate button is replaced with a direct link (e.g. <code>"🎫 Ticket #12345 (New)"</code>).</li>
+                    <li><strong>Automatic Triage Note Updates</strong>: If the error message changes while a ticket is still active, the dashboard automatically adds a Detail Note to the ticket.</li>
+                </ul>
+            </div>
+            <div class="card phase2">
+                <h3>🚫 Exclusions Management</h3>
+                <p>Granular exclusion rules allow operators to mute specific alert types, devices, or volumes:</p>
+                <ul>
+                    <li>Exclusions count badges are shown on the appliance level.</li>
+                    <li>Individual excluded volumes are listed with their exclusion notes inside the agent sub-grid.</li>
+                    <li>Archived agents are excluded from counts automatically to prevent false positives.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 4: WIREFRAME MOCKUP -->
+    <section>
+        <h2>4. Live Dashboard UI Mockup</h2>
+        <div class="mockup-container">
+            <div class="mockup-header">
+                <div class="mockup-title">⚡ BackupWatch Operations Control Desk (v1.5.1)</div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <button style="background:#1e293b;color:#fff;border:1px solid #334155;padding:0.3rem 0.9rem;border-radius:4px;font-size:0.8rem;font-weight:600;cursor:pointer;">Configure Exclusions</button>
+                    <div class="mockup-user">Operator: Malith Wijesinghe</div>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="mockup-stats">
+                <div class="stat-box">
+                    <div class="stat-val primary">14</div>
+                    <div class="stat-lbl">Total Appliances</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val danger">2</div>
+                    <div class="stat-lbl">Screenshot Failures</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val purple">5</div>
+                    <div class="stat-lbl">Active Exclusions</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val warning">1</div>
+                    <div class="stat-lbl">Heartbeat Warnings</div>
+                </div>
+            </div>
+
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <div class="tab active">Active Subscriptions (13)</div>
+                <div class="tab">Cancelled Subscriptions (1)</div>
+            </div>
+
+            <!-- Appliance Table -->
+            <table class="mockup-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Appliance Name</th>
+                        <th>Model / Client</th>
+                        <th>Last Seen</th>
+                        <th>Local Storage</th>
+                        <th>Backup Status</th>
+                        <th>Exclusions</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Row 1: Success, collapsed -->
+                    <tr>
+                        <td><span class="chevron">▶</span></td>
+                        <td><strong>CLIENT-SIRIS-01</strong></td>
+                        <td>SIRIS 5 Advanced<br><span style="font-size:0.75rem;color:var(--text-muted)">Siris Ltd</span></td>
+                        <td><span style="color:var(--color-success)">12m ago</span></td>
+                        <td>
+                            <div class="storage-bar">
+                                <div class="bar-track"><div class="bar-fill" style="width:42%;background:#10b981;"></div></div>
+                                <span>3.4 / 8 TB (42%)</span>
+                            </div>
+                        </td>
+                        <td><span class="status-pill success">Verified Success</span></td>
+                        <td><span style="color:#94a3b8;font-size:0.8rem;">—</span></td>
+                        <td><button class="btn-sm">Mute Alert</button></td>
+                    </tr>
+
+                    <!-- Row 2: Failed, expanded with agents -->
+                    <tr>
+                        <td><span class="chevron">▼</span></td>
+                        <td><strong style="color:#f8fafc;">KINNEVIK-DATTO</strong></td>
+                        <td>SIRIS 4<br><span style="font-size:0.75rem;color:var(--text-muted)">Kinnevik AB</span></td>
+                        <td><span style="color:var(--color-warning)">1h 45m ago</span></td>
+                        <td>
+                            <div class="storage-bar">
+                                <div class="bar-track"><div class="bar-fill" style="width:87%;background:#ef4444;"></div></div>
+                                <span>6.9 / 8 TB (87%)</span>
+                            </div>
+                        </td>
+                        <td><span class="status-pill danger">Screenshot Fail</span></td>
+                        <td><span style="color:#a371f7;font-weight:700;">3 excluded</span></td>
+                        <td>
+                            <div style="display:flex;gap:0.4rem;">
+                                <button class="btn-sm" style="background:#0ea5e9;color:#fff;border:none;">Escalate</button>
+                                <button class="btn-sm btn-mute">Mute Alert</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- Expanded agent sub-rows -->
+                    <tr class="expanded-row">
+                        <td colspan="8" style="padding:0 0.75rem 0.75rem 2.5rem;">
+                            <div style="border:1px solid rgba(14,165,233,0.15);border-radius:6px;padding:0.75rem;background:rgba(14,165,233,0.03);">
+                                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#0ea5e9;margin-bottom:0.5rem;">Protected Agents</div>
+                                <!-- Agent 1: Active, 2 exclusions -->
+                                <div class="agent-sub-row">
+                                    <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between;width:100%;">
+                                        <div style="display:flex;align-items:center;gap:1rem;">
+                                            <span style="font-weight:600;color:#f8fafc;min-width:160px;">SRV-APP-01</span>
+                                            <span class="status-pill success">Active</span>
+                                            <div class="vol-excl">
+                                                🚫 Excluded Volumes: <strong>E:\</strong> · <span class="excl-note">"Archived log volume — no longer in use"</span>
+                                                &nbsp;&nbsp;|&nbsp;&nbsp;
+                                                <strong>F:\</strong> · <span class="excl-note">"Temp scratch disk"</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span class="status-pill success">Success</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Agent 2: Failed, Escalated -->
+                                <div class="agent-sub-row">
+                                    <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between;width:100%;">
+                                        <div style="display:flex;align-items:center;gap:1rem;">
+                                            <span style="font-weight:600;color:#f8fafc;min-width:160px;">SRV-DB-02</span>
+                                            <span class="status-pill success">Active</span>
+                                            <span style="font-size:0.75rem;color:var(--color-danger);">Backup Failed (6/23/2026, 1:56 AM)</span>
+                                        </div>
+                                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                                            <span class="status-pill danger" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);">Failed</span>
+                                            <a href="#" style="font-size:0.75rem;color:var(--color-primary);text-decoration:none;font-weight:600;">🎫 Ticket #14285 (New)</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- SECTION 5: BACKEND RESPONSE SCHEMA -->
+    <section>
+        <h2>5. Backend Response Schema (v1.5.1)</h2>
+        <p>The Azure Function returns enriched properties including <code>lastCheckin</code> and <code>ticketReference</code> metadata:</p>
+        <pre>
+[
+  {
+    "deviceName": "KINNEVIK-DATTO",
+    "model": "SIRIS 4",
+    "serialNumber": "S4-ABC123",
+    "isActive": true,
+    "lastCheckin": "2026-06-23T12:35:12.000Z", // Datto appliance heartbeat
+    "usedStorageGB": 6900,
+    "totalStorageGB": 8000,
+    "storageUsedPercent": 86.3,
+    "backupStatus": "Failed",
+    "applianceExclusionsCount": 2,
+    "ticketReference": null,                  // Device-level ticket if applicable
+    "agents": [
+      {
+        "name": "SRV-APP-01",
+        "status": "Active",
+        "lastBackupStatus": {
+          "success": true,
+          "time": "2026-06-23T11:56:00.000Z"
+        },
+        "ticketReference": null
+      },
+      {
+        "name": "SRV-DB-02",
+        "status": "Active",
+        "lastBackupStatus": {
+          "success": false,
+          "time": "2026-06-23T00:56:00.000Z",
+          "errorMessage": "Backup writer 'SqlServerWriter' failed."
+        },
+        "ticketReference": {                  // Stateful ticket linked from storage
+          "ticketId": "14285",
+          "statusName": "New",
+          "ticketUrl": "https://webservices16.autotask.net/.../14285"
+        }
+      }
+    ]
+  }
+]</pre>
+    </section>
+
+    <!-- SECTION 6: AZURE STORAGE SCHEMAS -->
+    <section>
+        <h2>6. Azure Table Storage Schemas</h2>
+        <div class="grid-2">
+            <div class="card">
+                <h3>Table 1: Exclusions</h3>
+                <table>
+                    <thead>
+                        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>PartitionKey</code></td><td>string</td><td>Always <code>"Exclusions"</code></td></tr>
+                        <tr><td><code>RowKey</code></td><td>string</td><td>URL-encoded <code>Type:Target</code></td></tr>
+                        <tr><td><code>type</code></td><td>string</td><td><code>"Device"</code> | <code>"Volume"</code></td></tr>
+                        <tr><td><code>target</code></td><td>string</td><td>Target string</td></tr>
+                        <tr><td><code>reason</code></td><td>string</td><td>Operator notes</td></tr>
+                        <tr><td><code>createdTime</code></td><td>string</td><td>Creation ISO8601 date</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h3>Table 2: TrackedTickets</h3>
+                <table>
+                    <thead>
+                        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>PartitionKey</code></td><td>string</td><td>Device Serial Number (e.g. <code>S4-ABC123</code>)</td></tr>
+                        <tr><td><code>RowKey</code></td><td>string</td><td>Alert Issue Key (e.g. <code>storage</code> or <code>agent:SRV-DB-02:backup</code>)</td></tr>
+                        <tr><td><code>ticketId</code></td><td>string</td><td>AutoTask Ticket ID</td></tr>
+                        <tr><td><code>status</code></td><td>string</td><td>Ticket status (e.g., <code>"New"</code>)</td></tr>
+                        <tr><td><code>lastSeenMessage</code></td><td>string</td><td>Alert error details</td></tr>
+                        <tr><td><code>createdTime</code></td><td>string</td><td>Creation ISO8601 date</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 7: BUILD & DEPLOYMENT PROCESS -->
+    <section>
+        <h2>7. Build &amp; Deployment Process</h2>
+        <div class="grid-2">
+            <div class="card">
+                <h3>Backend Deployment</h3>
+                <pre style="margin-bottom:0;">cd C:\AG\FifoDash\stateless-backend
+npm run build
+func azure functionapp publish backupwatch-api</pre>
+            </div>
+            <div class="card">
+                <h3>Frontend Packaging</h3>
+                <pre style="margin-bottom:0;"># 1. Update version in BackupWatchScaffold
+#    Location: config/package-solution.json
+# 2. Compile and package in Scaffold
+cd C:\AG\BackupWatchScaffold
+$env:NODE_NO_WARNINGS="1"
+npx gulp clean
+npx gulp bundle --ship
+npx gulp package-solution --ship</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 8: RELEASE VERSIONING LOG -->
+    <section>
+        <h2>8. Release Versioning Log</h2>
+        <table>
+            <thead>
+                <tr><th>Version</th><th>Date</th><th>Type</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>1.6.1.0</strong></td><td>2026-06-23</td><td><span class="status-pill success">PATCH</span></td><td>Fixed extra dollar sign rendering prefix on Autotask ticket IDs in JSX layouts. Widen agent card grid template layouts to minmax 310px.</td></tr>
+                <tr><td><strong>1.6.0.0</strong></td><td>2026-06-23</td><td><span class="status-pill warning">MINOR</span></td><td>AutoTask Ticket Field Categorizations (Queue, Category, Ticket Type, Source, Work Type, dynamic Contract lookup), plain-English descriptions for all 6 Datto alert types, Auto-Heal engine for automatic resolution note posting, and click-to-copy clipboard brief buttons.</td></tr>
+                <tr><td><strong>1.5.1.0</strong></td><td>2026-06-23</td><td><span class="status-pill warning">MINOR</span></td><td>AutoTask Ticket Escalation integration, stateful deduplication via TrackedTickets, Last Seen heartbeat column. Includes Autotask URL versioning (v1.0/) and Custom UserName/Secret header auth patches.</td></tr>
+                <tr><td><strong>1.4.1.0</strong></td><td>2026-06-22</td><td><span class="status-pill success">PATCH</span></td><td>Exclusion note display live un-cached lookup fix.</td></tr>
+                <tr><td><strong>1.2.0.0</strong></td><td>2026-06-22</td><td><span class="status-pill success">PATCH</span></td><td>Datto API backend backups array parser mapping for lastBackupStatus fields.</td></tr>
+                <tr><td><strong>1.1.1.0</strong></td><td>2026-06-22</td><td><span class="status-pill success">PATCH</span></td><td>Resolved UTF-8 encoding corruption in SharePoint UI elements, pencil icon removed from included volumes, always visible Last Backup section.</td></tr>
+                <tr><td><strong>1.1.0.0</strong></td><td>2026-06-22</td><td><span class="status-pill warning">MINOR</span></td><td>Phase 2 UI features (company name, storage used %, multi-tag layout, screenshot details).</td></tr>
+                <tr><td><strong>1.0.0.0</strong></td><td>2026-06-19</td><td><span class="status-pill danger">MAJOR</span></td><td>Initial release (SSO, active/cancelled tabs, exclusions CRUD).</td></tr>
+            </tbody>
+        </table>
+    </section>
+</div>
+</body>
+</html>

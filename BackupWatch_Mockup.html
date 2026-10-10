@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BackupWatch — Phase 2 Mockup</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg: #0b0f19;
+      --bg-card: #131a26;
+      --bg-accent: #1e293b;
+      --bg-hover: #162032;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+      --cyan: #0ea5e9;
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --purple: #a371f7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(14,165,233,0.12);
+      color: var(--cyan);
+      border: 1px solid rgba(14,165,233,0.3);
+      border-radius: 9999px;
+      padding: 0.2rem 0.8rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .page-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+    .header-right { display: flex; gap: 0.6rem; align-items: center; }
+    .btn { border-radius: 5px; font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; padding: 0.4rem 1rem; border: 1px solid var(--border); }
+    .btn-config { background: var(--bg-accent); color: var(--text); }
+    .btn-config:hover { background: #27374f; }
+    .operator-pill {
+      background: var(--bg-accent);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .operator-pill strong { color: var(--text); }
+
+    /* ── Cache bar ── */
+    .cache-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .cache-bar span strong { color: var(--cyan); }
+    .cache-bar a { color: var(--cyan); font-weight: 600; text-decoration: none; cursor: pointer; }
+
+    /* ── Stat Cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 1.1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      user-select: none;
+    }
+
+    /* Option 1 Active Style: Glow & Border */
+    body.style-option-1 .stat-card.active {
+      transform: scale(1.02);
+      box-shadow: 0 0 15px rgba(14, 165, 233, 0.15);
+    }
+    body.style-option-1 .stat-card.active.cyan   { border-color: var(--cyan);   background: rgba(14, 165, 233, 0.08);   box-shadow: 0 0 15px rgba(14, 165, 233, 0.2); }
+    body.style-option-1 .stat-card.active.red    { border-color: var(--red);    background: rgba(239, 68, 68, 0.08);    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+    body.style-option-1 .stat-card.active.amber  { border-color: var(--amber);  background: rgba(245, 158, 11, 0.08);   box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+    body.style-option-1 .stat-card.active.purple { border-color: var(--purple); background: rgba(163, 113, 247, 0.08);  box-shadow: 0 0 15px rgba(163, 113, 247, 0.2); }
+    body.style-option-1 .stat-card.active.green  { border-color: var(--green);  background: rgba(16, 185, 129, 0.08);   box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+
+    /* Option 2 Active Style: Pressed/Depressed */
+    body.style-option-2 .stat-card.active {
+      transform: scale(0.96);
+      background: #0f141e !important;
+      border-color: rgba(255,255,255,0.08) !important;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    /* Hover effects */
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.2);
+    }
+    body.style-option-2 .stat-card.active:hover {
+      transform: scale(0.96); /* keep pressed state even on hover */
+    }
+
+    .stat-val { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 0.35rem; }
+    .stat-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .cyan { color: var(--cyan); }
+    .red { color: var(--red); }
+    .purple { color: var(--purple); }
+    .amber { color: var(--amber); }
+    .green { color: var(--green); }
+
+    /* Style Switcher Panel */
+    .style-switcher {
+      background: var(--bg-card);
+      border: 1.5px solid var(--cyan);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .style-switcher-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--cyan);
+    }
+    .style-btn {
+      background: var(--bg-accent);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .style-btn.selected {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--bg-accent); }
+    th {
+      padding: 0.75rem 0.9rem;
+      text-align: left;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    td { padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr.appliance-row { cursor: pointer; transition: background 0.15s; }
+    tr.appliance-row:hover { background: var(--bg-hover); }
+    tr.appliance-row.expanded { background: rgba(14,165,233,0.04); }
+
+    .chevron {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: var(--cyan);
+      transition: transform 0.2s;
+      margin-right: 0.3rem;
+      user-select: none;
+    }
+    .chevron.open { transform: rotate(90deg); }
+
+    /* ── Status Pills ── */
+    .pill {
+      display: inline-block;
+      padding: 0.18rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .pill-green  { background: rgba(16,185,129,0.13); color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+    .pill-red    { background: rgba(239,68,68,0.13);  color: var(--red);    border: 1px solid rgba(239,68,68,0.3); }
+    .pill-amber  { background: rgba(245,158,11,0.13); color: var(--amber);  border: 1px solid rgba(245,158,11,0.3); }
+    .pill-purple { background: rgba(163,113,247,0.13);color: var(--purple); border: 1px solid rgba(163,113,247,0.3); }
+    .pill-grey   { background: rgba(148,163,184,0.1); color: var(--muted);  border: 1px solid rgba(148,163,184,0.2); }
+    .pill-cyan   { background: rgba(14,165,233,0.13); color: var(--cyan);   border: 1px solid rgba(14,165,233,0.3); }
+
+    /* ── Storage bar ── */
+    .storage-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .bar-track { width: 72px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+    .bar-fill { height: 100%; border-radius: 3px; }
+    .bar-green  { background: var(--green); }
+    .bar-amber  { background: var(--amber); }
+    .bar-red    { background: var(--red); }
+    .storage-label { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+    /* ── Action Buttons ── */
+    .actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .btn-escalate {
+      background: var(--cyan); color: #fff; border: none;
+      padding: 0.3rem 0.7rem; border-radius: 4px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-escalate:disabled { background: transparent; color: var(--muted); border: 1px solid var(--border); cursor: not-allowed; opacity: 0.5; }
+    .btn-mute {
+      background: transparent; color: var(--purple);
+      border: 1px solid rgba(163,113,247,0.5);
+      padding: 0.3rem 0.7rem; border-radius: 4px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-unmute {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.7rem; border-radius: 4px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    }
+
+    /* ── Device name cell ── */
+    .device-name { font-weight: 700; color: var(--text); }
+    .mute-reason { font-size: 0.73rem; color: var(--purple); font-weight: 400; margin-top: 0.15rem; }
+
+    /* ── Exclusion count ── */
+    .excl-count { color: var(--purple); font-weight: 700; font-size: 0.85rem; }
+    .excl-dash { color: var(--border); }
+
+    /* ── Agent Sub-panel (Grid of Cards Style) ── */
+    .agent-panel-row td { padding: 0; border-bottom: 2px solid var(--cyan); }
+    .agent-panel {
+      background: rgba(11, 15, 25, 0.4);
+      border-left: 4px solid var(--cyan);
+      margin: 0;
+      padding: 1.25rem;
+    }
+    .agent-panel-header {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cyan);
+      margin-bottom: 1rem;
+    }
+    
+    /* Grid for agent cards */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    
+    /* Individual agent card */
+    .agent-card {
+      background: #141b27;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s;
+    }
+    .agent-card.has-exclusions {
+      border-color: rgba(245,158,11,0.4);
+      box-shadow: 0 0 8px rgba(245,158,11,0.05);
+    }
+    .agent-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+    .agent-card-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .agent-card-title.archived {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+    .agent-card-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+      line-height: 1.3;
+    }
+    .agent-card-meta div {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Volume lists inside card */
+    .agent-card-vols {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.8rem;
+    }
+    
+    .vol-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.72rem;
+    }
+    .vol-item.included {
+      border: 1px solid rgba(16, 185, 129, 0.15);
+    }
+    .vol-item.excluded {
+      border: 1px solid rgba(239, 68, 68, 0.15);
+      background: rgba(239, 68, 68, 0.03);
+    }
+    
+    .vol-name-dot {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 600;
+    }
+    .vol-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .vol-dot.green { background: var(--green); }
+    .vol-dot.red { background: var(--red); }
+    
+    .vol-status-text {
+      font-weight: 700;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+    }
+    .vol-status-text.included { color: var(--green); }
+    .vol-status-text.excluded { color: var(--red); }
+    
+    .vol-action-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    
+    .btn-note-edit {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      display: flex;
+      align-items: center;
+      padding: 0.15rem;
+      border-radius: 3px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-note-edit:hover {
+      color: var(--cyan);
+      background: rgba(14, 165, 233, 0.1);
+    }
+    
+    .vol-note {
+      font-size: 0.68rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 0.2rem;
+      padding-left: 0.9rem;
+      word-break: break-word;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* ── Agent details divider and sections ── */
+    .agent-card-section {
+      border-top: 1px solid var(--border);
+      padding-top: 0.6rem;
+      margin-top: 0.6rem;
+    }
+    .section-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+    .status-badge-inline {
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .status-badge-inline.failed {
+      background: rgba(239,68,68,0.15);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .status-badge-inline.success {
+      background: rgba(16,185,129,0.15);
+      color: var(--green);
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .status-badge-inline.verified {
+      background: rgba(16,185,129,0.15);
+      color: var(--green);
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .status-badge-inline.skipped {
+      background: rgba(148,163,184,0.15);
+      color: var(--muted);
+      border: 1px solid rgba(148,163,184,0.3);
+    }
+    .error-msg {
+      color: var(--red);
+      font-size: 0.72rem;
+      margin-top: 0.25rem;
+      line-height: 1.3;
+    }
+    .screenshot-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 600;
+      margin-left: auto;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .screenshot-link:hover {
+      text-decoration: underline;
+    }
+
+    /* hidden rows */
+    .agent-panel-row { display: none; }
+    .agent-panel-row.visible { display: table-row; }
+
+    /* ── Mockup label ── */
+    .mockup-label {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-top: 2rem;
+      padding: 0.75rem;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body class="style-option-1">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="badge">⚡ BackupWatch Operations Control Desk — Phase 2 Mockup</div>
+      <div class="page-title">Stateless Datto BCDR Monitor</div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-config">Configure Exclusions</button>
+      <div class="operator-pill">Operator: <strong>Malith Wijesinghe</strong></div>
+    </div>
+  </div>
+
+  <!-- Style Switcher Panel -->
+  <div class="style-switcher">
+    <span class="style-switcher-title">Active Card Style Option:</span>
+    <button class="style-btn selected" id="btn-opt1" onclick="setStyle(1)">Option 1: Glow & Border Highlight</button>
+    <button class="style-btn" id="btn-opt2" onclick="setStyle(2)">Option 2: Minimalist Pressed State</button>
+  </div>
+
+  <!-- Cache bar -->
+  <div class="cache-bar">
+    <span>In-Memory Cache Status: <strong>MISS</strong></span>
+    <a>Force Refresh</a>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card cyan" id="card-total" onclick="filterTable('all', this)">
+      <div class="stat-val cyan">14</div>
+      <div class="stat-label">Total Appliances</div>
+    </div>
+    <div class="stat-card red" id="card-screenshot" onclick="filterTable('screenshot', this)">
+      <div class="stat-val red">2</div>
+      <div class="stat-label">Screenshot Failures</div>
+    </div>
+    <div class="stat-card amber" id="card-storage" onclick="filterTable('storage', this)">
+      <div class="stat-val amber">1</div>
+      <div class="stat-label">Storage Critical (&gt;85%)</div>
+    </div>
+    <div class="stat-card purple" id="card-exclusions" onclick="filterTable('exclusions', this)">
+      <div class="stat-val purple">3</div>
+      <div class="stat-label">Volume Exclusions</div>
+    </div>
+    <div class="stat-card red" id="card-offline" onclick="filterTable('offline', this)">
+      <div class="stat-val red">0</div>
+      <div class="stat-label">Offline Devices</div>
+    </div>
+    <div class="stat-card red" id="card-backup" onclick="filterTable('backup', this)">
+      <div class="stat-val red">1</div>
+      <div class="stat-label">Local Backup Failures</div>
+    </div>
+    <div class="stat-card amber" id="card-offsite" onclick="filterTable('offsite', this)">
+      <div class="stat-val amber">3</div>
+      <div class="stat-label">Offsite Sync Issues</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28px;"></th>
+          <th>Appliance Name</th>
+          <th>Model</th>
+          <th>Local Storage</th>
+          <th>Backup Status</th>
+          <th>Exclusions</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- ── Row 1: Success, no exclusions, collapsed ── -->
+        <tr class="appliance-row" onclick="toggle('r1')" data-filters="all">
+          <td><span class="chevron" id="chev-r1">&#9654;</span></td>
+          <td>
+            <div class="device-name">CLIENT-SIRIS-01</div>
+            <div style="font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem;">Client Ltd</div>
+          </td>
+          <td style="color:var(--muted)">SIRIS 5 Advanced</td>
+          <td>
+            <div class="storage-wrap">
+              <div class="bar-track"><div class="bar-fill bar-green" style="width:42%"></div></div>
+              <span class="storage-label">3.41 TB / 8.00 TB (42.6%)</span>
+            </div>
+          </td>
+          <td>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+              <span class="pill pill-green">Healthy</span>
+            </div>
+          </td>
+          <td><span class="excl-dash">—</span></td>
+          <td class="actions">
+            <button class="btn-escalate" disabled>Escalate</button>
+          </td>
+        </tr>
+        <tr class="agent-panel-row" id="panel-r1">
+          <td colspan="7">
+            <div class="agent-panel">
+              <div class="agent-panel-header">Protected Agents</div>
+              <div class="agents-grid">
+                
+                <!-- Agent 1 -->
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">WKS-ACCT-01</span>
+                      <span class="pill pill-green">✓ All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows 10 Pro</div>
+                      <div>Last snap: 09 Jun, 02:43</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <div class="vol-action-row">
+                        <span class="vol-status-text included">Included</span>
+                        <button class="btn-note-edit" title="Edit Note">✏️</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Agent 2 -->
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">SRV-FILE-01</span>
+                      <span class="pill pill-green">✓ All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows Server 2019 Standard</div>
+                      <div>Last snap: 09 Jun, 02:08</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <div class="vol-action-row">
+                        <span class="vol-status-text included">Included</span>
+                        <button class="btn-note-edit" title="Edit Note">✏️</button>
+                      </div>
+                    </div>
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>D:\</span>
+                      <div class="vol-action-row">
+                        <span class="vol-status-text included">Included</span>
+                        <button class="btn-note-edit" title="Edit Note">✏️</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── Row 2: Failed, expanded, 3 exclusions ── -->
+        <tr class="appliance-row expanded" onclick="toggle('r2')" id="row-r2" data-filters="screenshot storage exclusions backup offsite">
+          <td><span class="chevron open" id="chev-r2">&#9654;</span></td>
+          <td>
+            <div class="device-name">KINNEVIK-DATTO</div>
+            <div style="font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem;">Kinnevik AB</div>
+          </td>
+          <td style="color:var(--muted)">SIRIS 4</td>
+          <td>
+            <div class="storage-wrap">
+              <div class="bar-track"><div class="bar-fill bar-red" style="width:87%"></div></div>
+              <span class="storage-label">6.93 TB / 8.00 TB (86.6%)</span>
+            </div>
+          </td>
+          <td>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start;">
+              <span class="pill pill-red">Screenshot Fail</span>
+              <span class="pill pill-purple">Muted (Excl)</span>
+              <span class="pill pill-amber">Storage Warning</span>
+            </div>
+          </td>
+          <td><span class="excl-count">3 excluded</span></td>
+          <td class="actions">
+            <button class="btn-escalate">Escalate</button>
+            <button class="btn-mute">Mute Alert</button>
+          </td>
+        </tr>
+        <tr class="agent-panel-row visible" id="panel-r2">
+          <td colspan="7">
+            <div class="agent-panel">
+              <div class="agent-panel-header">Protected Agents</div>
+              <div class="agents-grid">
+
+                <!-- Agent 1: Active, with validation logs -->
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">RODC01-2019</span>
+                      <span class="pill pill-green">✓ All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows Server 2019 Standard</div>
+                      <div>Last snap: 14 Mar, 12:01</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <div class="vol-action-row">
+                        <span class="vol-status-text included">Included</span>
+                        <button class="btn-note-edit" title="Edit Note">✏️</button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Last Backup Status Details -->
+                  <div class="agent-card-section">
+                    <div class="section-title">Last Backup</div>
+                    <div class="status-line">
+                      <span class="status-badge-inline failed">Failed</span>
+                      <strong>17 Jun, 10:00</strong>
+                    </div>
+                    <div class="error-msg">Cannot connect to the host - aborting backup</div>
+                  </div>
+
+                  <!-- Screenshot Verification Details -->
+                  <div class="agent-card-section">
+                    <div class="section-title">Screenshot Verification</div>
+                    <div class="status-line">
+                      <span class="status-badge-inline verified">Verified</span>
+                      <strong>14 Mar, 12:01</strong>
+                      <a class="screenshot-link" href="#" onclick="alert('Viewing screenshot...'); return false;">View Screenshot ↗</a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Agent 2: Paused, 1 exclusion -->
+                <div class="agent-card has-exclusions">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">SRV-DB-02</span>
+                      <span class="pill pill-amber">1 excl.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows Server 2012 R2 Standard</div>
+                      <div>Last snap: 09 Jun, 02:00 (Paused)</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <div class="vol-action-row">
+                        <span class="vol-status-text included">Included</span>
+                        <button class="btn-note-edit" title="Edit Note">✏️</button>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="vol-item excluded">
+                        <span class="vol-name-dot"><span class="vol-dot red"></span>D:\</span>
+                        <div class="vol-action-row">
+                          <span class="vol-status-text excluded">Excluded (Datto BCDR)</span>
+                          <button class="btn-note-edit" title="Edit Note">✏️</button>
+                        </div>
+                      </div>
+                      <div class="vol-note">"DR database replica — offsite only"</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Agent 3: Archived, exclusions NOT counted -->
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title archived">OLD-WKS-07</span>
+                      <span class="pill pill-grey">Archived</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows 7 Enterprise</div>
+                      <div>Last snap: 24 Jan 2025</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item excluded" style="opacity: 0.6;">
+                      <span class="vol-name-dot"><span class="vol-dot red"></span>D:\</span>
+                      <div class="vol-action-row">
+                        <span class="vol-status-text excluded">Excluded</span>
+                        <button class="btn-note-edit" title="Edit Note">✏️</button>
+                      </div>
+                    </div>
+                    <div class="vol-note" style="color: var(--muted); opacity: 0.8;">"Archived agent exclusions ignored"</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── Row 3: Muted ── -->
+        <tr class="appliance-row" onclick="toggle('r3')" data-filters="all">
+          <td><span class="chevron" id="chev-r3">&#9654;</span></td>
+          <td>
+            <div class="device-name">RETAIL-ALTO-03</div>
+            <div style="font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem;">Retail Group</div>
+            <div class="mute-reason">Reason: "Decommissioned — client offboarding in progress"</div>
+          </td>
+          <td style="color:var(--muted)">ALTO Advanced</td>
+          <td>
+            <div class="storage-wrap">
+              <div class="bar-track"><div class="bar-fill bar-amber" style="width:55%"></div></div>
+              <span class="storage-label">2.20 TB / 4.00 TB (55.0%)</span>
+            </div>
+          </td>
+          <td>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+              <span class="pill pill-purple">Muted (Excl)</span>
+            </div>
+          </td>
+          <td><span class="excl-dash">—</span></td>
+          <td class="actions">
+            <button class="btn-unmute">Unmute</button>
+          </td>
+        </tr>
+        <tr class="agent-panel-row" id="panel-r3">
+          <td colspan="7">
+            <div class="agent-panel">
+              <div class="agent-panel-header">Protected Agents</div>
+              <div class="agents-grid">
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">WKS-RETAIL-01</span>
+                      <span class="pill pill-green">All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows 10 Home</div>
+                      <div>Last snap: 08 Jun, 19:00</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <span class="vol-status-text included">Included</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── Row 4: Success ── -->
+        <tr class="appliance-row" onclick="toggle('r4')" data-filters="all">
+          <td><span class="chevron" id="chev-r4">&#9654;</span></td>
+          <td><div class="device-name">LOGIST-SIRIS-02</div></td>
+          <td style="color:var(--muted)">SIRIS 5</td>
+          <td>
+            <div class="storage-wrap">
+              <div class="bar-track"><div class="bar-fill bar-green" style="width:29%"></div></div>
+              <span class="storage-label">1.16 GB / 4.00 TB</span>
+            </div>
+          </td>
+          <td><span class="pill pill-green">Verified Success</span></td>
+          <td><span class="excl-dash">—</span></td>
+          <td class="actions"><button class="btn-escalate" disabled>Escalate</button></td>
+        </tr>
+        <tr class="agent-panel-row" id="panel-r4">
+          <td colspan="7">
+            <div class="agent-panel">
+              <div class="agent-panel-header">Protected Agents</div>
+              <div class="agents-grid">
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">SRV-MAIN-01</span>
+                      <span class="pill pill-green">All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows Server 2022 Standard</div>
+                      <div>Last snap: 09 Jun, 02:00</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <span class="vol-status-text included">Included</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── Row 5: Failed ── -->
+        <tr class="appliance-row" onclick="toggle('r5')" data-filters="screenshot">
+          <td><span class="chevron" id="chev-r5">&#9654;</span></td>
+          <td><div class="device-name">MEDCTR-ALTO-01</div></td>
+          <td style="color:var(--muted)">ALTO Advanced</td>
+          <td>
+            <div class="storage-wrap">
+              <div class="bar-track"><div class="bar-fill bar-amber" style="width:72%"></div></div>
+              <span class="storage-label">2.88 GB / 4.00 TB</span>
+            </div>
+          </td>
+          <td><span class="pill pill-red">Screenshot Fail</span></td>
+          <td><span class="excl-dash">—</span></td>
+          <td class="actions">
+            <button class="btn-escalate">Escalate</button>
+            <button class="btn-mute">Mute Alert</button>
+          </td>
+        </tr>
+        <tr class="agent-panel-row" id="panel-r5">
+          <td colspan="7">
+            <div class="agent-panel">
+              <div class="agent-panel-header">Protected Agents</div>
+              <div class="agents-grid">
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">SRV-EMR-01</span>
+                      <span class="pill pill-green">All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows Server 2012 R2 Standard</div>
+                      <div>Last snap: 09 Jun, 02:00</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <span class="vol-status-text included">Included</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="agent-card">
+                  <div>
+                    <div class="agent-card-header">
+                      <span class="agent-card-title">WKS-NURSE-02</span>
+                      <span class="pill pill-green">All vol.</span>
+                    </div>
+                    <div class="agent-card-meta">
+                      <div>Windows 10 Pro</div>
+                      <div>Last snap: 09 Jun, 02:20</div>
+                    </div>
+                  </div>
+                  <div class="agent-card-vols">
+                    <div class="vol-item included">
+                      <span class="vol-name-dot"><span class="vol-dot green"></span>C:\</span>
+                      <span class="vol-status-text included">Included</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mockup-label">
+    MOCKUP ONLY — BackupWatch Phase 2 · Click metric cards at the top to filter appliances table · Toggle active styles using the panel above.
+  </div>
+
+  <script>
+    let currentFilter = null;
+
+    function setStyle(optionNum) {
+      const body = document.body;
+      const btn1 = document.getElementById('btn-opt1');
+      const btn2 = document.getElementById('btn-opt2');
+
+      if (optionNum === 1) {
+        body.classList.remove('style-option-2');
+        body.classList.add('style-option-1');
+        btn1.classList.add('selected');
+        btn2.classList.remove('selected');
+      } else {
+        body.classList.remove('style-option-1');
+        body.classList.add('style-option-2');
+        btn2.classList.add('selected');
+        btn1.classList.remove('selected');
+      }
+    }
+
+    function filterTable(filterType, cardElement) {
+      // Toggle card active state class
+      const allCards = document.querySelectorAll('.stat-card');
+      const isActive = cardElement.classList.contains('active');
+
+      allCards.forEach(card => card.classList.remove('active'));
+
+      if (isActive || filterType === 'all') {
+        // If already active or clicked "Total", clear filters
+        currentFilter = null;
+        if (filterType !== 'all') {
+          // If clicked the active card, clear it
+          // no card gets active
+        } else {
+          cardElement.classList.add('active');
+        }
+      } else {
+        cardElement.classList.add('active');
+        currentFilter = filterType;
+      }
+
+      // Filter table rows
+      const rows = document.querySelectorAll('.appliance-row');
+      rows.forEach(row => {
+        const id = row.getAttribute('onclick').match(/'([^']+)'/)[1];
+        const panel = document.getElementById('panel-' + id);
+        const chev = document.getElementById('chev-' + id);
+        const filters = row.getAttribute('data-filters') || '';
+
+        // If "all" or matching currentFilter, display row
+        const matchesFilter = !currentFilter || filters.includes(currentFilter);
+
+        if (matchesFilter) {
+          row.style.display = 'table-row';
+          // Keep expansion panel state as it was, but hide if parent is hidden
+          if (panel && panel.getAttribute('data-was-visible') === 'true') {
+            panel.classList.add('visible');
+            if (chev) chev.classList.add('open');
+          }
+        } else {
+          row.style.display = 'none';
+          if (panel) {
+            // save visibility state before hiding
+            panel.setAttribute('data-was-visible', panel.classList.contains('visible'));
+            panel.classList.remove('visible');
+            if (chev) chev.classList.remove('open');
+          }
+        }
+      });
+    }
+
+    function toggle(id) {
+      const panel = document.getElementById('panel-' + id);
+      const chev  = document.getElementById('chev-' + id);
+      const row   = document.getElementById('row-' + id);
+      const isOpen = panel.classList.contains('visible');
+      panel.classList.toggle('visible', !isOpen);
+      panel.setAttribute('data-was-visible', !isOpen);
+      if (chev) chev.classList.toggle('open', !isOpen);
+      if (row) row.classList.toggle('expanded', !isOpen);
+    }
+
+    // Initialize panel-r2 default visible state
+    document.getElementById('panel-r2').setAttribute('data-was-visible', 'true');
+  </script>
+</body>
+</html>

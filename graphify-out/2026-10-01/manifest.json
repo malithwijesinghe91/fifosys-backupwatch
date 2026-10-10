@@ -1,0 +1,314 @@
+{
+  "fn_details.json": {
+    "mtime": 1782214620.0,
+    "seen": 1790844199.5625484,
+    "ast_hash": "078697c2a51dbde8bdb822fe73ad2f83",
+    "semantic_hash": "078697c2a51dbde8bdb822fe73ad2f83"
+  },
+  "fn_details_utf8.json": {
+    "mtime": 1782214656.0,
+    "seen": 1790844199.562557,
+    "ast_hash": "27ff3f6ad2f8fd6e91d18f26ca300bcb",
+    "semantic_hash": "27ff3f6ad2f8fd6e91d18f26ca300bcb"
+  },
+  "scratch/azurite/__azurite_db_blob__.json": {
+    "mtime": 1782209008.0,
+    "seen": 1790844199.56256,
+    "ast_hash": "0bbc4e7b4645d47e45fa2234dd60987e",
+    "semantic_hash": "0bbc4e7b4645d47e45fa2234dd60987e"
+  },
+  "scratch/azurite/__azurite_db_blob_extent__.json": {
+    "mtime": 1781893106.0,
+    "seen": 1790844199.5625618,
+    "ast_hash": "33307176b3ccfa04f03061e8a5ea51a8",
+    "semantic_hash": "33307176b3ccfa04f03061e8a5ea51a8"
+  },
+  "scratch/azurite/__azurite_db_queue__.json": {
+    "mtime": 1781893070.0,
+    "seen": 1790844199.5625637,
+    "ast_hash": "1faa06b8fd0c361487da08a4ab385918",
+    "semantic_hash": "1faa06b8fd0c361487da08a4ab385918"
+  },
+  "scratch/azurite/__azurite_db_queue_extent__.json": {
+    "mtime": 1781893070.0,
+    "seen": 1790844199.5625653,
+    "ast_hash": "1e84b8f95b0ad28b9b5b786056cec4f2",
+    "semantic_hash": "1e84b8f95b0ad28b9b5b786056cec4f2"
+  },
+  "scratch/azurite/__azurite_db_table__.json": {
+    "mtime": 1782148314.0,
+    "seen": 1790844199.562567,
+    "ast_hash": "22583ddaa06aeb4cb022a8476cb843b8",
+    "semantic_hash": "22583ddaa06aeb4cb022a8476cb843b8"
+  },
+  "spfx-client/lib/BackupWatchWebPart.d.ts": {
+    "mtime": 1790849434.784285,
+    "seen": 1790851045.9137535,
+    "ast_hash": "20822c962dd4074bfb2511191c1407f0",
+    "semantic_hash": "20822c962dd4074bfb2511191c1407f0"
+  },
+  "spfx-client/lib/BackupWatchWebPart.js": {
+    "mtime": 1790849434.784285,
+    "seen": 1790851045.913758,
+    "ast_hash": "77a28f7e1b693f83712c03e7f5de15e1",
+    "semantic_hash": "77a28f7e1b693f83712c03e7f5de15e1"
+  },
+  "spfx-client/lib/components/BackupWatch.d.ts": {
+    "mtime": 1790849434.7677286,
+    "seen": 1790851045.9137604,
+    "ast_hash": "6ac96881cfccfc6c96f11f1c0ba72e70",
+    "semantic_hash": "6ac96881cfccfc6c96f11f1c0ba72e70"
+  },
+  "spfx-client/lib/components/BackupWatch.js": {
+    "mtime": 1790849434.7677286,
+    "seen": 1790851045.9137626,
+    "ast_hash": "dd852ed0dad49bbefd81317304d420a2",
+    "semantic_hash": "dd852ed0dad49bbefd81317304d420a2"
+  },
+  "spfx-client/lib/components/IBackupWatchProps.d.ts": {
+    "mtime": 1790849434.541509,
+    "seen": 1790851045.9137652,
+    "ast_hash": "8c73c82646d9b64a8c890f4febc07982",
+    "semantic_hash": "8c73c82646d9b64a8c890f4febc07982"
+  },
+  "spfx-client/lib/components/IBackupWatchProps.js": {
+    "mtime": 1790849434.5354023,
+    "seen": 1790851045.9137669,
+    "ast_hash": "a23cdf698d592f34597d151259317949",
+    "semantic_hash": "a23cdf698d592f34597d151259317949"
+  },
+  "spfx-client/package.json": {
+    "mtime": 1790849406.2560804,
+    "seen": 1790851045.9137697,
+    "ast_hash": "814c4527d2b359599ef70468c9c44d4f",
+    "semantic_hash": "814c4527d2b359599ef70468c9c44d4f"
+  },
+  "spfx-client/src/webparts/backupWatch/BackupWatchWebPart.manifest.json": {
+    "mtime": 1790849413.586739,
+    "seen": 1790851045.9137719,
+    "ast_hash": "62189ced88ebbda0945917676395fbcb",
+    "semantic_hash": "62189ced88ebbda0945917676395fbcb"
+  },
+  "spfx-client/src/webparts/backupWatch/BackupWatchWebPart.ts": {
+    "mtime": 1788362842.0,
+    "seen": 1790844199.5625818,
+    "ast_hash": "070c8f936162dc692a5a6e23db55f08e",
+    "semantic_hash": "070c8f936162dc692a5a6e23db55f08e"
+  },
+  "spfx-client/src/webparts/backupWatch/components/BackupWatch.tsx": {
+    "mtime": 1790849398.4026606,
+    "seen": 1790851045.9140906,
+    "ast_hash": "67eb778c0df0bde95e839e9bfa38a497",
+    "semantic_hash": "67eb778c0df0bde95e839e9bfa38a497"
+  },
+  "spfx-client/src/webparts/backupWatch/components/IBackupWatchProps.ts": {
+    "mtime": 1788362836.0,
+    "seen": 1790844199.5625849,
+    "ast_hash": "9a6605c54b2e6769be1fa7dafbde4c4a",
+    "semantic_hash": "9a6605c54b2e6769be1fa7dafbde4c4a"
+  },
+  "spfx-client/tsconfig.json": {
+    "mtime": 1781022860.0,
+    "seen": 1790844199.5625863,
+    "ast_hash": "376a52a385ed2147a476b07926ab1b43",
+    "semantic_hash": "376a52a385ed2147a476b07926ab1b43"
+  },
+  "stateless-backend/adminDiagnostics/function.json": {
+    "mtime": 1788371904.0,
+    "seen": 1790844199.562588,
+    "ast_hash": "acacd7fe08a126942bc0bb6c9ec5d53e",
+    "semantic_hash": "acacd7fe08a126942bc0bb6c9ec5d53e"
+  },
+  "stateless-backend/adminDiagnostics/index.ts": {
+    "mtime": 1790849265.4085884,
+    "seen": 1790851045.9149325,
+    "ast_hash": "a9a67ad2f0ee0d7349802117675786e8",
+    "semantic_hash": "a9a67ad2f0ee0d7349802117675786e8"
+  },
+  "stateless-backend/adminRouting/function.json": {
+    "mtime": 1788371910.0,
+    "seen": 1790844199.5625904,
+    "ast_hash": "428de389aa01e1db917ffe34703a7a33",
+    "semantic_hash": "428de389aa01e1db917ffe34703a7a33"
+  },
+  "stateless-backend/adminRouting/index.ts": {
+    "mtime": 1788796301.1547384,
+    "seen": 1790844199.5625925,
+    "ast_hash": "0b82c3f80addeb999d1c58b476c5d5fd",
+    "semantic_hash": "0b82c3f80addeb999d1c58b476c5d5fd"
+  },
+  "stateless-backend/auditLogs/function.json": {
+    "mtime": 1784113984.0,
+    "seen": 1790844199.5625935,
+    "ast_hash": "fa8f9e52c99f283d33141c10f2daff5b",
+    "semantic_hash": "fa8f9e52c99f283d33141c10f2daff5b"
+  },
+  "stateless-backend/auditLogs/index.ts": {
+    "mtime": 1788362720.0,
+    "seen": 1790844199.562595,
+    "ast_hash": "2692db1611473c7a2357f4a2128a4f92",
+    "semantic_hash": "2692db1611473c7a2357f4a2128a4f92"
+  },
+  "stateless-backend/backupWatchTimerTrigger/function.json": {
+    "mtime": 1782376768.0,
+    "seen": 1790844199.5625963,
+    "ast_hash": "247a51323f4589862fea0d9ece459203",
+    "semantic_hash": "247a51323f4589862fea0d9ece459203"
+  },
+  "stateless-backend/backupWatchTimerTrigger/index.ts": {
+    "mtime": 1786554786.0,
+    "seen": 1790844199.562598,
+    "ast_hash": "f81bbb3d909e70f0104554ec6e88fbe8",
+    "semantic_hash": "f81bbb3d909e70f0104554ec6e88fbe8"
+  },
+  "stateless-backend/backupWatchTrigger/function.json": {
+    "mtime": 1788372402.0,
+    "seen": 1790844199.5625994,
+    "ast_hash": "1e68fa78ee8aeaab62dd23c834c4e831",
+    "semantic_hash": "1e68fa78ee8aeaab62dd23c834c4e831"
+  },
+  "stateless-backend/backupWatchTrigger/index.ts": {
+    "mtime": 1790849294.207494,
+    "seen": 1790851045.9182217,
+    "ast_hash": "c9816177efb279c9c09489dfd8b8041a",
+    "semantic_hash": "c9816177efb279c9c09489dfd8b8041a"
+  },
+  "stateless-backend/escalateTrigger/function.json": {
+    "mtime": 1782219538.0,
+    "seen": 1790844199.5626025,
+    "ast_hash": "9593c2bb295b359ae1ba35a99fc8b420",
+    "semantic_hash": "9593c2bb295b359ae1ba35a99fc8b420"
+  },
+  "stateless-backend/escalateTrigger/index.ts": {
+    "mtime": 1788366578.0,
+    "seen": 1790844199.5626035,
+    "ast_hash": "4e0daf4d0e057e297291f4bb135c14b9",
+    "semantic_hash": "4e0daf4d0e057e297291f4bb135c14b9"
+  },
+  "stateless-backend/exclusions/function.json": {
+    "mtime": 1781872536.0,
+    "seen": 1790844199.562605,
+    "ast_hash": "d9ee495ebb1bf53462005ce56fce3a26",
+    "semantic_hash": "d9ee495ebb1bf53462005ce56fce3a26"
+  },
+  "stateless-backend/exclusions/index.ts": {
+    "mtime": 1790847997.4941232,
+    "seen": 1790851045.9196568,
+    "ast_hash": "8e40051f8ac8c16b98626db583cc16fd",
+    "semantic_hash": "8e40051f8ac8c16b98626db583cc16fd"
+  },
+  "stateless-backend/host.json": {
+    "mtime": 1781876890.0,
+    "seen": 1790844199.5626078,
+    "ast_hash": "5c711628feab36af2c6b6a55d7bb8384",
+    "semantic_hash": "5c711628feab36af2c6b6a55d7bb8384"
+  },
+  "stateless-backend/local.settings.json": {
+    "mtime": 1782403236.0,
+    "seen": 1790844199.5626094,
+    "ast_hash": "546d8fa705a87c2587b96864d3ec2452",
+    "semantic_hash": "546d8fa705a87c2587b96864d3ec2452"
+  },
+  "stateless-backend/package.json": {
+    "mtime": 1790848041.3748467,
+    "seen": 1790851045.9205499,
+    "ast_hash": "ed3314a3ef90676dccaf1de784ce6971",
+    "semantic_hash": "ed3314a3ef90676dccaf1de784ce6971"
+  },
+  "stateless-backend/scratch/test_3tier_silence.js": {
+    "mtime": 1786980788.0,
+    "seen": 1790844199.5626132,
+    "ast_hash": "76f62289d3407ab0acae6a7a752fa1c5",
+    "semantic_hash": "76f62289d3407ab0acae6a7a752fa1c5"
+  },
+  "stateless-backend/scratch/test_exclusion_lifecycle_sync.js": {
+    "mtime": 1788793321.6105466,
+    "seen": 1790844199.5626152,
+    "ast_hash": "dfced1c0a231520b15c43c2051455a2a",
+    "semantic_hash": "dfced1c0a231520b15c43c2051455a2a"
+  },
+  "stateless-backend/scratch/test_mandatory_ticket.js": {
+    "mtime": 1787213642.0,
+    "seen": 1790844199.5626163,
+    "ast_hash": "10a1b7df808a5761942cd2edc6b699a7",
+    "semantic_hash": "10a1b7df808a5761942cd2edc6b699a7"
+  },
+  "stateless-backend/scratch/test_rbac_authorization.js": {
+    "mtime": 1788362782.0,
+    "seen": 1790844199.5626183,
+    "ast_hash": "dd77a74ef151b933b4c7e0799857a267",
+    "semantic_hash": "dd77a74ef151b933b4c7e0799857a267"
+  },
+  "stateless-backend/scratch/test_ticket_retention.js": {
+    "mtime": 1786978390.0,
+    "seen": 1790844199.5626204,
+    "ast_hash": "fd2f205f98384d9878ccb818c2139204",
+    "semantic_hash": "fd2f205f98384d9878ccb818c2139204"
+  },
+  "stateless-backend/scratch/test_volume_dedup_prevention.js": {
+    "mtime": 1788360806.0,
+    "seen": 1790844199.562622,
+    "ast_hash": "440323143c5d4ba32ec239dc1bc00714",
+    "semantic_hash": "440323143c5d4ba32ec239dc1bc00714"
+  },
+  "stateless-backend/scratch/test_volume_mute_logic.js": {
+    "mtime": 1786967188.0,
+    "seen": 1790844199.5626233,
+    "ast_hash": "8de53ee3c90f87490514353e7d1e89da",
+    "semantic_hash": "8de53ee3c90f87490514353e7d1e89da"
+  },
+  "stateless-backend/shared/auth.ts": {
+    "mtime": 1788364858.0,
+    "seen": 1790844199.5626256,
+    "ast_hash": "2241b7aa3dbb3e0c2a94a303c18d8ed5",
+    "semantic_hash": "2241b7aa3dbb3e0c2a94a303c18d8ed5"
+  },
+  "stateless-backend/shared/autotask.ts": {
+    "mtime": 1788796277.9541845,
+    "seen": 1790844199.562627,
+    "ast_hash": "933b9ebedff9f01a831306d2e17640fe",
+    "semantic_hash": "933b9ebedff9f01a831306d2e17640fe"
+  },
+  "stateless-backend/shared/configService.ts": {
+    "mtime": 1788796287.8251421,
+    "seen": 1790844199.5626287,
+    "ast_hash": "5ac9981746d5a13055f698d0f09596b8",
+    "semantic_hash": "5ac9981746d5a13055f698d0f09596b8"
+  },
+  "stateless-backend/shared/tableService.ts": {
+    "mtime": 1782215704.0,
+    "seen": 1790844199.5626307,
+    "ast_hash": "09722cf096013b868e157ac8491587cb",
+    "semantic_hash": "09722cf096013b868e157ac8491587cb"
+  },
+  "stateless-backend/shared/volumeUtils.ts": {
+    "mtime": 1786980562.0,
+    "seen": 1790844199.5626318,
+    "ast_hash": "e6bc22586e6c395923e47c11e1c5afa6",
+    "semantic_hash": "e6bc22586e6c395923e47c11e1c5afa6"
+  },
+  "stateless-backend/tsconfig.json": {
+    "mtime": 1781872554.0,
+    "seen": 1790844199.5626338,
+    "ast_hash": "52f8c309aec547cfb032f2cf6a53b69c",
+    "semantic_hash": "52f8c309aec547cfb032f2cf6a53b69c"
+  },
+  "stateless-backend/scratch/delete_ghost_entity.js": {
+    "mtime": 1790847812.201722,
+    "seen": 1790851045.9205544,
+    "ast_hash": "79a1abb8ecec0abd6cef522e795c2157",
+    "semantic_hash": "79a1abb8ecec0abd6cef522e795c2157"
+  },
+  "stateless-backend/scratch/inspect_specific_entities.js": {
+    "mtime": 1790847588.3567188,
+    "seen": 1790851045.9205575,
+    "ast_hash": "65ea78699fad5b6cb4a20ebb216a9986",
+    "semantic_hash": "65ea78699fad5b6cb4a20ebb216a9986"
+  },
+  "stateless-backend/shared/version.ts": {
+    "mtime": 1790849259.463398,
+    "seen": 1790851045.925326,
+    "ast_hash": "81405be0132707b2ca26f2cbe447a2bc",
+    "semantic_hash": "81405be0132707b2ca26f2cbe447a2bc"
+  }
+}

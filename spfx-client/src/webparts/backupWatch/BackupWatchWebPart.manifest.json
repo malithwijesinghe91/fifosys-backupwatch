@@ -1,0 +1,23 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "ea8e78ef-4483-45f5-9363-6da03db20150",
+  "alias": "BackupWatchWebPart",
+  "componentType": "WebPart",
+  "version": "1.23.1",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart", "SharePointFullPageApp", "TeamsTab"],
+  "supportsFullBleed": true,
+  "preconfiguredEntries": [{
+    "groupId": "5c03def3-dc4b-4b1e-994b-e4e767e7c50d",
+    "group": { "default": "Other" },
+    "title": { "default": "BackupWatch" },
+    "description": { "default": "Datto BCDR Real-Time Monitor" },
+    "officeFabricIconFontName": "Shield",
+    "properties": {
+      "description": "BackupWatch",
+      "backendApiUrl": "http://localhost:7071/api/backupWatchTrigger",
+      "backendApiResourceId": "api://backupwatch-api"
+    }
+  }]
+}

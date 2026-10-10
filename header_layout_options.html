@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Header Layout Concepts — BackupWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #EE6823;
+      --bg-dark-header: linear-gradient(135deg, #102B3D 0%, #0d2536 50%, #14354B 100%);
+      --bg-light-header: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #061119;
+      color: #E2E8F0;
+      padding: 2.5rem 2rem;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+    .page-desc {
+      color: #8AA4B8;
+      font-size: 0.95rem;
+      margin-bottom: 2.5rem;
+      line-height: 1.5;
+    }
+
+    /* Diagnosis section */
+    .diagnosis-box {
+      background: rgba(238, 104, 35, 0.08);
+      border: 1px solid rgba(238, 104, 35, 0.25);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .diagnosis-title {
+      font-weight: 700;
+      color: #EE6823;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .diagnosis-list {
+      list-style: disc;
+      padding-left: 1.25rem;
+      color: #CBD5E1;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    /* Concept Card */
+    .concept-card {
+      background: #0C1E2B;
+      border: 1px solid #1A3E56;
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .concept-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+    .concept-tag.rec { background: rgba(238, 104, 35, 0.2); color: #EE6823; border: 1px solid rgba(238, 104, 35, 0.4); }
+    .concept-tag.alt { background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+    .concept-heading {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 0.35rem;
+    }
+    .concept-desc {
+      font-size: 0.85rem;
+      color: #8AA4B8;
+      margin-bottom: 1.25rem;
+    }
+
+    /* The actual preview header */
+    .sample-header {
+      background: linear-gradient(135deg, #102B3D 0%, #0d2536 50%, #14354B 100%);
+      border-radius: 14px;
+      padding: 1.5rem 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(5, 15, 23, 0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 100px;
+    }
+    .sample-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .sample-btn {
+      background: rgba(20, 53, 75, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: inherit;
+    }
+
+    /* Common logo */
+    .sample-logo {
+      height: 48px;
+      width: 48px;
+      border-radius: 10px;
+      object-fit: contain;
+      box-shadow: 0 4px 14px rgba(238, 104, 35, 0.35);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      flex-shrink: 0;
+    }
+    .sample-divider {
+      width: 1px;
+      height: 44px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    /* Option 1 Styles */
+    .c1-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.95rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      line-height: 1.1;
+      display: flex;
+      align-items: baseline;
+      gap: 0.45rem;
+    }
+    .c1-title-brand { color: #FFFFFF; }
+    .c1-title-sub { color: #EE6823; }
+    .c1-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #8AA4B8;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 0.3rem;
+    }
+    .c1-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 8px #10B981;
+    }
+
+    /* Option 2 Styles */
+    .c2-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+    .c2-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+    }
+    .c2-pill {
+      background: rgba(238, 104, 35, 0.15);
+      border: 1px solid rgba(238, 104, 35, 0.35);
+      color: #EE6823;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      letter-spacing: 0.05em;
+    }
+    .c2-sub {
+      font-size: 0.8rem;
+      color: #8AA4B8;
+      margin-top: 0.25rem;
+    }
+
+    /* Option 3 Styles */
+    .c3-kicker {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: #EE6823;
+      margin-bottom: 0.15rem;
+    }
+    .c3-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      line-height: 1.05;
+    }
+    .c3-chip {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #CBD5E1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="page-title">🔍 Header Design Review & Layout Options</h1>
+    <p class="page-desc">
+      Comparing layout solutions to fix the awkward visual hierarchy and alignment in the current header.
+    </p>
+
+    <div class="diagnosis-box">
+      <div class="diagnosis-title">Why the Screenshot Looks "Out of Order":</div>
+      <ul class="diagnosis-list">
+        <li><strong>Triple Branding Overload:</strong> We have the Fifosys logo icon, followed by the pill badge that says <em>"Fifosys BackupWatch Control Desk"</em>, followed by the main title that says <em>"Fifosys BackupWatch"</em>. Repeating "Fifosys" 3 times in a 3-inch space makes it feel cluttered and unbalanced.</li>
+        <li><strong>Awkward Asymmetrical Floating Pill:</strong> The pill badge is vertically floating above the title, creating an uneven top margin that makes the 48px square icon on the left look disconnected and vertically misaligned.</li>
+        <li><strong>Divider Stature Mismatch:</strong> The vertical divider line was shorter than the combined height of the badge + title, breaking the visual container rule.</li>
+      </ul>
+    </div>
+
+    <!-- OPTION 1: WORDING CANDIDATES (NO BCDR, MULTI-PLATFORM READY) -->
+    <div class="concept-card">
+      <span class="concept-tag rec">Option 1: Subtitle Wording Variations (Future-Proof for Datto, Veeam, Cloud Ally & SaaS)</span>
+      <h3 class="concept-heading">Unified Title + Multi-Platform Subtitle</h3>
+      <p class="concept-desc">
+        Because this dashboard is expanding into a single unified control plane for <strong>Datto, Veeam, Cloud Ally, and Microsoft 365 / SaaS backups</strong>, we drop the restrictive "BCDR" acronym and adopt an inclusive enterprise term.
+      </p>
+
+      <!-- Variation A -->
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #38BDF8; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          Variation A: "Unified Data Protection Desk" (Most accurate for hybrid on-prem + cloud + SaaS)
+        </div>
+        <div class="sample-header">
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <img src="fifosys-icon.png" alt="Fifosys" class="sample-logo">
+            <div class="sample-divider"></div>
+            <div>
+              <div class="c1-title">
+                <span class="c1-title-brand">Fifosys</span>
+                <span class="c1-title-sub">BackupWatch</span>
+              </div>
+              <div class="c1-badge">
+                <span class="dot"></span>
+                <span>Unified Data Protection Desk • v1.23.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="sample-controls">
+            <button class="sample-btn">🖥️ Full Screen</button>
+            <button class="sample-btn">📜 Audit Trail</button>
+            <button class="sample-btn">Configure Exclusions</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variation B -->
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #10B981; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          Variation B: "Fleet Backup Operations Center" (Strong operational MSP tone)
+        </div>
+        <div class="sample-header">
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <img src="fifosys-icon.png" alt="Fifosys" class="sample-logo">
+            <div class="sample-divider"></div>
+            <div>
+              <div class="c1-title">
+                <span class="c1-title-brand">Fifosys</span>
+                <span class="c1-title-sub">BackupWatch</span>
+              </div>
+              <div class="c1-badge">
+                <span class="dot"></span>
+                <span>Fleet Backup Operations Center • v1.23.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="sample-controls">
+            <button class="sample-btn">🖥️ Full Screen</button>
+            <button class="sample-btn">📜 Audit Trail</button>
+            <button class="sample-btn">Configure Exclusions</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variation C -->
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #F59E0B; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          Variation C: "Central Backup & Recovery Monitor" (Direct, intuitive & clean)
+        </div>
+        <div class="sample-header">
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <img src="fifosys-icon.png" alt="Fifosys" class="sample-logo">
+            <div class="sample-divider"></div>
+            <div>
+              <div class="c1-title">
+                <span class="c1-title-brand">Fifosys</span>
+                <span class="c1-title-sub">BackupWatch</span>
+              </div>
+              <div class="c1-badge">
+                <span class="dot"></span>
+                <span>Central Backup & Recovery Monitor • v1.23.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="sample-controls">
+            <button class="sample-btn">🖥️ Full Screen</button>
+            <button class="sample-btn">📜 Audit Trail</button>
+            <button class="sample-btn">Configure Exclusions</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variation D -->
+      <div>
+        <div style="font-size: 0.8rem; font-weight: 700; color: #A78BFA; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          Variation D: "Enterprise Resilience Hub" (Executive / C-level tone)
+        </div>
+        <div class="sample-header">
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <img src="fifosys-icon.png" alt="Fifosys" class="sample-logo">
+            <div class="sample-divider"></div>
+            <div>
+              <div class="c1-title">
+                <span class="c1-title-brand">Fifosys</span>
+                <span class="c1-title-sub">BackupWatch</span>
+              </div>
+              <div class="c1-badge">
+                <span class="dot"></span>
+                <span>Enterprise Resilience Hub • v1.23.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="sample-controls">
+            <button class="sample-btn">🖥️ Full Screen</button>
+            <button class="sample-btn">📜 Audit Trail</button>
+            <button class="sample-btn">Configure Exclusions</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- OPTION 2 -->
+    <div class="concept-card">
+      <span class="concept-tag alt">Option 2 — Horizontal Inline Pill</span>
+      <h3 class="concept-heading">Single-Line Title with Suffix Version Pill</h3>
+      <p class="concept-desc">
+        Moves the version pill to the same horizontal line as the title instead of stacking it on top. Keeps the header sleek, compact, and perfectly centered with the icon.
+      </p>
+
+      <div class="sample-header">
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <img src="fifosys-icon.png" alt="Fifosys" class="sample-logo">
+          <div class="sample-divider"></div>
+          <div>
+            <div class="c2-title-row">
+              <span class="c2-title">BackupWatch</span>
+              <span class="c2-pill">⚡ v1.23.0 Control Desk</span>
+            </div>
+            <div class="c2-sub">Datto BCDR Real-Time Fleet Telemetry</div>
+          </div>
+        </div>
+
+        <div class="sample-controls">
+          <button class="sample-btn">🖥️ Full Screen</button>
+          <button class="sample-btn">📜 Audit Trail</button>
+          <button class="sample-btn">Configure Exclusions</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION 3 -->
+    <div class="concept-card">
+      <span class="concept-tag alt">Option 3 — Corporate Eyebrow Kicker</span>
+      <h3 class="concept-heading">Subtle Organization Kicker Above Product Title</h3>
+      <p class="concept-desc">
+        Enterprise SaaS standard (like Microsoft/Datadog): a small, muted uppercase category kicker above an authoritative product title with an inline version chip.
+      </p>
+
+      <div class="sample-header">
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <img src="fifosys-icon.png" alt="Fifosys" class="sample-logo">
+          <div class="sample-divider"></div>
+          <div>
+            <div class="c3-kicker">Fifosys Managed BCDR Services</div>
+            <div class="c3-title">
+              BackupWatch
+              <span class="c3-chip">v1.23.0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sample-controls">
+          <button class="sample-btn">🖥️ Full Screen</button>
+          <button class="sample-btn">📜 Audit Trail</button>
+          <button class="sample-btn">Configure Exclusions</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

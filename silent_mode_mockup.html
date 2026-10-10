@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BackupWatch — Real SPFx App Design (Silent Mode Demonstration)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* REAL PRODUCTION BACKUPWATCH COLOR SYSTEM */
+    .backup-watch-root {
+      --bg-canvas: #f8fafc;
+      --bg-panel: #ffffff;
+      --bg-glass: rgba(255, 255, 255, 0.85);
+      --bg-hover: rgba(241, 245, 249, 0.7);
+      --border-element: #e2e8f0;
+      --border-glass: rgba(226, 232, 240, 0.8);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --color-primary: #c2410c; /* Fifosys Dark Orange */
+      --color-success: #10b981;
+      --color-danger: #f43f5e;
+      --color-warning: #f59e0b;
+      --color-purple: #8b5cf6;
+      --color-silenced: #64748b;
+      --glow-primary: rgba(194, 65, 12, 0.25);
+      --glow-success: rgba(16, 185, 129, 0.25);
+      --glow-danger: rgba(244, 63, 94, 0.25);
+      --glow-warning: rgba(245, 158, 11, 0.25);
+      --glow-purple: rgba(139, 92, 246, 0.25);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.12);
+    }
+
+    .backup-watch-root[data-theme="dark"] {
+      --bg-canvas: #090d16;
+      --bg-panel: #111827;
+      --bg-glass: rgba(17, 24, 39, 0.75);
+      --bg-hover: rgba(30, 41, 59, 0.5);
+      --border-element: #1f2937;
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #ea580c;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.6);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .backup-watch-root {
+      width: 100%;
+      max-width: 1600px;
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    /* Header */
+    .bw-header {
+      background: linear-gradient(135deg, #090d16 0%, #1e1528 50%, #2e1005 100%);
+      padding: 1.5rem 2rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1.5rem;
+      color: #ffffff;
+    }
+    .bw-header-title h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.2rem;
+    }
+    .bw-header-title span { color: #ea580c; }
+    .bw-header-title p { font-size: 0.85rem; color: #94a3b8; }
+    .bw-header-controls { display: flex; align-items: center; gap: 0.6rem; }
+    
+    .bw-btn {
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border-element);
+      background: var(--bg-glass);
+      color: var(--text-main);
+      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .bw-btn:hover { transform: translateY(-1px); background: #ffffff; }
+    .backup-watch-root[data-theme="dark"] .bw-btn:hover { background: #1f2937; }
+
+    /* Cache status bar */
+    .bw-status-bar {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      padding: 0.6rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Metric cards */
+    .bw-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .bw-metric-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .bw-metric-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+    }
+    .bw-metric-card.primary::after { background: var(--color-primary); }
+    .bw-metric-card.success::after { background: var(--color-success); }
+    .bw-metric-card.warning::after { background: var(--color-warning); }
+    .bw-metric-card.danger::after  { background: var(--color-danger); }
+    .bw-metric-card.purple::after  { background: var(--color-purple); }
+    .bw-metric-card.silenced::after { background: var(--color-silenced); }
+
+    .bw-metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .bw-metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.1rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 0.2rem;
+    }
+    .bw-metric-value.primary { color: var(--color-primary); }
+    .bw-metric-value.success { color: var(--color-success); }
+    .bw-metric-value.warning { color: var(--color-warning); }
+    .bw-metric-value.danger  { color: var(--color-danger); }
+    .bw-metric-value.purple  { color: var(--color-purple); }
+    .bw-metric-value.silenced { color: var(--color-silenced); }
+    .bw-metric-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    /* Main Card Layout */
+    .bw-main-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .bw-controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border-element);
+      padding-bottom: 0.8rem;
+    }
+
+    .bw-tabs-group {
+      display: flex;
+      background: var(--bg-panel);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-element);
+    }
+    .bw-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .bw-tab-btn.active {
+      background: var(--bg-glass);
+      color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bw-search-wrapper { position: relative; width: 320px; }
+    .search-icon {
+      position: absolute; left: 0.8rem; top: 50%;
+      transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem;
+    }
+    .bw-search-input {
+      width: 100%;
+      padding: 0.55rem 1rem 0.55rem 2.3rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-element);
+      background: var(--bg-panel);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    /* Table */
+    .bw-table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-element);
+      background: var(--bg-panel);
+    }
+    .bw-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+    .bw-table th {
+      padding: 0.85rem 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      border-bottom: 2px solid var(--border-element);
+      background: var(--bg-panel);
+    }
+    .bw-table td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border-element);
+      vertical-align: middle;
+    }
+    .bw-appliance-row { cursor: pointer; transition: background 0.15s ease; }
+    .bw-appliance-row:hover { background: var(--bg-hover); }
+    .bw-appliance-row.silenced-row {
+      background: rgba(100, 116, 139, 0.04);
+    }
+
+    .bw-chevron-col { width: 36px; text-align: center; }
+    .bw-chevron-indicator {
+      display: inline-block;
+      font-size: 0.75rem;
+      color: var(--color-primary);
+      transition: transform 0.2s ease-in-out;
+    }
+    .bw-appliance-row.expanded .bw-chevron-indicator {
+      transform: rotate(90deg);
+    }
+
+    /* Badges */
+    .bw-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .bw-badge-pill.success { background: rgba(16, 185, 129, 0.12); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.25); }
+    .bw-badge-pill.danger  { background: rgba(244, 63, 94, 0.12); color: var(--color-danger); border: 1px solid rgba(244, 63, 94, 0.25); }
+    .bw-badge-pill.warning { background: rgba(245, 158, 11, 0.12); color: var(--color-warning); border: 1px solid rgba(245, 158, 11, 0.25); }
+    .bw-badge-pill.silenced {
+      background: rgba(100, 116, 139, 0.16);
+      color: var(--color-silenced);
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      font-weight: 800;
+    }
+
+    /* Progress bar */
+    .bw-progress-bar-track {
+      width: 140px; height: 7px;
+      background: var(--border-element);
+      border-radius: 9999px; overflow: hidden; margin-bottom: 0.2rem;
+    }
+    .bw-progress-bar-fill { height: 100%; border-radius: 9999px; }
+    .bw-progress-bar-fill.success { background: var(--color-success); }
+    .bw-progress-bar-fill.danger { background: var(--color-danger); }
+    .bw-progress-bar-fill.silenced { background: var(--color-silenced); opacity: 0.5; }
+
+    /* Action Buttons in Row */
+    .btn-action-silence {
+      background: rgba(100, 116, 139, 0.12);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      color: var(--color-silenced);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s;
+    }
+    .btn-action-silence:hover {
+      background: rgba(100, 116, 139, 0.22);
+      color: var(--text-main);
+    }
+    .btn-action-unsilence {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--color-success);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* Subgrid Agents Panel */
+    .bw-agents-panel {
+      background: var(--bg-panel);
+      padding: 1.5rem;
+      border-left: 5px solid var(--color-primary);
+    }
+    .bw-agents-panel.silenced-panel {
+      border-left: 5px solid var(--color-silenced);
+      background: var(--bg-canvas);
+    }
+    .bw-agents-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+      gap: 1rem;
+    }
+    .bw-agent-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      padding: 1.1rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .bw-agent-card.silenced-card {
+      border-color: rgba(100, 116, 139, 0.25);
+    }
+
+    .bw-volume-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 6px;
+      padding: 0.4rem 0.65rem;
+      font-size: 0.75rem;
+    }
+    .bw-volume-row.excluded {
+      border-color: rgba(244, 63, 94, 0.2);
+    }
+    .bw-volume-row.silenced-vol {
+      border-color: rgba(100, 116, 139, 0.25);
+      background: rgba(100, 116, 139, 0.05);
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 480px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="backup-watch-root" id="appRoot" data-theme="light">
+    
+    <!-- Top Header -->
+    <div class="bw-header">
+      <div class="bw-header-title">
+        <h1>Backup<span>Watch</span></h1>
+        <p>Enterprise Datto BCDR & Autotask Real-Time Observability Portal</p>
+      </div>
+      <div class="bw-header-controls">
+        <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 0.9rem; border-radius: 8px; font-size: 0.82rem;">
+          👤 Role: <strong>System Administrator</strong>
+        </div>
+        <button class="bw-btn" onclick="toggleTheme()">🌓 Theme</button>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="bw-status-bar">
+      <div>
+        <span>Scanner Engine: <strong>Active (30m Interval)</strong></span> &nbsp;•&nbsp;
+        <span>Last live Datto BCDR refresh: <strong>Just now</strong></span>
+      </div>
+      <div>
+        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-primary); background: var(--color-primary-subtle); padding: 0.2rem 0.5rem; border-radius: 4px;">
+          SPFx Package v1.15.0.0
+        </span>
+      </div>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="bw-metrics-grid">
+      <div class="bw-metric-card success">
+        <div class="bw-metric-value success">118</div>
+        <div class="bw-metric-label">Total Appliances</div>
+      </div>
+      <div class="bw-metric-card danger">
+        <div class="bw-metric-value danger">0</div>
+        <div class="bw-metric-label">Offline Appliances</div>
+      </div>
+      <div class="bw-metric-card danger">
+        <div class="bw-metric-value danger">1</div>
+        <div class="bw-metric-label">Backup Failures</div>
+      </div>
+      <div class="bw-metric-card warning">
+        <div class="bw-metric-value warning">0</div>
+        <div class="bw-metric-label">Storage Critical</div>
+      </div>
+      <div class="bw-metric-card purple">
+        <div class="bw-metric-value purple">1</div>
+        <div class="bw-metric-label">Volume Exclusions</div>
+      </div>
+      <div class="bw-metric-card silenced">
+        <div class="bw-metric-value silenced">1</div>
+        <div class="bw-metric-label">🔇 Silenced Appliances</div>
+      </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="bw-main-card">
+      
+      <!-- Controls Row -->
+      <div class="bw-controls-row">
+        <div class="bw-tabs-group">
+          <button class="bw-tab-btn active">Active Appliances (117)</button>
+          <button class="bw-tab-btn">Cancelled Subscriptions (1)</button>
+        </div>
+
+        <div class="bw-search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="bw-search-input" placeholder="Search appliances, clients, models...">
+        </div>
+      </div>
+
+      <!-- Appliance Table -->
+      <div class="bw-table-container">
+        <table class="bw-table">
+          <thead>
+            <tr>
+              <th class="bw-chevron-col"></th>
+              <th style="width: 250px;">Appliance / Client</th>
+              <th style="width: 150px;">Model / Serial</th>
+              <th style="width: 200px;">Storage Used</th>
+              <th style="width: 120px;">Last Seen</th>
+              <th style="width: 200px;">Backup Status</th>
+              <th style="width: 120px; text-align: center;">Exclusions</th>
+              <th style="width: 200px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <!-- ROW 1: ACTIVE MONITORED APPLIANCE -->
+            <tr class="bw-appliance-row" onclick="toggleSubgrid('sub-1', this)">
+              <td class="bw-chevron-col">
+                <span class="bw-chevron-indicator">▶</span>
+              </td>
+              <td>
+                <div style="font-weight: 700; color: var(--text-main);">ICE-DATTO-01</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Iceland Foods Ltd</div>
+              </td>
+              <td>
+                <div style="font-weight: 500;">S4B20</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">240891726</div>
+              </td>
+              <td>
+                <div class="bw-progress-bar-track">
+                  <div class="bw-progress-bar-fill success" style="width: 42%;"></div>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">8.40 TB / 20.00 TB (42.0%)</div>
+              </td>
+              <td><span style="color: var(--color-success); font-weight: 600; font-size: 0.82rem;">2m ago</span></td>
+              <td>
+                <span class="bw-badge-pill success">Healthy</span>
+              </td>
+              <td style="text-align: center; color: var(--text-muted);">—</td>
+              <td onclick="event.stopPropagation();">
+                <!-- DISCRETE BUTTON 1: SILENCE APPLIANCE -->
+                <button class="btn-action-silence" onclick="openSilenceModal('ICE-DATTO-01', 'Iceland Foods Ltd')">
+                  🔇 Silence Appliance
+                </button>
+              </td>
+            </tr>
+
+            <!-- Expanded Subgrid for Row 1 -->
+            <tr id="sub-1" style="display: none;">
+              <td colspan="8" style="padding: 0;">
+                <div class="bw-agents-panel">
+                  <div style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;">
+                    Protected Agents on ICE-DATTO-01
+                  </div>
+                  <div class="bw-agents-cards-grid">
+                    <div class="bw-agent-card">
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                          <div style="font-weight: 700; font-size: 0.95rem;">ICE-DC-01</div>
+                          <div style="font-size: 0.78rem; color: var(--text-muted);">Windows Server 2022 • Last snap: 15m ago</div>
+                        </div>
+                        <span class="bw-badge-pill success">✓ All vol.</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <div class="bw-volume-row">
+                          <span style="font-weight: 600;">C:\ (System)</span>
+                          <span style="font-weight: 700; font-size: 0.65rem; text-transform: uppercase; color: var(--color-success);">Protected</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- ROW 2: SILENCED APPLIANCE (TOTAL BLACKOUT DEMO) -->
+            <tr class="bw-appliance-row expanded silenced-row" onclick="toggleSubgrid('sub-2', this)">
+              <td class="bw-chevron-col">
+                <span class="bw-chevron-indicator">▶</span>
+              </td>
+              <td>
+                <div style="font-weight: 700; color: var(--text-muted);">FIF-DATTO-TEST</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Fifosys Internal Lab</div>
+                <div style="font-size: 0.73rem; color: var(--color-silenced); font-style: italic; margin-top: 0.15rem;">
+                  Reason: "Decommissioning test bench — ignore all alerts"
+                </div>
+              </td>
+              <td>
+                <div style="font-weight: 500; color: var(--text-muted);">ALTO-XL</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">994018274</div>
+              </td>
+              <td>
+                <div class="bw-progress-bar-track">
+                  <div class="bw-progress-bar-fill silenced" style="width: 96%;"></div>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">9.60 TB / 10.00 TB (96.0%)</div>
+              </td>
+              <td>
+                <span style="color: var(--color-silenced); font-weight: 600; font-size: 0.82rem;">3d ago</span>
+              </td>
+              <td>
+                <!-- STRICT SUPPRESSION: ONLY THE SILENCED BADGE IS DISPLAYED -->
+                <span class="bw-badge-pill silenced">🔇 Silenced (Blackout)</span>
+              </td>
+              <td style="text-align: center;">
+                <span style="color: var(--color-silenced); font-weight: 700; font-size: 0.85rem;">2 excluded</span>
+              </td>
+              <td onclick="event.stopPropagation();">
+                <button class="btn-action-unsilence" onclick="alert('Appliance unsilenced. Full active monitoring restored.')">
+                  🔊 Unsilence Appliance
+                </button>
+              </td>
+            </tr>
+
+            <!-- Expanded Subgrid for Silenced Row -->
+            <tr id="sub-2">
+              <td colspan="8" style="padding: 0;">
+                <div class="bw-agents-panel silenced-panel">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--color-silenced); text-transform: uppercase; letter-spacing: 0.08em;">
+                      Protected Agents on FIF-DATTO-TEST (Silenced)
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--color-silenced); font-style: italic;">
+                      🛡️ Autotask Protection Active: <strong>Zero tickets created • Zero notes pushed • Total Blackout</strong>
+                    </div>
+                  </div>
+
+                  <div class="bw-agents-cards-grid">
+                    
+                    <!-- Agent Card on Silenced Appliance -->
+                    <div class="bw-agent-card silenced-card">
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                          <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-muted);">LAB-DC-01</div>
+                          <div style="font-size: 0.78rem; color: var(--text-muted);">Windows Server 2022 • Last snap: 3d ago</div>
+                        </div>
+                        <span class="bw-badge-pill silenced">🔇 Silenced with Appliance</span>
+                      </div>
+
+                      <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <!-- Drive 1 -->
+                        <div class="bw-volume-row silenced-vol">
+                          <span style="font-weight: 600;">C:\ (System)</span>
+                          <span style="font-weight: 700; font-size: 0.65rem; text-transform: uppercase; color: var(--color-silenced);">Monitoring Suppressed</span>
+                        </div>
+                        <!-- Drive 2 with Discrete Pencil Control -->
+                        <div class="bw-volume-row silenced-vol">
+                          <span style="font-weight: 600;">E:\ (Log Partition)</span>
+                          <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <span style="font-weight: 700; font-size: 0.65rem; text-transform: uppercase; color: var(--color-silenced);">Excluded (Silenced)</span>
+                            <!-- DISCRETE BUTTON 2: DRIVE LEVEL PENCIL -->
+                            <button 
+                              onclick="openVolumeModal('FIF-DATTO-TEST', 'LAB-DC-01', 'E:\\', 'Decommissioned test log volume')"
+                              title="Edit Exclusion Note for this Drive only" 
+                              style="background: none; border: none; cursor: pointer; font-size: 0.75rem; color: var(--text-muted);"
+                            >
+                              ✏️
+                            </button>
+                          </div>
+                        </div>
+                        <div style="font-size: 0.68rem; color: var(--text-muted); font-style: italic; padding-left: 0.5rem;">
+                          "Decommissioned test log volume"
+                        </div>
+                      </div>
+
+                      <div style="border-top: 1px solid var(--border-element); padding-top: 0.5rem; font-size: 0.72rem; color: var(--color-silenced);">
+                        Datto reports backup failed 3 days ago. <strong>Autotask ticket strictly suppressed.</strong>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- DISCRETE MODAL 1: SILENCE APPLIANCE -->
+  <div id="silenceApplianceModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">🔇 Silence Datto Appliance</div>
+        <button class="bw-btn" style="padding: 0.2rem 0.5rem;" onclick="closeModal('silenceApplianceModal')">✕</button>
+      </div>
+
+      <div style="background: rgba(100, 116, 139, 0.1); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.45;">
+        <strong>⚠️ Total Operational Blackout:</strong><br>
+        Silencing this appliance will immediately stop BackupWatch from inspecting its drives, monitoring failures, or communicating with Autotask.
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">Target Appliance</label>
+        <input id="silenceTargetInput" type="text" disabled style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-element); background: var(--bg-canvas); color: var(--text-main); font-weight: 600;">
+      </div>
+
+      <div style="margin-bottom: 1.2rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">Technical Reason / Business Justification</label>
+        <textarea id="silenceReasonInput" rows="3" placeholder="e.g. Appliance undergoing hardware replacement or site decommissioning..." style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-element); background: var(--bg-canvas); color: var(--text-main); font-family: inherit; resize: vertical;"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.6rem;">
+        <button class="bw-btn" onclick="closeModal('silenceApplianceModal')">Cancel</button>
+        <button class="bw-btn" style="background: var(--color-primary); color: #ffffff; border: none;" onclick="closeModal('silenceApplianceModal'); alert('Appliance has been successfully Silenced.');">
+          Confirm Silence Appliance
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISCRETE MODAL 2: EDIT VOLUME NOTE ONLY -->
+  <div id="volumeNoteModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">💾 Volume Exclusion Note</div>
+        <button class="bw-btn" style="padding: 0.2rem 0.5rem;" onclick="closeModal('volumeNoteModal')">✕</button>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">Volume Target</label>
+        <input id="volTargetInput" type="text" disabled style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-element); background: var(--bg-canvas); color: var(--text-main); font-weight: 600;">
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">Reason for Exclusion</label>
+        <textarea id="volReasonInput" rows="3" placeholder="e.g. Archived logs / Scratch disk" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-element); background: var(--bg-canvas); color: var(--text-main); font-family: inherit;"></textarea>
+      </div>
+
+      <div style="margin-bottom: 1.2rem; padding: 0.75rem; border: 1px solid var(--border-element); border-radius: 6px; background: var(--bg-canvas);">
+        <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">Policy</label>
+        <div style="display: flex; gap: 1rem; font-size: 0.82rem;">
+          <label><input type="radio" name="volPolicy" checked> 🕒 Temporary</label>
+          <label><input type="radio" name="volPolicy"> ♾️ Permanent</label>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.6rem;">
+        <button class="bw-btn" style="background: var(--color-danger); color: #ffffff; border: none; margin-right: auto;" onclick="closeModal('volumeNoteModal'); alert('Note removed.');">Remove Note</button>
+        <button class="bw-btn" onclick="closeModal('volumeNoteModal')">Cancel</button>
+        <button class="bw-btn" style="background: var(--color-primary); color: #ffffff; border: none;" onclick="closeModal('volumeNoteModal'); alert('Volume note saved. (If appliance is silenced, Autotask ticketing is safely skipped).');">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const root = document.getElementById('appRoot');
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    }
+
+    function toggleSubgrid(id, rowElem) {
+      const row = document.getElementById(id);
+      if (row) {
+        const isHidden = row.style.display === 'none';
+        row.style.display = isHidden ? 'table-row' : 'none';
+        if (isHidden) {
+          rowElem.classList.add('expanded');
+        } else {
+          rowElem.classList.remove('expanded');
+        }
+      }
+    }
+
+    function openSilenceModal(device, client) {
+      document.getElementById('silenceTargetInput').value = `${device} (${client})`;
+      document.getElementById('silenceApplianceModal').style.display = 'flex';
+    }
+
+    function openVolumeModal(device, agent, vol, reason) {
+      document.getElementById('volTargetInput').value = `${device} -> ${agent} -> ${vol}`;
+      document.getElementById('volReasonInput').value = reason || '';
+      document.getElementById('volumeNoteModal').style.display = 'flex';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+  </script>
+</body>
+</html>

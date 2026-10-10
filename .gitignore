@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------
+# BackupWatch (FifoDash) - files that must never be committed
+# ---------------------------------------------------------------
+
+# Dependencies & build output
+node_modules/
+dist/
+spfx-client/lib/
+*.sppkg
+*.zip
+
+# Secrets & environment (live Datto / Autotask / Storage keys live here)
+local.settings.json
+**/local.settings.json
+.env
+.env.*
+
+# Azure resource dumps & local storage emulator data
+fn_details*.json
+scratch/azurite/
+__azurite_db_*
+
+# Tool caches & logs
+graphify-out/cache/
+*.log
+npm-debug.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini

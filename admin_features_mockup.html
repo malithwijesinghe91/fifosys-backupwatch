@@ -1,0 +1,656 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BackupWatch Admin Console - 7 Alert Routing Matrix (Production Style)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-app: radial-gradient(circle at 10% 20%, #f1f5f9 0%, #e2e8f0 100%);
+      --bg-glass: rgba(255, 255, 255, 0.85);
+      --bg-panel: #ffffff;
+      --bg-hover: rgba(241, 245, 249, 0.8);
+      --border-element: #e2e8f0;
+      --border-focus: #c2410c;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --color-primary: #c2410c; /* Fifosys Vibrant Orange */
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    }
+
+    body[data-theme="dark"] {
+      --bg-app: radial-gradient(circle at 10% 20%, #0b0f19 0%, #080b11 90%);
+      --bg-glass: rgba(17, 24, 39, 0.7);
+      --bg-panel: #111827;
+      --bg-hover: rgba(55, 65, 81, 0.4);
+      --border-element: rgba(55, 65, 81, 0.6);
+      --border-focus: #ea580c;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #ea580c;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-app);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-card {
+      width: 1120px;
+      max-width: 98vw;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-element);
+      border-radius: 14px;
+      padding: 1.75rem 2rem;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-element);
+      padding-bottom: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 0.4rem;
+      border-bottom: 1px solid var(--border-element);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .tab-btn.active {
+      background: rgba(194, 65, 12, 0.1);
+      color: var(--color-primary);
+      font-weight: 700;
+    }
+
+    .safety-banner {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.8rem;
+      color: #065f46;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    body[data-theme="dark"] .safety-banner {
+      color: #34d399;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .matrix-table th {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      background: var(--bg-hover);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.73rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-top: 1px solid var(--border-element);
+      border-bottom: 1px solid var(--border-element);
+    }
+    .matrix-table th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .matrix-table th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+    .matrix-row {
+      border-bottom: 1px solid var(--border-element);
+      transition: background 0.15s;
+    }
+    .matrix-row:hover { background: var(--bg-hover); }
+
+    .matrix-row td {
+      padding: 0.75rem;
+      vertical-align: top;
+    }
+
+    .alert-title {
+      font-weight: 600;
+      font-size: 0.86rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .alert-subtitle {
+      font-size: 0.71rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+      margin-left: 1.6rem;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid var(--border-element);
+      color: var(--text-main);
+      padding: 0.42rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      outline: none;
+      font-family: inherit;
+    }
+    body[data-theme="dark"] select, body[data-theme="dark"] input[type="text"] {
+      background: #1f2937;
+      color: #f8fafc;
+      border-color: #374151;
+    }
+
+    .badge-priority {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.68rem;
+      text-align: center;
+      margin-top: 0.3rem;
+      width: 100%;
+    }
+    .badge-critical { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-high { background: rgba(245, 158, 11, 0.12); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-medium { background: rgba(59, 130, 246, 0.12); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-low { background: rgba(100, 116, 139, 0.12); color: #475569; border: 1px solid rgba(100, 116, 139, 0.3); }
+
+    /* Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1;
+      transition: .25s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .25s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider { background-color: var(--color-success); }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    .tag-hint {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+    .tag-token {
+      background: rgba(194, 65, 12, 0.08);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      font-family: monospace;
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border-element);
+      padding-top: 1rem;
+    }
+
+    .bw-btn {
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border-element);
+      background: #ffffff;
+      color: var(--text-main);
+    }
+    .bw-btn-primary {
+      background-color: var(--color-primary) !important;
+      color: #ffffff !important;
+      border: none !important;
+    }
+
+    .theme-switcher {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #ffffff;
+      border: 1px solid var(--border-element);
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 2000;
+    }
+  </style>
+</head>
+<body data-theme="light">
+
+<div class="modal-overlay">
+  <div class="modal-card">
+
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <span>⚙️</span> Administrator Console
+      </h3>
+      <button style="background:none; border:none; font-size:1.5rem; color:var(--text-muted); cursor:pointer;">&times;</button>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn">🩺 Diagnostics</button>
+      <button class="tab-btn active">🔀 Alert Routing & Picklists Matrix</button>
+      <button class="tab-btn">🚨 Alert Blackout</button>
+      <button class="tab-btn">🧹 Entity Cleanup</button>
+      <button class="tab-btn">🔍 Asset Diagnostic</button>
+    </div>
+
+    <!-- Safety & Operational Guarantee Banner -->
+    <div class="safety-banner">
+      <div>
+        <strong>🛡️ Operational Safety Policy:</strong> Currently, automated background ticketing is active <strong>strictly for Volume Exclusions</strong>. All other 6 alert types default to <strong>Monitoring & Manual Escalation only</strong> (Auto-Ticket: OFF).
+      </div>
+      <span style="font-size:0.75rem; opacity:0.85;">Backwards Compatible</span>
+    </div>
+
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th style="width: 22%;">Alert Type</th>
+          <th style="width: 19%;">Autotask Queue</th>
+          <th style="width: 11%;">Priority</th>
+          <th style="width: 17%;">Issue & Sub-Issue</th>
+          <th style="width: 25%;">Ticket Title Template</th>
+          <th style="width: 6%; text-align: center;">Auto-Ticket</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- 1. VOLUME EXCLUSION (Currently ACTIVE in Live Production) -->
+        <tr class="matrix-row" style="background: rgba(16, 185, 129, 0.04);">
+          <td>
+            <div class="alert-title">
+              <span>⚠️</span> Volume Exclusions
+            </div>
+            <div class="alert-subtitle">System drive / critical volume excluded (Active in Prod)</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Monitoring Testing (ID: 29683511)</option>
+              <option>Tier 1 Support (ID: 29682833)</option>
+              <option>Backup (ID: 29683488)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-vol')">
+              <option value="low" selected>Low (P4)</option>
+              <option value="medium">Medium (P3)</option>
+              <option value="high">High (P2)</option>
+              <option value="critical">Critical (P1)</option>
+            </select>
+            <div id="badge-vol" class="badge-priority badge-low">Low</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Compliance (ID: 45)</option></select>
+            <select><option selected>Volume Exclusion Detected (ID: 610)</option></select>
+          </td>
+          <td>
+            <input type="text" value="Volume Exclusion Detected - {Device} - {Agent} - {Detail}" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Device}</span> <span class="tag-token">{Agent}</span> <span class="tag-token">{Detail}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Currently ACTIVE in production">
+              <input type="checkbox" checked />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+        <!-- 2. STORAGE ALERTS -->
+        <tr class="matrix-row">
+          <td>
+            <div class="alert-title">
+              <span>💾</span> Storage Alerts
+            </div>
+            <div class="alert-subtitle">Appliance pool >85% (Warning) or >90% (Critical)</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Tier 2 Support (ID: 29682969)</option>
+              <option>Backup - IRM (ID: 29683489)</option>
+              <option>Monitoring Testing (ID: 29683511)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-storage')">
+              <option value="critical" selected>Critical (P1)</option>
+              <option value="high">High (P2)</option>
+              <option value="medium">Medium (P3)</option>
+              <option value="low">Low (P4)</option>
+            </select>
+            <div id="badge-storage" class="badge-priority badge-critical">Critical</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Hardware (ID: 10)</option></select>
+            <select><option selected>Disk Space / Full (ID: 412)</option></select>
+          </td>
+          <td>
+            <input type="text" value="[{Company}] Storage Warning: {Device} at {Detail} Capacity" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Device}</span> <span class="tag-token">{Detail}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Monitored on dashboard; auto-ticketing OFF by default">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+        <!-- 3. LOCAL BACKUP FAILURES -->
+        <tr class="matrix-row">
+          <td>
+            <div class="alert-title">
+              <span>❌</span> Local Backup Failures
+            </div>
+            <div class="alert-subtitle">Latest local snapshot explicitly failed</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Backup (ID: 29683488)</option>
+              <option>Tier 1 Support (ID: 29682833)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-localfail')">
+              <option value="high" selected>High (P2)</option>
+              <option value="critical">Critical (P1)</option>
+              <option value="medium">Medium (P3)</option>
+              <option value="low">Low (P4)</option>
+            </select>
+            <div id="badge-localfail" class="badge-priority badge-high">High</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Backup / BCDR (ID: 30)</option></select>
+            <select><option selected>Agent Error / VSS (ID: 292)</option></select>
+          </td>
+          <td>
+            <input type="text" value="[{Company}] Backup Failure: {Agent} on {Device}" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Agent}</span> <span class="tag-token">{Device}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Monitored on dashboard; auto-ticketing OFF by default">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+        <!-- 4. OVERDUE BACKUPS -->
+        <tr class="matrix-row">
+          <td>
+            <div class="alert-title">
+              <span>⏱️</span> Overdue Backups
+            </div>
+            <div class="alert-subtitle">No successful backup in >24 hours</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Backup (ID: 29683488)</option>
+              <option>Tier 1 Support (ID: 29682833)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-overdue')">
+              <option value="medium" selected>Medium (P3)</option>
+              <option value="high">High (P2)</option>
+              <option value="critical">Critical (P1)</option>
+              <option value="low">Low (P4)</option>
+            </select>
+            <div id="badge-overdue" class="badge-priority badge-medium">Medium</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Backup / BCDR (ID: 30)</option></select>
+            <select><option selected>Schedule Missed (ID: 290)</option></select>
+          </td>
+          <td>
+            <input type="text" value="[{Company}] Backup Overdue: {Agent} ({Detail})" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Agent}</span> <span class="tag-token">{Detail}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Monitored on dashboard; auto-ticketing OFF by default">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+        <!-- 5. OFFSITE SYNC ISSUES -->
+        <tr class="matrix-row">
+          <td>
+            <div class="alert-title">
+              <span>☁️</span> Offsite Sync Issues
+            </div>
+            <div class="alert-subtitle">Cloud replication backlog >100GB or stalled >48h</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Backup - IRM (ID: 29683489)</option>
+              <option>Tier 2 Support (ID: 29682969)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-offsite')">
+              <option value="medium" selected>Medium (P3)</option>
+              <option value="high">High (P2)</option>
+              <option value="low">Low (P4)</option>
+            </select>
+            <div id="badge-offsite" class="badge-priority badge-medium">Medium</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Backup / BCDR (ID: 30)</option></select>
+            <select><option selected>Offsite Replication Delay (ID: 310)</option></select>
+          </td>
+          <td>
+            <input type="text" value="[{Company}] Cloud Replication Stalled - {Device} ({Detail})" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Device}</span> <span class="tag-token">{Detail}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Monitored on dashboard; auto-ticketing OFF by default">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+        <!-- 6. SCREENSHOT FAILURES -->
+        <tr class="matrix-row">
+          <td>
+            <div class="alert-title">
+              <span>📸</span> Screenshot Failures
+            </div>
+            <div class="alert-subtitle">Daily verification boot test failed</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Monitoring Testing (ID: 29683511)</option>
+              <option>Tier 1 Support (ID: 29682833)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-screenshot')">
+              <option value="low" selected>Low (P4)</option>
+              <option value="medium">Medium (P3)</option>
+              <option value="high">High (P2)</option>
+            </select>
+            <div id="badge-screenshot" class="badge-priority badge-low">Low</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Backup / BCDR (ID: 30)</option></select>
+            <select><option selected>Verification Testing (ID: 305)</option></select>
+          </td>
+          <td>
+            <input type="text" value="[{Company}] Screenshot Boot Failure - {Agent}" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Agent}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Monitored on dashboard; auto-ticketing OFF by default">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+        <!-- 7. OFFLINE APPLIANCES -->
+        <tr class="matrix-row">
+          <td>
+            <div class="alert-title">
+              <span>🔌</span> Offline Appliances
+            </div>
+            <div class="alert-subtitle">Appliance check-in overdue >30 minutes</div>
+          </td>
+          <td>
+            <select>
+              <option selected>Tier 2 Support (ID: 29682969)</option>
+              <option>OOH Support (ID: 29683497)</option>
+            </select>
+          </td>
+          <td>
+            <select onchange="updateBadge(this, 'badge-offline')">
+              <option value="critical" selected>Critical (P1)</option>
+              <option value="high">High (P2)</option>
+            </select>
+            <div id="badge-offline" class="badge-priority badge-critical">Critical</div>
+          </td>
+          <td>
+            <select style="margin-bottom: 0.35rem;"><option selected>Infrastructure (ID: 20)</option></select>
+            <select><option selected>Appliance Unreachable (ID: 501)</option></select>
+          </td>
+          <td>
+            <input type="text" value="[{Company}] URGENT: Appliance Offline - {Device}" />
+            <div class="tag-hint">Tokens: <span class="tag-token">{Company}</span> <span class="tag-token">{Device}</span></div>
+          </td>
+          <td style="text-align: center;">
+            <label class="switch" title="Monitored on dashboard; auto-ticketing OFF by default">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+
+    <div class="modal-footer">
+      <div style="font-size: 0.78rem; color: var(--text-muted);">
+        💡 Toggle an alert's switch <strong>ON</strong> to automate Autotask ticket creation when your team is ready.
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="bw-btn" onclick="alert('Cancel')">Cancel</button>
+        <button class="bw-btn bw-btn-primary" onclick="alert('Saved!')">
+          💾 Save Routing Configuration
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<button class="theme-switcher" onclick="toggleTheme()">
+  🌓 Switch Theme
+</button>
+
+<script>
+  function updateBadge(selectElem, badgeId) {
+    const val = selectElem.value;
+    const badge = document.getElementById(badgeId);
+    badge.className = 'badge-priority badge-' + val;
+    badge.innerText = val.charAt(0).toUpperCase() + val.slice(1);
+  }
+
+  function toggleTheme() {
+    const body = document.body;
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  }
+</script>
+
+</body>
+</html>
