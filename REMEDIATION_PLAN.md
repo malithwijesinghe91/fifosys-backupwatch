@@ -40,6 +40,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 | ID | Title | Severity | Phase | Release type | Status | Released in |
 |---|---|---|---|---|---|---|
+| BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `TODO` | |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `TODO` | |
@@ -64,7 +65,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 | Phase | Goal | Items |
 |---|---|---|
-| **0 – Foundations** | Make every later fix testable, safely releasable and correctly versioned | BW-017, BW-011, BW-012, BW-019 |
+| **0 – Foundations** | Make every later fix testable, safely releasable and correctly versioned | BW-020, BW-017, BW-011, BW-012, BW-019 |
 | **1 – Security** | Roles enforced server-side from Entra; no client trust | BW-003, BW-001, BW-002 |
 | **2 – Autotask gateway & suppression** | One choke point for all Autotask traffic that enforces rate limits, silence and blackout | BW-004, BW-006, BW-007, BW-005 |
 | **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010 |
