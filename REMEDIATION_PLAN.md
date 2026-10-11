@@ -2,7 +2,7 @@
 
 > **Owner:** Malith Wijesinghe
 > **Created:** 2026-10-10
-> **Last updated:** 2026-10-10
+> **Last updated:** 2026-10-11
 > **Baseline:** Backend v1.23.2 / Frontend v1.23.1
 > **Source of findings:** `CODE_VERIFICATION_REPORT.md` (read-only code audit, 2026-10-10)
 
@@ -41,9 +41,10 @@ This is the single source of truth for every defect found in the October 2026 co
 | ID | Title | Severity | Phase | Release type | Status | Released in |
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
+| BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `TESTING` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `TODO` | |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
-| BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `TODO` | |
+| BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
 | BW-004 | Autotask concurrency can exceed 3-thread limit | High | 2 | Backend | `TODO` | |
 | BW-005 | Datto asset fetch is unbounded `Promise.all` | Medium | 2 | Backend | `TODO` | |
 | BW-006 | Appliance silence does not block all Autotask writes | Medium | 2 | Backend | `DECISION` | |
@@ -65,7 +66,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 | Phase | Goal | Items |
 |---|---|---|
-| **0 – Foundations** | Make every later fix testable, safely releasable and correctly versioned | BW-020, BW-017, BW-011, BW-012, BW-019 |
+| **0 – Foundations** | Make every later fix testable, safely releasable and correctly versioned | BW-020, BW-022, BW-017, BW-011, BW-012, BW-019 |
 | **1 – Security** | Roles enforced server-side from Entra; no client trust | BW-003, BW-001, BW-002 |
 | **2 – Autotask gateway & suppression** | One choke point for all Autotask traffic that enforces rate limits, silence and blackout | BW-004, BW-006, BW-007, BW-005 |
 | **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010 |
@@ -89,6 +90,48 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ## Phase 0 – Foundations
+
+### BW-020 – No source control
+**Status:** `DONE`  **Severity:** High  **Release type:** Tooling (no deployment)
+
+**Finding.** `C:\Projects\FifoDash` had no `.git` folder: the only copy of the code was being edited in place, with no history or rollback.
+
+**Fix.**
+- [x] Backup zip taken (`FifoDash_backup_2026-10-10.zip`).
+- [x] `.gitignore` added (excludes `node_modules`, `dist`, `spfx-client/lib`, `*.sppkg`, `local.settings.json`, `.env*`, `fn_details*.json`, Azurite data, graphify cache, logs).
+- [x] Pre-commit secrets scan of all committed files: no keys, connection strings, passwords or tokens found.
+- [x] Git initialised; baseline commit `1fa2819` "Baseline: BackupWatch backend v1.23.2 / frontend v1.23.1 (pre-remediation)"; tag `baseline-2026-10-10`.
+- [x] Pushed to private GitHub repo `malithwijesinghe91/fifosys-backupwatch` (`main` tracks `origin/main`).
+- [x] Verified from local git metadata: 106 tracked files; none of the excluded/secret files tracked.
+- [ ] Add the repo to Claude's GitHub connection so reviews can read it directly.
+- [ ] Later: move the repo into a Fifosys GitHub/Azure DevOps organisation (history is kept).
+- [ ] `C:\Projects\BackupWatchScaffold` is not under source control – handled in BW-011.
+
+**Working rule from now on:** one branch per item (e.g. `bw-017-test-runner`), merged to `main` only after its acceptance criteria pass.
+
+**Progress log.**
+- 2026-10-10 – Repo created, baseline committed, tagged and pushed. Verified clean. `DONE`.
+
+---
+
+### BW-022 – Audit Trail button unresponsive since 1.23.2 (unbound click handler)
+**Status:** `TESTING`  **Severity:** High  **Release type:** Frontend
+
+**Finding.** In `spfx-client/src/webparts/backupWatch/components/BackupWatch.tsx`, `_openAuditLogs` was defined as a standard class method (`private _openAuditLogs(): void`) instead of an arrow function. When passed as a callback property (`onOpenAuditLogs={this._openAuditLogs}`) to `HeaderBar`, `this` was unbound when invoked, preventing the Audit Trail drawer from opening.
+
+**Fix.**
+- [x] In `spfx-client/src/webparts/backupWatch/components/BackupWatch.tsx`, convert `_openAuditLogs` to an arrow function `private _openAuditLogs = (): void =>`.
+- [x] Bump frontend version to 1.23.3 in `spfx-client/package.json`, `BackupWatchWebPart.manifest.json`, `BackupWatchScaffold/package.json`, scaffold manifest, and `BackupWatchScaffold/config/package-solution.json` (`solution.version` and `features[0].version` -> 1.23.3.0).
+- [x] Sync src to scaffold via robocopy, bundle, and package solution (`gulp bundle --ship && gulp package-solution --ship`).
+- [x] Copy `backup-watch-scaffold.sppkg` to repo root.
+- [x] Add CHANGELOG entry for `1.23.3`.
+
+**Acceptance criteria.** Clicking Audit Trail button opens the drawer without error; package version 1.23.3 built and ready for catalog deployment.
+
+**Progress log.**
+- 2026-10-11 – Hotfix applied (arrow function binding); frontend bumped to 1.23.3; package-solution rebuilt; awaiting SharePoint upload and live verification. `TESTING`.
+
+---
 
 ### BW-017 – No automated test runner
 **Status:** `TODO`  **Severity:** Medium  **Release type:** Tooling (no deployment)
@@ -183,8 +226,32 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Acceptance criteria.** An anonymous request to `/api/backupWatchTrigger` returns 401 (test with a plain GET – read-only).
 
+**Findings (2026-10-11).**
+
+| Setting | Value | Verdict |
+|---|---|---|
+| App Service authentication | Enabled | OK |
+| Restrict access | Require authentication | OK |
+| Unauthenticated requests | HTTP 401 | OK |
+| Excluded paths | None | OK |
+| Allowed token audience | `api://04de3dc9-a4e8-4bba-9957-925668bbe027` | OK |
+| Tenant requirement | Issuer tenant only (`a49c02e1-1813-4dd1-bd7f-636ec695f19e`) | OK |
+| Client application requirement | Allow requests from **any** application | **Tighten** – see BW-002 |
+| Identity requirement | Allow requests from any identity | Acceptable once BW-001 assignment is in place |
+| CORS | `https://fifosys365.sharepoint.com` only, credentials on | OK |
+| Public network access | Enabled, no restrictions | Acceptable (engineers work remotely); optional hardening later |
+| Max instance count | 100 | **Lower** – see BW-004 / D-04 |
+| Anonymous `curl` to `/api/auditlogs` and `/api/auditlogs?role=administrator` | 401 / 401 | OK – outsiders blocked |
+| Entra app roles | None | Expected – created in BW-001 |
+| Groups claim | None | Explains why the code trusts the browser's role |
+| `accessTokenAcceptedVersion` | null (v1 tokens) | Leave as is |
+| Enterprise app: Assignment required | **No**; no users/groups assigned | **Any user in the tenant, including guests, can get a token** – fixed in BW-001 |
+
+**Conclusion.** The perimeter is correctly locked to the Fifosys tenant. Exposure from BW-001 is limited to signed-in tenant accounts (members and any B2B guests) – still critical, but not public.
+
 **Progress log.**
 - 2026-10-10 – Item created.
+- 2026-10-11 – Portal and Entra review completed by Malith; anonymous access returns 401. `DONE`. Follow-ups moved to BW-001 (assignment required), BW-002 (client application restriction) and BW-004 (instance cap).
 
 ---
 
@@ -198,7 +265,7 @@ This is the single source of truth for every defect found in the October 2026 co
 **Fix.**
 - [ ] **Entra:** on the `BackupWatch-Backend-API` app registration, create App Roles `BackupWatch.Administrator`, `BackupWatch.Specialist`, `BackupWatch.Contributor`, `BackupWatch.Viewer` (allowed member type: Users/Groups).
 - [ ] **Entra:** Enterprise Applications → BackupWatch-Backend-API → Users and groups: assign the four existing security groups to the matching roles (needs Entra ID P1).
-- [ ] **Entra (optional):** set *Assignment required = Yes* so only members of the four groups can get a token.
+- [ ] **Entra:** set *Assignment required = Yes* so only members of the four groups can get a token. **Do this only after the four groups are assigned**, otherwise everyone is locked out. (Current state 2026-10-11: Assignment required = No, nobody assigned, no app roles, no groups claim.)
 - [ ] **Backend:** rewrite `getUserSecurityContext` to read roles **only** from the `roles` claim in `X-MS-CLIENT-PRINCIPAL` (set by Easy Auth after validating the token; Azure strips client-supplied copies). Highest role wins; no role = deny (or Viewer – decide during build).
 - [ ] **Backend:** delete support for `x-user-role`, `?role=`, `?user=`, `x-mock-role`, and the manual JWT decode. User email also comes from the principal only.
 - [ ] **Backend:** return the server-resolved `userRole` in the main payload.
@@ -222,6 +289,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] Removed as part of BW-001 (identity comes from `X-MS-CLIENT-PRINCIPAL` only).
 - [ ] Defence in depth: if `X-MS-CLIENT-PRINCIPAL` is absent, reject with 401 (never fall back to decoding the token).
 - [ ] Optional: validate the Bearer token with `jose` against the tenant JWKS (issuer, audience, expiry) as a second check.
+- [ ] Easy Auth → Microsoft provider → *Client application requirement*: change from "any application" to **specific client applications**, allowing only the SharePoint/SPFx client that actually calls the API. Get its App ID from **Entra → Sign-in logs → Service principal / non-interactive sign-ins, filtered to resource `BackupWatch-Backend-API`** (do not guess it – Microsoft has changed the SPFx client app over time). Change during a quiet period; revert immediately if the dashboard shows 401/403.
 
 **Acceptance criteria.** A request without an Easy Auth principal is rejected even if it carries a hand-crafted token.
 
@@ -241,7 +309,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] **Layer 1 – Gateway:** create `shared/autotaskGateway.ts`. Every Autotask HTTP call goes through it. Max 2 concurrent requests per instance (`p-limit`), retry with exponential back-off on "thread threshold" / 429 / 5xx, structured logging of every call.
 - [ ] Refactor `shared/autotask.ts`, `escalateTrigger`, `exclusions` and `backupWatchTrigger` to use only the gateway.
 - [ ] **Layer 2 – Guard rails:** ESLint `no-restricted-imports`/custom rule plus a unit test that fails if any file other than the gateway contains the Autotask base URL or calls axios for Autotask.
-- [ ] **Layer 3 – Multiple instances (D-04):** set Function App maximum instance count to 1–2. Document it in `CLAUDE.md`.
+- [ ] **Layer 3 – Multiple instances (D-04):** lower Function App maximum instance count (currently **100**) to the smallest value the portal allows, ideally 1–2. Flex Consumption has historically enforced a minimum (e.g. 40); if it won't go low enough, use the Storage Queue option for Autotask writes instead. Document it in `CLAUDE.md`.
 - [ ] **Later (optional):** Azure Storage Queue for all Autotask writes, consumed by one function with concurrency 1; poison queue alerting.
 - [ ] Tests: simulate 10 simultaneous auto-heals; assert peak concurrency ≤ 2.
 
@@ -378,9 +446,10 @@ This is the single source of truth for every defect found in the October 2026 co
 **Status:** `TODO`  **Severity:** Medium  **Release type:** Backend
 
 **Finding.** The standalone `adminDiagnostics` and `adminRouting` functions are never called (the UI uses `backupWatchTrigger?action=…`). `adminDiagnostics` checks `AT_USER`/`AT_SECRET` instead of `AUTOTASK_*`. ~600 lines of admin handlers live inside `backupWatchTrigger/index.ts` (lines ~1175-1770). App settings are read ad hoc in 20+ places.
+**Confirmed live (2026-10-10):** Application Insights "Host Startup Errors" shows `The 'adminRouting' function is in error: The specified route conflicts with one or more built in routes` (same for `adminDiagnostics`) on every host start (e.g. 16:58 and 17:28). Routes beginning with `admin` are reserved by the Azure Functions host (`/admin/...`), so these two functions never load. No user impact (the UI never calls them), but it is log noise on every cold start and hides real startup errors.
 
 **Fix.**
-- [ ] Delete the `adminDiagnostics` and `adminRouting` function folders.
+- [ ] Delete the `adminDiagnostics` and `adminRouting` function folders (do **not** rename them to another `admin*` route). After the next backend publish, confirm "Host Startup Errors" in Application Insights is empty.
 - [ ] Move admin handlers from `backupWatchTrigger/index.ts` into `shared/admin/*.ts` modules (same routes, same behaviour).
 - [ ] Create `shared/config.ts`: reads and validates every app setting once (zod schema), exposes typed values; logs a clear error for missing required settings. All code uses it instead of `process.env`.
 - [ ] Admin diagnostics reports settings status from `shared/config.ts`.
@@ -444,4 +513,4 @@ This is the single source of truth for every defect found in the October 2026 co
 
 | Date | Version | Component | Items | Notes |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-10 | baseline-2026-10-10 | Repo | BW-020 | Source control baseline (backend 1.23.2 / frontend 1.23.1) |

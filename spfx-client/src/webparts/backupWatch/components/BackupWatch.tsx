@@ -600,10 +600,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     }
   };
 
-  private _openAuditLogs(): void {
+  private _openAuditLogs = (): void => {
     this.setState({ isAuditLogsOpen: true });
     this._fetchAuditLogs();
-  }
+  };
 
   private _getAdminActionUrl(action: string): string {
     const url = this.props.backendApiUrl || '';
