@@ -41,7 +41,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | ID | Title | Severity | Phase | Release type | Status | Released in |
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
-| BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `TESTING` | |
+| BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `TODO` | |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
@@ -115,7 +115,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-022 – Audit Trail button unresponsive since 1.23.2 (unbound click handler)
-**Status:** `TESTING`  **Severity:** High  **Release type:** Frontend
+**Status:** `DONE`  **Severity:** High  **Release type:** Frontend
 
 **Finding.** In `spfx-client/src/webparts/backupWatch/components/BackupWatch.tsx`, `_openAuditLogs` was defined as a standard class method (`private _openAuditLogs(): void`) instead of an arrow function. When passed as a callback property (`onOpenAuditLogs={this._openAuditLogs}`) to `HeaderBar`, `this` was unbound when invoked, preventing the Audit Trail drawer from opening.
 
@@ -130,6 +130,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-11 – Hotfix applied (arrow function binding); frontend bumped to 1.23.3; package-solution rebuilt; awaiting SharePoint upload and live verification. `TESTING`.
+- 2026-10-11 – Uploaded to App Catalog and live (confirmed by Malith). `DONE`. Branch `bw-022-audit-trail-hotfix` to be merged into `main`.
 
 ---
 
@@ -277,6 +278,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created.
+- 2026-10-11 – Config step done early: Enterprise app *Assignment required* set to **Yes** (Malith). Code fix still `TODO`.
 
 ---
 
@@ -514,3 +516,4 @@ This is the single source of truth for every defect found in the October 2026 co
 | Date | Version | Component | Items | Notes |
 |---|---|---|---|---|
 | 2026-10-10 | baseline-2026-10-10 | Repo | BW-020 | Source control baseline (backend 1.23.2 / frontend 1.23.1) |
+| 2026-10-11 | 1.23.3 | Frontend | BW-022 | Audit Trail hotfix |
