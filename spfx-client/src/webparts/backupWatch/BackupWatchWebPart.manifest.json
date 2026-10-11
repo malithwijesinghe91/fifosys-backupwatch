@@ -3,7 +3,7 @@
   "id": "ea8e78ef-4483-45f5-9363-6da03db20150",
   "alias": "BackupWatchWebPart",
   "componentType": "WebPart",
-  "version": "1.23.1",
+  "version": "1.23.3",
   "manifestVersion": 2,
   "requiresCustomScript": false,
   "supportedHosts": ["SharePointWebPart", "SharePointFullPageApp", "TeamsTab"],
