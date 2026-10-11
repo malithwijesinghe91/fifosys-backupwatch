@@ -291,13 +291,13 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] Removed as part of BW-001 (identity comes from `X-MS-CLIENT-PRINCIPAL` only).
 - [ ] Defence in depth: if `X-MS-CLIENT-PRINCIPAL` is absent, reject with 401 (never fall back to decoding the token).
 - [ ] Optional: validate the Bearer token with `jose` against the tenant JWKS (issuer, audience, expiry) as a second check.
-- [ ] Easy Auth → Microsoft provider → *Client application requirement*: change from "any application" to **specific client applications**, allowing only the SharePoint/SPFx client that actually calls the API. Get its App ID from **Entra → Sign-in logs → Service principal / non-interactive sign-ins, filtered to resource `BackupWatch-Backend-API`** (do not guess it – Microsoft has changed the SPFx client app over time). Change during a quiet period; revert immediately if the dashboard shows 401/403.
+- [x] Easy Auth → Microsoft provider → *Client application requirement*: change from "any application" to **specific client applications**, allowing only the SharePoint/SPFx client that actually calls the API. Get its App ID from **Entra → Sign-in logs → Service principal / non-interactive sign-ins, filtered to resource `BackupWatch-Backend-API`** (do not guess it – Microsoft has changed the SPFx client app over time). Change during a quiet period; revert immediately if the dashboard shows 401/403.
 
 **Acceptance criteria.** A request without an Easy Auth principal is rejected even if it carries a hand-crafted token.
 
 **Progress log.**
 - 2026-10-10 – Item created.
-
+- 2026-10-11 – Config step done early: Easy Auth *Client application requirement* restricted to SharePoint Online Web Client Extensibility (`08e18876-6177-487e-b8b5-cf950c1e598c`) (Malith). Code items still `TODO`.
 ---
 
 ## Phase 2 – Autotask gateway & suppression
@@ -311,7 +311,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] **Layer 1 – Gateway:** create `shared/autotaskGateway.ts`. Every Autotask HTTP call goes through it. Max 2 concurrent requests per instance (`p-limit`), retry with exponential back-off on "thread threshold" / 429 / 5xx, structured logging of every call.
 - [ ] Refactor `shared/autotask.ts`, `escalateTrigger`, `exclusions` and `backupWatchTrigger` to use only the gateway.
 - [ ] **Layer 2 – Guard rails:** ESLint `no-restricted-imports`/custom rule plus a unit test that fails if any file other than the gateway contains the Autotask base URL or calls axios for Autotask.
-- [ ] **Layer 3 – Multiple instances (D-04):** lower Function App maximum instance count (currently **100**) to the smallest value the portal allows, ideally 1–2. Flex Consumption has historically enforced a minimum (e.g. 40); if it won't go low enough, use the Storage Queue option for Autotask writes instead. Document it in `CLAUDE.md`.
+- [x] **Layer 3 – Multiple instances (D-04):** lower Function App maximum instance count (currently **100**) to the smallest value the portal allows, ideally 1–2. Flex Consumption has historically enforced a minimum (e.g. 40); if it won't go low enough, use the Storage Queue option for Autotask writes instead. Document it in `CLAUDE.md`.
 - [ ] **Later (optional):** Azure Storage Queue for all Autotask writes, consumed by one function with concurrency 1; poison queue alerting.
 - [ ] Tests: simulate 10 simultaneous auto-heals; assert peak concurrency ≤ 2.
 
@@ -319,7 +319,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created.
-
+- 2026-10-11 – Function App maximum instance count lowered from 100 to **2** (Malith). Layers 1–2 (gateway + guard rails) still `TODO`.
 ---
 
 ### BW-005 – Datto asset fetch is unbounded
