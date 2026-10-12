@@ -35,10 +35,12 @@ We will compile the TypeScript code and deploy it directly to the Flex Consumpti
    ```
    *This generates the production-ready JavaScript code in the `/dist` directory.*
 
-5. Publish the Function App to Azure using the Core Tools:
+5. Publish the Function App to Azure using the Core Tools (run step 4 `npm run build` first):
    ```powershell
-   func azure functionapp publish backupwatch-api
+   npm run build
+   func azure functionapp publish backupwatch-api --build local
    ```
+   *`--build local` is required: `.funcignore` excludes the TypeScript sources and `tsconfig.json`, so a remote build cannot compile the app. Remote build is not supported for this repo.*
    *(Replace `backupwatch-api` with the exact name of your live Function App if it differs).*
 
 6. **Verify the Deployment**:

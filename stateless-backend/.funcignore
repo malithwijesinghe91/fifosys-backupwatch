@@ -1,0 +1,29 @@
+# Files NOT uploaded by `func azure functionapp publish` (gitignore syntax).
+# Must never exclude: dist/, node_modules/, host.json, package.json, */function.json.
+
+# Tests, tooling and scripts that read or write live data
+tests/
+scratch/
+tools/
+coverage/
+jest.config.js
+dist/tests/
+
+# TypeScript sources and build metadata (runtime loads dist/**/*.js)
+*.ts
+*.js.map
+tsconfig.json
+
+# Docs
+*.md
+
+# Secrets and local environment
+local.settings.json
+.env
+.env.*
+__azurite_db_*
+
+# Editor, VCS and logs
+.vscode/
+.git*
+*.log

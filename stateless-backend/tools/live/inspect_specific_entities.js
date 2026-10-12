@@ -1,13 +1,11 @@
+// LIVE SCRIPT - reads production Table Storage (read-only). Requires --confirm-live. See README.md.
+const { requireLiveConfirmation } = require("./liveGuard");
+const connStr = requireLiveConfirmation("inspect_specific_entities.js");
+
 const { TableClient } = require("@azure/data-tables");
-const fs = require("fs");
-const path = require("path");
 
 async function inspectEntities() {
     try {
-        const localSettingsPath = path.join(__dirname, "../local.settings.json");
-        const settings = JSON.parse(fs.readFileSync(localSettingsPath, "utf8"));
-        const connStr = settings.Values.AzureWebJobsStorage || settings.Values.DEPLOYMENT_STORAGE_CONNECTION_STRING;
-
         console.log("Connecting to Azure Table Storage (read-only inspection)...");
 
         // 1. Inspect Exclusions table

@@ -60,7 +60,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-016 | Documentation out of date / contradictory | Low | 4 | Docs | `TODO` | |
 | BW-017 | No automated test runner | Medium | 0 | Tooling | `DONE` | |
 | BW-018 | Auto-ticket toggles for 6 alert types do nothing | Medium | 4 | Backend + frontend | `DECISION` | |
-| BW-019 | Scratch scripts can write to live Table Storage | Medium | 0 | Tooling | `TODO` | |
+| BW-019 | Scratch scripts can write to live Table Storage | Medium | 0 | Tooling | `DONE` | |
 
 ### Phases
 
@@ -152,7 +152,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-10 – Item created.
 - 2026-10-12 – Reviewed and corrected the first draft (its guard only replaced `global.axios`, which production code never uses, and five test files tested copies of the logic instead of production code). Final state: Jest + ts-jest; `tests/setup.ts` blocks all network access at the socket layer (http/https/net/tls/fetch) and strips live Autotask/Datto/Storage credentials, proven by `networkGuard.test.ts` (fails when the guard is disabled); mocks for Autotask, Datto, Table Storage and Functions context. Tests drive real code: `shared/volumeUtils`, `shared/auth`, `shared/autotask` (getTicketEntityFields lock/cache), the `exclusions` HTTP handler (mandatory ticket, ticket retention, twin cleanup) and `backupWatchTimerTrigger` (exact BW-021 log line). **`npm test`: 8 suites, 74 tests passed, 0 failed; 6 of the 74 are `test.failing` known bugs (3 × BW-009 Linux root `/`, 3 × BW-001 client-supplied role).** Removing `.toUpperCase()` from `normalizeVolumeName` fails 10 tests in 3 suites; restored, `shared/volumeUtils.ts` identical to main. `tsconfig.json` now excludes `tests/`, so `npm run build` emits no test files to `dist/`. No production code changed. `DONE`.
   - Gap: `scratch/test_exclusion_lifecycle_sync.js` not converted – the reconciliation sweep lives inside `runPipeline` (`backupWatchTrigger/index.ts`) and can't be unit-tested without extracting it; cover when that code is refactored (BW-010).
-  - Deploy finding (config read only, not run): nothing in the repo selects a build mode (no `--build` flag in docs, no `SCM_DO_BUILD_DURING_DEPLOYMENT`/`ENABLE_ORYX_BUILD` setting), so `func azure functionapp publish backupwatch-api` uses Core Tools' default for Node – a **local build** (`npm install` + `npm run build` on the PC, then the folder is zipped and uploaded; `function.json` loads `../dist/*`). There is **no `.funcignore`**, so the package also ships `tests/`, `scratch/` (including `delete_ghost_entity.js`), Jest dev dependencies and any stale `dist/` files, since `build` is plain `tsc` without a clean. Recommend adding `.funcignore` and an explicit `--build local` (fold into BW-011 release script).
+  - Deploy finding (config read only, not run): nothing in the repo selects a build mode (no `--build` flag in docs, no `SCM_DO_BUILD_DURING_DEPLOYMENT`/`ENABLE_ORYX_BUILD` setting), so `func azure functionapp publish backupwatch-api` uses whatever Core Tools picks by default (assumed local build; *corrected in BW-019: the default is not stated in `--help` and is unconfirmed*). `function.json` loads `../dist/*`. There is **no `.funcignore`**, so the package also ships `tests/`, `scratch/` (including `delete_ghost_entity.js`), Jest dev dependencies and any stale `dist/` files, since `build` is plain `tsc` without a clean. Recommend adding `.funcignore` and an explicit `--build local` (fold into BW-011 release script).
 
 ---
 
@@ -171,6 +171,9 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] Backend returns `appVersion` **and** `expectedFrontendVersion` in the main payload.
 - [ ] Footer shows `UI v<x> · Engine v<y>`; show a small warning if the deployed web part version is older than `expectedFrontendVersion`.
 - [ ] Update `CLAUDE.md` section 4 and `.agents/AGENTS.md` section 3 to use the release script.
+- [ ] Release script runs `npm prune --omit=dev` (or equivalent) before publish (found in BW-019: jest/ts-jest/typescript currently ship in `node_modules`).
+- [ ] Clean `dist/` before build (`build` is plain `tsc`, so stale files survive).
+- [x] Publish with explicit build mode – documented 2026-10-12 (BW-019) in `CLAUDE.md` §4, `.agents/AGENTS.md` §3 and `deployment_guide.md` Part 1 step 5: `npm run build` then `func azure functionapp publish backupwatch-api --build local`. **The release script must use `--build local`** (`.funcignore` excludes `*.ts`/`tsconfig.json`, so a remote build would fail).
 
 **Acceptance criteria.** Running the release script for each component produces consistent versions everywhere; manually editing one file makes the build fail; the footer shows both versions.
 
@@ -198,20 +201,24 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-019 – Scratch scripts can write to live Table Storage
-**Status:** `TODO`  **Severity:** Medium  **Release type:** Tooling
+**Status:** `DONE`  **Severity:** Medium  **Release type:** Tooling
 
 **Finding.** `stateless-backend/scratch/delete_ghost_entity.js` deletes a live Table Storage row and writes an audit entry using `local.settings.json`. `check_live_status.js` and `inspect_specific_entities.js` read live data. Easy to run by accident; breaks the production-safety rule.
 
 **Fix.**
-- [ ] Move live-touching scripts to `tools/live/` with a header comment marking them as live.
-- [ ] Add a guard: script refuses to run unless `--confirm-live` is passed and prints the target storage account first.
-- [ ] Delete one-off scripts that have already done their job (e.g. the specific ghost-entity delete).
-- [ ] Confirm `local.settings.json` is excluded from source control.
+- [x] Move live-touching scripts to `tools/live/` with a header comment marking them as live.
+- [x] Add a guard: script refuses to run unless `--confirm-live` is passed and prints the target storage account first.
+- [x] Delete one-off scripts that have already done their job (e.g. the specific ghost-entity delete).
+- [x] Confirm `local.settings.json` is excluded from source control.
+- [x] Add `stateless-backend/.funcignore` so tests, scratch, tools, sources and secrets are not deployed.
 
 **Acceptance criteria.** No script can write to live storage without an explicit flag; the remaining scratch scripts are mock-only.
 
 **Progress log.**
 - 2026-10-10 – Item created.
+- 2026-10-12 – `check_live_status.js` and `inspect_specific_entities.js` moved (git mv) to `stateless-backend/tools/live/`; both load `liveGuard.js` first, which exits unless `--confirm-live` is passed and then prints only the storage AccountName (never key/connection string). Code review: both only call `getEntity`/`listEntities` – read-only. Guard tested with fake connection strings only; no live script was run. Added `tools/live/README.md`. Added `stateless-backend/.funcignore`; dry run (git ls-files with `.funcignore` as the only exclude file) shows only `host.json`, `package*.json`, the 7 `*/function.json`, `dist/**/*.js` and `node_modules/` remain, and every `function.json` `scriptFile` resolves to an included `dist/<name>/index.js`. `npm test`: 8 suites, 74 passed. `npm run build`: OK. No production code changed. With owner approval, deleted `scratch/delete_ghost_entity.js` (finished one-off live delete) and the 7 `scratch/test_*.js` superseded by Jest (still in git history); kept `scratch/test_exclusion_lifecycle_sync.js` until BW-008 adds Jest coverage for the expiry sweep.
+  - Local build pinned: deploy docs now use `npm run build` + `func azure functionapp publish backupwatch-api --build local`; remote build is unsupported because `.funcignore` excludes TypeScript sources.
+  - Build-mode finding (`func azure functionapp publish --help`, Core Tools 4.13.0): `--build remote|local` exists but the help does not state the default, and nothing in the repo or `local.settings.json` pins it, so the mode is chosen by Core Tools at publish time from the plan/runtime. Either way `node_modules/` is uploaded as it is locally (with `.funcignore` keeping it), so **devDependencies (jest, ts-jest, typescript, @types/jest) are currently deployed**. To be fixed in BW-011.
 
 ---
 
@@ -409,6 +416,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] Confirm the order and the `null` handling in code.
 - [ ] If confirmed: create the follow-up ticket first; only delete/replace the old exclusion when the new ticket succeeds. If suppressed, keep the old record and log "Re-raise deferred (blackout/auto-ticket off)".
 - [ ] Tests: closed ticket + blackout on → exclusion retained, no ticket; blackout off → new ticket + replaced record.
+- [ ] Add Jest coverage for the exclusion expiry sweep, then delete `scratch/test_exclusion_lifecycle_sync.js`.
 
 **Acceptance criteria.** No path leaves an unprotected volume without either a record or a ticket.
 
