@@ -94,6 +94,9 @@ func azure functionapp publish backupwatch-api --build local
 > **Note on Windows**: PowerShell execution policies may restrict `gulp.ps1`. Use direct `node` invocation via `BackupWatchScaffold`:
 
 ```powershell
+# 0. Remove old build output so stale bundles are not packed into the .sppkg
+Remove-Item "c:\Projects\BackupWatchScaffold\release" -Recurse -Force -ErrorAction SilentlyContinue
+
 # 1. Sync spfx-client/src to BackupWatchScaffold/src
 robocopy "c:\Projects\FifoDash\spfx-client\src" "c:\Projects\BackupWatchScaffold\src" /E /NFL /NDL /NJH /NJS /NC /NS /NP
 

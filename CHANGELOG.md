@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `?role=` / `?user=` query parameters and `x-user-role` / `x-user-email` headers from every request.
   - Removed the Microsoft Graph `/me/transitiveMemberOf` role lookup (it was only used to work out the role).
   - Operator badge tooltip shows the server-resolved sign-in email.
+  - Package no longer requests Microsoft Graph `GroupMember.Read.All`, and contains only the current bundle (stale bundles from old builds removed).
 
 ## [1.24.0] - 2026-10-12
 
