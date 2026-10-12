@@ -423,7 +423,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ## Phase 3 – Correctness
 
 ### BW-009 – Linux root volume `/` normalised to empty string
-**Status:** `TODO`  **Severity:** High if any Linux agents are protected; otherwise none today  **Release type:** Backend
+**Status:** `TODO` (on hold – owner, 2026-10-12)  **Severity:** High if any Linux agents are protected; otherwise none today  **Release type:** Backend
 
 **Finding.** `shared/volumeUtils.ts:26-36` strips trailing slashes, so `"/"` becomes `""`; `backupWatchTrigger/index.ts:934-935` then filters it out. Linux root volumes vanish from the dashboard and an unprotected `/` never raises a compliance ticket.
 
@@ -438,6 +438,7 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-10 – Item created.
 - 2026-10-12 – Evidence from live dashboard data (Malith): Linux agents `LONITLCENTOS001`, `LONITLAPP008`, `LON-OC-P01` and `m002ukpxt` show `/BOOT` and `/HOME` volumes but **no `/` root volume** – consistent with `/` being normalised to `""` and filtered out. Linux agents are protected, so the High severity applies. Raw Datto payload naming for `/` still to be confirmed (first fix step).
+- 2026-10-12 – **On hold** at the owner's request (skip for now). Not started; no read-only Datto check made. Resume when the owner says so.
 
 ---
 
