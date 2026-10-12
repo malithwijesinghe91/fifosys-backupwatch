@@ -52,7 +52,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-008 | Expired exclusion deleted before follow-up ticket is confirmed | Medium (to verify) | 3 | Backend | `TODO` | |
 | BW-009 | Linux root volume `/` normalised to empty string | High (if Linux agents exist) | 3 | Backend | `TODO` | |
 | BW-010 | Settings handling: dead admin functions, `AT_USER` mismatch, no start-up validation | Medium | 3 | Backend | `TODO` | |
-| BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `TESTING` | |
+| BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `DONE` | Backend 1.24.1 + Web part 1.25.1 |
 | BW-012 | Is the v1.23.2 frontend refactor actually deployed? | Medium | 0 | Verification only | `DONE` | n/a (Frontend 1.23.4 confirmed live) |
 | BW-013 | Only Autotask status 5 treated as closed | Low/Medium | 3 | Backend | `DECISION` | |
 | BW-014 | Silent `catch {}` blocks hide failures | Low | 4 | Backend | `TODO` | |
@@ -83,7 +83,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | D-01 (BW-006) | When an appliance/agent is silenced and a tracked issue clears, should the auto-heal note still be posted to Autotask? | **No.** No Autotask writes of any kind while silenced. The first scan after un-muting posts the auto-heal note. Suppressed actions are written to the audit log. | | |
 | D-02 (BW-007) | During a global blackout, can engineers still escalate manually? | **Soft block.** Warning shown; Specialist/Administrator may override with a mandatory reason (audited); Contributor blocked. | | |
 | D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | **Separate versions** (final). Briefly decided as shared (1.24.1 was cut that way), then changed after reviewing the display: each half has its own number in `versions.json`, only the half that changed is bumped and deployed; versions shown in the footer only (`UI v… · Engine v…`), none in the header. | 2026-10-12 |
-| D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | | |
+| D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | *Not formally decided.* "Now" part partly applied: max instances lowered 100 → 2 (Malith, 2026-10-11); gateway still to build (BW-004). | |
 | D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | | |
 | D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | | |
 
@@ -157,7 +157,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-011 – Versions drift between backend, frontend and scaffold
-**Status:** `TESTING` (backend 1.24.1 and web part 1.25.0 live; web part 1.25.1 built, not uploaded)  **Severity:** Medium  **Release type:** Tooling + web part
+**Status:** `DONE` (backend 1.24.1 + web part 1.25.1 live, 2026-10-12)  **Severity:** Medium  **Release type:** Tooling + web part
 
 **Finding.** `version.ts` and backend `package.json` = 1.23.2; `spfx-client/package.json`, web part manifest and scaffold `package.json` = 1.23.1; `package-solution.json` solution = 1.23.1.0 but `features[0].version` = 1.22.1.0. Versions are typed by hand in up to 7 places.
 
@@ -193,6 +193,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – PR #7 merged (`57cbf93`). **Web part 1.25.0 uploaded** to the App Catalog (Malith); header showed `V1.25.0`. Tags `backend-1.24.1` (`cf94a75`) and `frontend-1.25.0` (`57cbf93`) pushed.
 - 2026-10-12 – Owner chose to show **no version in the header** (option 3); both versions stay in the footer only. Released as **web part 1.25.1** (`release -- web patch`); backend unchanged at 1.24.1, no Azure deploy.
   - To finish: merge; upload the 1.25.1 `.sppkg`; check the header has no version and the footer shows `UI v1.25.1 · Engine v1.24.1`; tag `frontend-1.25.1`. Then `DONE`.
+- 2026-10-12 – PR #8 merged (`8ce87c9`). **Web part 1.25.1 uploaded** to the App Catalog (Malith). Tag `frontend-1.25.1` pushed. Live: backend 1.24.1, web part 1.25.1. `DONE`.
 
 ---
 
@@ -245,11 +246,11 @@ This is the single source of truth for every defect found in the October 2026 co
 **Finding.** All functions are `authLevel: anonymous`; protection depends entirely on Easy Auth. This can't be confirmed from code.
 
 **Fix.**
-- [ ] Function App → Authentication: confirm *Require authentication* and *HTTP 401* for unauthenticated requests.
-- [ ] Confirm issuer is the fifosys365 tenant and allowed audience is `api://04de3dc9-a4e8-4bba-9957-925668bbe027`.
-- [ ] Confirm CORS lists only the Fifosys SharePoint origin (no `*`).
-- [ ] Optional hardening: Networking → Access restrictions to Fifosys ranges, or a private endpoint.
-- [ ] Record findings in the progress log.
+- [x] Function App → Authentication: confirm *Require authentication* and *HTTP 401* for unauthenticated requests.
+- [x] Confirm issuer is the fifosys365 tenant and allowed audience is `api://04de3dc9-a4e8-4bba-9957-925668bbe027`.
+- [x] Confirm CORS lists only the Fifosys SharePoint origin (no `*`).
+- [ ] Optional hardening: Networking → Access restrictions to Fifosys ranges, or a private endpoint. *(Not done – public access accepted for remote engineers; see findings.)*
+- [x] Record findings in the progress log. *(Findings table below.)*
 
 **Acceptance criteria.** An anonymous request to `/api/backupWatchTrigger` returns 401 (test with a plain GET – read-only).
 
@@ -324,8 +325,8 @@ This is the single source of truth for every defect found in the October 2026 co
 **Finding.** `shared/auth.ts:114-155` base64-decodes the Bearer token without signature, issuer, audience or expiry checks. Safe only while Easy Auth sits in front of every function.
 
 **Fix.**
-- [ ] Removed as part of BW-001 (identity comes from `X-MS-CLIENT-PRINCIPAL` only).
-- [ ] Defence in depth: if `X-MS-CLIENT-PRINCIPAL` is absent, reject with 401 (never fall back to decoding the token).
+- [x] Removed as part of BW-001 (identity comes from `X-MS-CLIENT-PRINCIPAL` only). *(Backend 1.24.0: manual JWT decode deleted.)*
+- [x] Defence in depth: if `X-MS-CLIENT-PRINCIPAL` is absent, reject with 401 (never fall back to decoding the token). *(Backend 1.24.0: `requireAuthenticatedUser` on every HTTP function; covered by `endpointAuthorization.test.ts`.)*
 - [ ] Optional: validate the Bearer token with `jose` against the tenant JWKS (issuer, audience, expiry) as a second check.
 - [x] Easy Auth → Microsoft provider → *Client application requirement*: change from "any application" to **specific client applications**, allowing only the SharePoint/SPFx client that actually calls the API. Get its App ID from **Entra → Sign-in logs → Service principal / non-interactive sign-ins, filtered to resource `BackupWatch-Backend-API`** (do not guess it – Microsoft has changed the SPFx client app over time). Change during a quiet period; revert immediately if the dashboard shows 401/403.
 
@@ -334,6 +335,7 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-10 – Item created.
 - 2026-10-11 – Config step done early: Easy Auth *Client application requirement* restricted to SharePoint Online Web Client Extensibility (`08e18876-6177-487e-b8b5-cf950c1e598c`) (Malith). Code items still `TODO`.
+- 2026-10-12 – First two code steps delivered by BW-001 (backend 1.24.0, live): no JWT decode, 401 without an Easy Auth principal. Only the optional `jose` token validation remains – decide whether to do it or close as `DONE`.
 ---
 
 ## Phase 2 – Autotask gateway & suppression
@@ -556,3 +558,8 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-10 | baseline-2026-10-10 | Repo | BW-020 | Source control baseline (backend 1.23.2 / frontend 1.23.1) |
 | 2026-10-11 | 1.23.3 | Frontend | BW-022 | Audit Trail hotfix |
 | 2026-10-12 | 1.24.0 | Backend | BW-001 | Live (roles server-side from Entra App Roles). Rollback tag `backend-1.23.2-live` |
+| 2026-10-12 | 1.23.4 | Web part | BW-001, BW-012 | Server-resolved role; no role/identity sent; Graph `GroupMember.Read.All` dropped. Tag `frontend-1.23.4` |
+| 2026-10-12 | 1.24.1 | Backend | BW-011 | Release tooling; first use of the script (shared version, later changed). Dev dependencies no longer deployed. Tag `backend-1.24.1` |
+| 2026-10-12 | 1.24.1 | Web part | BW-011 | Built, **never uploaded** (superseded by 1.25.0) |
+| 2026-10-12 | 1.25.0 | Web part | BW-011 | Separate versions (D-03 final); header showed web part version. Tag `frontend-1.25.0` |
+| 2026-10-12 | 1.25.1 | Web part | BW-011 | No version in header; footer `UI v… · Engine v…`. Tag `frontend-1.25.1` |
