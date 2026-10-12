@@ -264,7 +264,49 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     return issues;
   }
 
+  /** Change freeze (BW-007 / D-02): the global blackout is on and has not yet expired. */
+  private _isChangeFreezeActive(): boolean {
+    const mm = this.state.globalMaintenanceMode;
+    if (!mm || !mm.isActive) return false;
+    return !mm.expiresAt || new Date(mm.expiresAt).getTime() > Date.now();
+  }
+
+  private _changeFreezeMessage(): string {
+    const mm = this.state.globalMaintenanceMode || {};
+    const until = mm.expiresAt ? ` until ${new Date(mm.expiresAt).toLocaleString('en-GB')}` : '';
+    return `Change freeze active${until}. Only Administrators can make changes.`;
+  }
+
+  /** True (after telling the user) when a non-Administrator tries to start a change during a freeze. */
+  private _blockedByChangeFreeze(): boolean {
+    if (this._isChangeFreezeActive() && this.state.userSecurityLevel !== 'Administrator') {
+      alert(this._changeFreezeMessage());
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Fields to send with a change: {} when there is no freeze. During a freeze an Administrator is
+   * asked for the override reason (recorded in the audit trail). null means stop.
+   */
+  private _getChangeFreezeOverride(actionLabel: string): { overrideBlackout?: boolean; overrideReason?: string } | null {
+    if (!this._isChangeFreezeActive()) return {};
+    if (this.state.userSecurityLevel !== 'Administrator') {
+      alert(this._changeFreezeMessage());
+      return null;
+    }
+    const reason = prompt(`A change freeze is active. Enter the reason for this change (${actionLabel}). It will be recorded in the audit trail.`);
+    if (reason === null) return null;
+    if (!reason.trim()) {
+      alert('A reason is required to make a change during a change freeze.');
+      return null;
+    }
+    return { overrideBlackout: true, overrideReason: reason.trim() };
+  }
+
   private _openEscalateModal = (device: IDattoDevice): void => {
+    if (this._blockedByChangeFreeze()) return;
     const issues = this._getEscalationIssues(device);
     if (issues.length === 0) {
       alert("No escalatable failures found for this appliance (all issues are either healthy, muted/excluded, or already escalated).");
@@ -293,6 +335,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       alert("Please select at least one issue to escalate.");
       return;
     }
+
+    const freezeOverride = this._getChangeFreezeOverride(`escalate ${selectedIssues.length} issue(s) on ${escalateDevice.deviceName}`);
+    if (!freezeOverride) return;
 
     this.setState({ actionLoading: true });
 
@@ -327,7 +372,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         totalStorageGB: escalateDevice.totalStorageGB,
         storageUsedPercent: escalateDevice.storageUsedPercent,
         lastCheckin: escalateDevice.lastCheckin,
-        model: escalateDevice.model
+        model: escalateDevice.model,
+        ...freezeOverride
       };
 
       if (isLocal) {
@@ -376,7 +422,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   }
 
   private _escalateSingleIssue = (device: IDattoDevice, agentName: string, issueType: 'Backup' | 'Screenshot', description: string, lastSeenMessage: string): void => {
+    if (this._blockedByChangeFreeze()) return;
     if (!confirm(`Are you sure you want to escalate this ${issueType} issue for agent ${agentName}?`)) return;
+    const freezeOverride = this._getChangeFreezeOverride(`escalate ${issueType} issue for ${agentName}`);
+    if (!freezeOverride) return;
 
     this.setState({ actionLoading: true });
 
@@ -407,7 +456,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       totalStorageGB: device.totalStorageGB,
       storageUsedPercent: device.storageUsedPercent,
       lastCheckin: device.lastCheckin,
-      model: device.model
+      model: device.model,
+      ...freezeOverride
     };
 
     const runEscalate = (client?: any) => {
@@ -1136,6 +1186,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     if (isPermanent && (!muteReason || !muteReason.trim())) return;
     if (!isEmergency && (!muteTicketNumber || !muteTicketNumber.trim())) return;
 
+    const freezeOverride = this._getChangeFreezeOverride(`silence/exclude ${muteType.toLowerCase()} on ${mutingDevice.deviceName}`);
+    if (!freezeOverride) return;
+
     this.setState({ actionLoading: true });
     
     let target = mutingDevice.deviceName;
@@ -1178,7 +1231,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       isPermanent: isPermanent,
       durationDays: durationDays,
       ticketNumber: resolvedTicketNumber,
-      isEmergencyOverride: isEmergency
+      isEmergencyOverride: isEmergency,
+      ...freezeOverride
     };
 
     const isLocal = this._isLocalDev();
@@ -1244,15 +1298,21 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   }
 
   private _removeExclusion = (id: string): void => {
+    if (this._blockedByChangeFreeze()) return;
     if (!confirm('Are you sure you want to remove this alert exclusion?')) return;
+    const freezeOverride = this._getChangeFreezeOverride('remove a silence/exclusion');
+    if (!freezeOverride) return;
 
     this.setState({ actionLoading: true });
     const isLocal = this._isLocalDev();
     const exclusionsUrl = this._getExclusionsUrl() + `?id=${encodeURIComponent(id)}`;
-    const reqHeaders = {};
+    // The change-freeze override (Administrators only) travels in the request body.
+    const hasOverride = Object.keys(freezeOverride).length > 0;
+    const reqHeaders: Record<string, string> = hasOverride ? { 'Content-Type': 'application/json' } : {};
+    const reqBody = hasOverride ? JSON.stringify(freezeOverride) : undefined;
 
     if (isLocal) {
-      fetch(exclusionsUrl, { method: 'DELETE', headers: reqHeaders })
+      fetch(exclusionsUrl, { method: 'DELETE', headers: reqHeaders, body: reqBody })
         .then(res => {
           if (!res.ok) {
             return res.json().then(errData => {
@@ -1275,7 +1335,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .then((client: AadHttpClient) => {
           client.fetch(exclusionsUrl, AadHttpClient.configurations.v1, {
             method: 'DELETE',
-            headers: reqHeaders
+            headers: reqHeaders,
+            body: reqBody
           })
             .then(res => {
               if (res.status >= 400) {
@@ -1303,6 +1364,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
   // DISCRETE 1: Open Silence Appliance Modal
   private _openSilenceApplianceModal = (device: IDattoDevice): void => {
+    if (this._blockedByChangeFreeze()) return;
     const target = device.deviceName.toLowerCase();
     const filtered = this.state.exclusions.filter(e => e.type === 'Device' && e.target.toLowerCase() === target);
     const excl = filtered.length > 0 ? filtered[0] : null;
@@ -1323,6 +1385,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
   // DISCRETE 2: Open Silence Agent Modal
   private _openSilenceAgentModal = (device: IDattoDevice, agentName: string): void => {
+    if (this._blockedByChangeFreeze()) return;
     const excl = this._findAgentExclusion(device.deviceName, agentName);
 
     this.setState({
@@ -1341,6 +1404,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
   // DISCRETE 3: Open Volume Exclusion Note Modal
   private _openVolumeModal = (device: IDattoDevice, volumeName: string, agentName: string): void => {
+    if (this._blockedByChangeFreeze()) return;
     const excl = this._findVolumeExclusion(device.deviceName, agentName, volumeName);
 
     this.setState({
@@ -1386,6 +1450,11 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   public render(): React.ReactElement<IBackupWatchProps> {
     const { loading, error, devices, cacheStatus, exclusions, isSettingsOpen, isMutingModalOpen, mutingDevice, muteType, muteReason, actionLoading, activeTab, activeFilter, isFullScreen, isEscalateModalOpen, escalateDevice, escalateIssues, selectedIssueIds, isDarkMode, isAuditLogsOpen, auditLogs, auditSearchQuery, auditLoading, auditError, userSecurityLevel } = this.state;
     const { userDisplayName } = this.props;
+
+    // Change freeze (BW-007 / D-02): change buttons are disabled for everyone below Administrator
+    const changeFreezeActive = this._isChangeFreezeActive();
+    const changeLocked = changeFreezeActive && userSecurityLevel !== 'Administrator';
+    const changeLockedTitle = changeLocked ? this._changeFreezeMessage() : undefined;
 
     // Filter devices based on Active vs Cancelled tab
     const tabDevices = devices.filter(d => activeTab === 'active' ? (d.isActive !== false) : (d.isActive === false));
@@ -1493,7 +1562,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         <BackupWatchStyles />
 
         {/* Global Maintenance Blackout Active Banner */}
-        {this.state.globalMaintenanceMode && this.state.globalMaintenanceMode.isActive && (
+        {changeFreezeActive && (
           <div style={{
             backgroundColor: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -1509,10 +1578,13 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
               <span style={{ fontSize: '1.4rem' }}>🚨</span>
               <div>
                 <strong style={{ color: '#ef4444', fontSize: '0.92rem' }}>
-                  GLOBAL MAINTENANCE BLACKOUT ACTIVE
+                  CHANGE FREEZE ACTIVE (GLOBAL BLACKOUT)
                 </strong>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '0.15rem' }}>
-                  Automated Autotask compliance ticket generation is silenced across all appliances.
+                <div role="status" style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '0.15rem' }}>
+                  No automatic Autotask tickets or notes are sent.{' '}
+                  {userSecurityLevel === 'Administrator'
+                    ? 'You can still make changes, but each one needs a reason and is recorded in the audit trail.'
+                    : 'Escalations, silences and exclusions are locked; only Administrators can make changes.'}
                   {this.state.globalMaintenanceMode.expiresAt && (
                     <span> Auto-resumes: <strong>{new Date(this.state.globalMaintenanceMode.expiresAt).toLocaleString()}</strong></span>
                   )}
@@ -1575,6 +1647,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
             userSecurityLevel={userSecurityLevel}
             actionLoading={actionLoading}
             onRemoveExclusion={this._removeExclusion}
+            changeLocked={changeLocked}
+            changeLockedTitle={changeLockedTitle}
           />
         ) : (
           /* DASHBOARD VIEW */
@@ -1919,8 +1993,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                                     {userSecurityLevel !== 'Viewer' && !device.storageTicketReference && !(device as any).offlineTicketReference && !(device as any).offsitesyncTicketReference && (
                                       <button
-                                        disabled={!this._getEscalationIssues(device).length}
-                                        className="bw-btn"
+                                        disabled={changeLocked || !this._getEscalationIssues(device).length}
+                                        title={changeLockedTitle}
+                                        className="bw-btn bw-change"
                                         style={{
                                           backgroundColor: this._getEscalationIssues(device).length ? 'var(--color-primary)' : 'transparent',
                                           color: this._getEscalationIssues(device).length ? '#ffffff' : 'var(--text-muted)',
@@ -1941,7 +2016,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                     {userSecurityLevel !== 'Viewer' && (!exclusions.some(e => e.type === 'Device' && e.target.toLowerCase() === device.deviceName.toLowerCase()) ? (
                                       <button
                                         onClick={() => this._openSilenceApplianceModal(device)}
-                                        className="bw-btn"
+                                        disabled={changeLocked}
+                                        title={changeLockedTitle}
+                                        className="bw-btn bw-change"
                                         style={{
                                           backgroundColor: 'transparent',
                                           color: 'var(--color-purple)',
@@ -1963,7 +2040,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                             this._removeExclusion(excl.id);
                                           }
                                         }}
-                                        className="bw-btn"
+                                        disabled={changeLocked}
+                                        title={changeLockedTitle}
+                                        className="bw-btn bw-change"
                                         style={{
                                           backgroundColor: 'rgba(16, 185, 129, 0.1)',
                                           color: 'var(--color-success)',
@@ -2067,7 +2146,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                                             e.stopPropagation();
                                                             this._openSilenceAgentModal(device, agent.name);
                                                           }}
-                                                          title={agent.status === 'Silenced' ? "Edit / Remove Agent Silence" : "Silence this Server/Agent"}
+                                                          disabled={changeLocked}
+                                                          className="bw-change"
+                                                          title={changeLockedTitle || (agent.status === 'Silenced' ? "Edit / Remove Agent Silence" : "Silence this Server/Agent")}
                                                           style={{
                                                             background: 'transparent',
                                                             border: 'none',
@@ -2126,7 +2207,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                                               </span>
                                                               {!agent.isArchived && userSecurityLevel !== 'Viewer' && (
                                                                 <button 
-                                                                  title={isVolExcl ? "Edit Maintenance / Exclusion Note" : "Pre-Exclude Volume (Maintenance Mode)"}
+                                                                  title={changeLockedTitle || (isVolExcl ? "Edit Maintenance / Exclusion Note" : "Pre-Exclude Volume (Maintenance Mode)")}
+                                                                  disabled={changeLocked}
+                                                                  className="bw-change"
                                                                   onClick={() => this._openVolumeModal(device, volName, agent.name)}
                                                                   style={{ background: 'none', border: 'none', color: isVolExcl ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.72rem', padding: '0.15rem' }}
                                                                 >
@@ -2321,6 +2404,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                                               </div>
                                                             ) : (
                                                               <button
+                                                                disabled={changeLocked}
+                                                                title={changeLockedTitle}
+                                                                className="bw-change"
                                                                 onClick={() => this._escalateSingleIssue(device, agent.name, 'Backup', `Backup failed for agent ${agent.name} on ${device.deviceName}. Error: ${agent.lastBackupStatus?.errorMessage || 'Unknown Error'}`, agent.lastBackupStatus?.errorMessage || 'Backup failed.')}
                                                                 style={{
                                                                   backgroundColor: 'var(--color-primary)',
@@ -2404,6 +2490,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
                                                               </div>
                                                             ) : (
                                                               <button
+                                                                disabled={changeLocked}
+                                                                title={changeLockedTitle}
+                                                                className="bw-change"
                                                                 onClick={() => this._escalateSingleIssue(device, agent.name, 'Screenshot', `Screenshot verification failed for agent ${agent.name} on ${device.deviceName}.`, 'Screenshot verification failed.')}
                                                                 style={{
                                                                   backgroundColor: 'var(--color-primary)',

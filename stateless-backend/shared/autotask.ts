@@ -1,6 +1,7 @@
-import axios from "axios";
+import { autotaskRequest } from "./autotaskGateway";
+import { guardAutotaskWrite, IAutotaskWriteContext } from "./autotaskPolicy";
 import { normalizeVolumeName } from "./volumeUtils";
-import { getAutotaskRoutingConfig, getGlobalMaintenanceMode, getAlertRoutingMatrix, DEFAULT_ALERT_ROUTING_MATRIX } from "./configService";
+import { getAutotaskRoutingConfig, getAlertRoutingMatrix, DEFAULT_ALERT_ROUTING_MATRIX } from "./configService";
 
 let cachedBaseUrl: string | null = null;
 
@@ -26,7 +27,7 @@ export async function getAutoTaskBaseUrl(user: string): Promise<string> {
     if (cachedBaseUrl) return cachedBaseUrl;
 
     try {
-        const response = await axios.get(`https://webservices.autotask.net/atservicesrest/v1.0/zoneInformation?user=${encodeURIComponent(user)}`, { timeout: 10000 });
+        const response = await autotaskRequest(null, { method: "get", kind: "read", anonymous: true, timeoutMs: 10000, url: `https://webservices.autotask.net/atservicesrest/v1.0/zoneInformation?user=${encodeURIComponent(user)}` });
         if (response.data && response.data.url) {
             let url = response.data.url;
             if (!url.endsWith("/")) {
@@ -56,15 +57,6 @@ export function getAutoTaskTicketUrl(baseUrl: string, ticketId: number | string)
     return `https://ww${zone}.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId=${ticketId}`;
 }
 
-export async function getAutoTaskHeaders(config: IAutoTaskConfig): Promise<any> {
-    return {
-        "UserName": config.user,
-        "Secret": config.secret,
-        "ApiIntegrationCode": config.integrationCode,
-        "Content-Type": "application/json"
-    };
-}
-
 export interface IConfigurationItem {
     id: number;
     companyID: number;
@@ -74,9 +66,8 @@ export interface IConfigurationItem {
 export async function lookupDeviceInAutoTask(serialNumber: string, config: IAutoTaskConfig): Promise<IConfigurationItem | null> {
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
-        const response = await axios.post(`${baseUrl}ConfigurationItems/query`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}ConfigurationItems/query`, data: {
             filter: [
                 {
                     op: "equals",
@@ -84,7 +75,7 @@ export async function lookupDeviceInAutoTask(serialNumber: string, config: IAuto
                     value: serialNumber
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         const items = response.data && response.data.items;
         if (items && items.length > 0) {
@@ -107,7 +98,6 @@ export async function lookupConfigurationItemInAutoTask(
 ): Promise<IConfigurationItem | null> {
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
         // Helper to sort candidates: Target Company + Active > Target Company + Inactive > Active > Inactive
         const sortCandidates = (items: any[]) => {
@@ -129,7 +119,7 @@ export async function lookupConfigurationItemInAutoTask(
         if (params.agentName) {
             const agentNameClean = params.agentName.trim();
             console.log(`[AutoTask Asset Lookup] Querying candidates containing agentName: "${agentNameClean}"`);
-            const response = await axios.post(`${baseUrl}ConfigurationItems/query`, {
+            const response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}ConfigurationItems/query`, data: {
                 filter: [
                     {
                         op: "or",
@@ -140,7 +130,7 @@ export async function lookupConfigurationItemInAutoTask(
                         ]
                     }
                 ]
-            }, { headers, timeout: 15000 });
+            } });
 
             const items = response.data && response.data.items || [];
             // Match exact case-insensitive
@@ -166,7 +156,7 @@ export async function lookupConfigurationItemInAutoTask(
         const serialClean = params.serialNumber ? params.serialNumber.trim() : "";
         if (serialClean) {
             console.log(`[AutoTask Asset Lookup] Querying candidates containing appliance serialNumber: "${serialClean}"`);
-            const responseSerial = await axios.post(`${baseUrl}ConfigurationItems/query`, {
+            const responseSerial = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}ConfigurationItems/query`, data: {
                 filter: [
                     {
                         op: "or",
@@ -177,7 +167,7 @@ export async function lookupConfigurationItemInAutoTask(
                         ]
                     }
                 ]
-            }, { headers, timeout: 15000 });
+            } });
 
             const serialItems = responseSerial.data && responseSerial.data.items || [];
             const exactSerialMatches = serialItems.filter((item: any) => {
@@ -202,11 +192,11 @@ export async function lookupConfigurationItemInAutoTask(
         if (params.deviceName) {
             const deviceNameClean = params.deviceName.trim();
             console.log(`[AutoTask Asset Lookup] Querying candidates containing appliance deviceName: "${deviceNameClean}"`);
-            const responseDevice = await axios.post(`${baseUrl}ConfigurationItems/query`, {
+            const responseDevice = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}ConfigurationItems/query`, data: {
                 filter: [
                     { op: "contains", field: "referenceTitle", value: deviceNameClean }
                 ]
-            }, { headers, timeout: 15000 });
+            } });
 
             const deviceItems = responseDevice.data && responseDevice.data.items || [];
             const exactDeviceMatches = deviceItems.filter((item: any) => {
@@ -235,10 +225,9 @@ export async function lookupConfigurationItemInAutoTask(
 export async function lookupCompanyInAutoTask(companyName: string, config: IAutoTaskConfig): Promise<number | null> {
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
         // 1. Try exact match
-        let response = await axios.post(`${baseUrl}Companies/query`, {
+        let response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Companies/query`, data: {
             filter: [
                 {
                     op: "equals",
@@ -246,7 +235,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
                     value: companyName
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         let items = response.data && response.data.items;
         if (items && items.length > 0) {
@@ -260,7 +249,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
 
         if (cleanName && cleanName.toLowerCase() !== companyName.toLowerCase()) {
             console.log(`Fallback: Querying companyName with cleaned name: "${cleanName}"`);
-            response = await axios.post(`${baseUrl}Companies/query`, {
+            response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Companies/query`, data: {
                 filter: [
                     {
                         op: "equals",
@@ -268,7 +257,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
                         value: cleanName
                     }
                 ]
-            }, { headers, timeout: 15000 });
+            } });
 
             items = response.data && response.data.items;
             if (items && items.length > 0) {
@@ -278,7 +267,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
 
         // 3. Fallback to beginsWith
         console.log(`Fallback: Querying beginsWith for "${cleanName || companyName}"`);
-        response = await axios.post(`${baseUrl}Companies/query`, {
+        response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Companies/query`, data: {
             filter: [
                 {
                     op: "beginsWith",
@@ -286,7 +275,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
                     value: cleanName || companyName
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         items = response.data && response.data.items;
         if (items && items.length > 0) {
@@ -297,7 +286,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
 
         // 4. Fallback to contains
         console.log(`Fallback: Querying contains for "${cleanName || companyName}"`);
-        response = await axios.post(`${baseUrl}Companies/query`, {
+        response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Companies/query`, data: {
             filter: [
                 {
                     op: "contains",
@@ -305,7 +294,7 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
                     value: cleanName || companyName
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         items = response.data && response.data.items;
         if (items && items.length > 0) {
@@ -321,6 +310,23 @@ export async function lookupCompanyInAutoTask(companyName: string, config: IAuto
 }
 
 
+/** Company name for the Admin Console asset tester (read-only). */
+export async function getAutotaskCompanyName(companyID: number, config: IAutoTaskConfig): Promise<string | null> {
+    try {
+        const baseUrl = await getAutoTaskBaseUrl(config.user);
+        const response = await autotaskRequest(config, { method: "get", kind: "read", timeoutMs: 8000, url: `${baseUrl}Companies/${companyID}` });
+        return response.data && response.data.item && response.data.item.companyName ? response.data.item.companyName : null;
+    } catch (err: any) {
+        console.error(`Failed to get company ${companyID} from AutoTask:`, err.message || err);
+        return null;
+    }
+}
+
+/** Connectivity probe for diagnostics: unauthenticated zoneInformation lookup. Throws on failure. */
+export async function pingAutotaskZone(user: string): Promise<void> {
+    await autotaskRequest(null, { method: "get", kind: "read", anonymous: true, timeoutMs: 8000, url: `https://webservices.autotask.net/atservicesrest/v1.0/zoneInformation?user=${encodeURIComponent(user)}` });
+}
+
 export interface IAutoTaskTicket {
     id: number;
     companyID: number;
@@ -335,7 +341,6 @@ export async function queryTicketsInAutoTask(ticketIds: number[], config: IAutoT
 
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
         const filterItems = ticketIds.map(id => ({
             op: "equals",
@@ -343,13 +348,13 @@ export async function queryTicketsInAutoTask(ticketIds: number[], config: IAutoT
             value: id
         }));
 
-        const response = await axios.post(`${baseUrl}Tickets/query`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Tickets/query`, data: {
             filter: [
                 ticketIds.length === 1
                     ? filterItems[0]
                     : { op: "or", items: filterItems }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         return response.data && response.data.items || [];
     } catch (err: any) {
@@ -362,10 +367,9 @@ export async function queryTicketByNumber(ticketNumber: string, config: IAutoTas
     if (!ticketNumber) return null;
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
         const cleanNumber = ticketNumber.trim();
-        const response = await axios.post(`${baseUrl}Tickets/query`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Tickets/query`, data: {
             filter: [
                 {
                     op: "eq",
@@ -373,12 +377,12 @@ export async function queryTicketByNumber(ticketNumber: string, config: IAutoTas
                     value: cleanNumber
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         let items = response.data && response.data.items;
         if (!items || items.length === 0) {
             // Fallback with contains
-            const responseFallback = await axios.post(`${baseUrl}Tickets/query`, {
+            const responseFallback = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Tickets/query`, data: {
                 filter: [
                     {
                         op: "contains",
@@ -386,7 +390,7 @@ export async function queryTicketByNumber(ticketNumber: string, config: IAutoTas
                         value: cleanNumber
                     }
                 ]
-            }, { headers, timeout: 15000 });
+            } });
             items = responseFallback.data && responseFallback.data.items;
         }
 
@@ -404,10 +408,9 @@ export async function queryOpenTicketByTitle(title: string, config: IAutoTaskCon
     if (!title) return null;
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
         const cleanTitle = title.trim();
 
-        const response = await axios.post(`${baseUrl}Tickets/query`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Tickets/query`, data: {
             filter: [
                 {
                     op: "eq",
@@ -420,7 +423,7 @@ export async function queryOpenTicketByTitle(title: string, config: IAutoTaskCon
                     value: 5 // 5 = Completed/Closed
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         const items = response.data && response.data.items;
         if (items && items.length > 0) {
@@ -436,8 +439,7 @@ export async function queryOpenTicketByTitle(title: string, config: IAutoTaskCon
 export async function getSingleTicketFromAutoTask(ticketId: number, config: IAutoTaskConfig): Promise<IAutoTaskTicket | null> {
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
-        const response = await axios.get(`${baseUrl}Tickets/${ticketId}`, { headers, timeout: 15000 });
+        const response = await autotaskRequest(config, { method: "get", kind: "read", url: `${baseUrl}Tickets/${ticketId}` });
         return response.data && response.data.item ? response.data.item : null;
     } catch (err: any) {
         console.error(`Failed to get ticket ${ticketId} from AutoTask:`, err.message || err);
@@ -479,8 +481,7 @@ export async function getTicketEntityFields(config: IAutoTaskConfig, forceRefres
     inFlightTicketFieldsPromise = (async () => {
         try {
             const baseUrl = await getAutoTaskBaseUrl(config.user);
-            const headers = await getAutoTaskHeaders(config);
-            const response = await axios.get(`${baseUrl}Tickets/entityInformation/fields`, { headers, timeout: 15000 });
+                const response = await autotaskRequest(config, { method: "get", kind: "read", url: `${baseUrl}Tickets/entityInformation/fields` });
             const fields = response.data && response.data.fields ? response.data.fields : (Array.isArray(response.data) ? response.data : []);
             
             if (Array.isArray(fields) && fields.length > 0) {
@@ -531,14 +532,14 @@ export async function getTicketStatusPicklistValues(config: IAutoTaskConfig, for
     return getTicketFieldPicklistValues("status", config, forceRefresh);
 }
 
-export async function updateTicketStatusInAutoTask(ticketId: number, statusId: number, config: IAutoTaskConfig): Promise<boolean> {
+export async function updateTicketStatusInAutoTask(ticketId: number, statusId: number, config: IAutoTaskConfig, ctx: IAutotaskWriteContext): Promise<boolean> {
+    if (!(await guardAutotaskWrite(ctx))) return false;
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
-        const response = await axios.patch(`${baseUrl}Tickets`, {
+        const response = await autotaskRequest(config, { method: "patch", kind: "write", url: `${baseUrl}Tickets`, data: {
             id: ticketId,
             status: statusId
-        }, { headers, timeout: 15000 });
+        } });
         return response.status === 200 || response.status === 204;
     } catch (err: any) {
         console.error(`Failed to update status for ticket ${ticketId} in AutoTask:`, err.message || err);
@@ -549,9 +550,8 @@ export async function updateTicketStatusInAutoTask(ticketId: number, statusId: n
 export async function lookupContractInAutoTask(companyID: number, contractName: string, config: IAutoTaskConfig): Promise<number | null> {
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
-        const response = await axios.post(`${baseUrl}Contracts/query`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "read", url: `${baseUrl}Contracts/query`, data: {
             filter: [
                 {
                     op: "equals",
@@ -569,7 +569,7 @@ export async function lookupContractInAutoTask(companyID: number, contractName: 
                     value: 1 // Active
                 }
             ]
-        }, { headers, timeout: 15000 });
+        } });
 
         const items = response.data && response.data.items;
         if (items && items.length > 0) {
@@ -596,16 +596,16 @@ export async function createTicketInAutoTask(payload: {
     subIssueType?: number;
     contractID?: number;
     priority?: number;
-}, config: IAutoTaskConfig): Promise<number | null> {
+}, config: IAutoTaskConfig, ctx: IAutotaskWriteContext): Promise<number | null> {
+    if (!(await guardAutotaskWrite(ctx))) return null;
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
-        const response = await axios.post(`${baseUrl}Tickets`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "write", url: `${baseUrl}Tickets`, data: {
             ...payload,
             status: 1, // New
             priority: payload.priority !== undefined ? payload.priority : 2 // Default Medium
-        }, { headers, timeout: 15000 });
+        } });
 
         if (response.data && response.data.itemId) {
             return response.data.itemId;
@@ -624,17 +624,17 @@ export async function createTicketNoteInAutoTask(ticketId: number, note: {
     title: string;
     description: string;
     publish?: number; // 1 = All Users, 2 = Internal Only
-}, config: IAutoTaskConfig): Promise<boolean> {
+}, config: IAutoTaskConfig, ctx: IAutotaskWriteContext): Promise<boolean> {
+    if (!(await guardAutotaskWrite(ctx))) return false;
     try {
         const baseUrl = await getAutoTaskBaseUrl(config.user);
-        const headers = await getAutoTaskHeaders(config);
 
-        const response = await axios.post(`${baseUrl}Tickets/${ticketId}/Notes`, {
+        const response = await autotaskRequest(config, { method: "post", kind: "write", url: `${baseUrl}Tickets/${ticketId}/Notes`, data: {
             title: note.title,
             description: note.description,
             noteType: 1, // Detail Note
             publish: note.publish !== undefined ? note.publish : 1 // Default to All / Public
-        }, { headers, timeout: 15000 });
+        } });
 
         if (response && (response.status === 200 || response.status === 201)) {
             console.log(`[AutoTask Note Push] Successfully created note on ticket ${ticketId}`);
@@ -654,21 +654,14 @@ export async function createComplianceTicket(params: {
     reason: string;
     serialNumber?: string;
     clientCompanyName?: string;
-}, config: IAutoTaskConfig): Promise<{ ticketId: number; companyID: number; configurationItemID?: number } | null> {
+}, config: IAutoTaskConfig, ctx: IAutotaskWriteContext): Promise<{ ticketId: number; companyID: number; configurationItemID?: number } | null> {
     const safeDevice = (params.deviceName || "Unknown Device").trim();
     const safeAgent = (params.agentName || "Unknown Agent").trim();
     const normVol = normalizeVolumeName(params.volumeName);
 
-    // Global Maintenance Mode check: suppress automated ticketing during planned outages
-    try {
-        const maintMode = await getGlobalMaintenanceMode();
-        if (maintMode && maintMode.isActive) {
-            console.log(`[Global Maintenance Mode] Automated compliance ticketing suppressed for ${safeDevice}:${safeAgent}:${normVol}. Reason: ${maintMode.reason || "Planned maintenance"}`);
-            return null;
-        }
-    } catch (maintErr) {
-        // Continue if check fails
-    }
+    // Blackout and silence rules (autotaskPolicy.ts) – checked before any lookups are made.
+    const writeCtx: IAutotaskWriteContext = { ...ctx, deviceName: safeDevice, agentName: safeAgent };
+    if (!(await guardAutotaskWrite(writeCtx))) return null;
 
     const alertMatrix = await getAlertRoutingMatrix();
     const volConfig = alertMatrix.VolumeExclusion || DEFAULT_ALERT_ROUTING_MATRIX.VolumeExclusion;
@@ -790,7 +783,7 @@ export async function createComplianceTicket(params: {
             allocationCodeID: volConfig.workTypeId !== undefined ? volConfig.workTypeId : (routing.workTypeId !== undefined ? routing.workTypeId : (process.env.AUTOTASK_WORK_TYPE_ID ? parseInt(process.env.AUTOTASK_WORK_TYPE_ID) : undefined)),
             issueType: volConfig.issueTypeId !== undefined ? volConfig.issueTypeId : (routing.issueTypeId !== undefined ? routing.issueTypeId : (process.env.AUTOTASK_ISSUE_TYPE_ID ? parseInt(process.env.AUTOTASK_ISSUE_TYPE_ID) : undefined)),
             subIssueType: volConfig.subIssueTypeId !== undefined ? volConfig.subIssueTypeId : (routing.subIssueTypeId !== undefined ? routing.subIssueTypeId : (process.env.AUTOTASK_SUB_ISSUE_TYPE_ID ? parseInt(process.env.AUTOTASK_SUB_ISSUE_TYPE_ID) : undefined))
-        }, config);
+        }, config, writeCtx);
 
         if (ticketId) {
             return {

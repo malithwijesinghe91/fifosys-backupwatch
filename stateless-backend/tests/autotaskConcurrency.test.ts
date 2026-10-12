@@ -16,6 +16,8 @@ function loadAutotask(): typeof import('../shared/autotask') {
   let mod: any;
   jest.isolateModules(() => {
     jest.doMock('axios', () => mockedAxios);
+    // Near-zero gateway retry delays (BW-004) so failure paths don't wait 1 s + 2 s + 4 s.
+    require('../shared/autotaskGateway').__configureAutotaskGatewayForTests({ retryDelaysMs: [1, 1, 1] });
     mod = require('../shared/autotask');
   });
   return mod;
@@ -73,8 +75,11 @@ describe('Autotask ticket-field metadata: concurrency lock & cache', () => {
   test('lock is released after a failure so the next call retries', async () => {
     const { getTicketEntityFields } = loadAutotask();
     const ok = mockedAxios.get.getMockImplementation()!;
-    mockedAxios.get.mockImplementationOnce(ok) // zoneInformation
-      .mockImplementationOnce(async () => { throw new Error('429 Too Many Requests'); });
+    const fail = async () => { throw new Error('socket hang up'); };
+    // zoneInformation succeeds; the fields request fails on all 4 gateway attempts (1 + 3 retries).
+    mockedAxios.get.mockImplementationOnce(ok)
+      .mockImplementationOnce(fail).mockImplementationOnce(fail)
+      .mockImplementationOnce(fail).mockImplementationOnce(fail);
 
     await expect(getTicketEntityFields(CONFIG)).resolves.toEqual([]);
     await expect(getTicketEntityFields(CONFIG)).resolves.toHaveLength(1);

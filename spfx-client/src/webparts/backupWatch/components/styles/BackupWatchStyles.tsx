@@ -563,6 +563,14 @@ export const BackupWatchStyles: React.FC = () => (
     .bw-progress-bar-fill.warning { background: var(--color-warning); }
     .bw-progress-bar-fill.danger  { background: var(--color-danger); }
 
+    /* Change freeze (BW-007): change buttons locked for non-Administrators */
+    .backup-watch-root .bw-change:disabled {
+      opacity: 0.45 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
     /* Premium Buttons */
     .bw-btn {
       font-family: inherit;

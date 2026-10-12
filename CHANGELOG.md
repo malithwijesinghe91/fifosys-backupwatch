@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Backend 1.25.0 / Web part 1.26.0] - 2026-10-12
+
+Autotask gateway, silence enforcement and change freeze (decisions D-01, D-02, D-04). Deploy the backend first; the web part can follow.
+
+### Added
+- **Added (BW-004)**: Autotask gateway (`shared/autotaskGateway.ts`) – the only code that calls Autotask. At most 1 request at a time per instance (2 across the app with the 2-instance cap), engineer actions ahead of scanner calls, retries after 1 s / 2 s / 4 s when Autotask is busy (429 or "thread threshold"; reads also on network errors and 5xx, writes never on 5xx), requests that can't start within 60 s fail cleanly, and every call is logged without credentials or query strings.
+- **Added (BW-004)**: guard-rail tests fail the build if any other code calls Autotask directly or builds Autotask credential headers.
+- **Added (BW-006)**: write policy (`shared/autotaskPolicy.ts`). Every Autotask write declares who it is for; automatic writes for a silenced appliance or agent are held back and recorded as "Suppressed Autotask Write" in the audit trail (once per item per 6 hours).
+- **Added (BW-007)**: change freeze. While the global blackout is on, escalations, mutes/exclusions and unmutes are blocked server-side for Specialist, Contributor and Viewer (403 "Change freeze active"). Administrators can still act with a reason, recorded as "Change During Blackout".
+- **Added (BW-007)**: web part – change-freeze banner; escalate, silence, exclude and unmute buttons are disabled for non-Administrators during a freeze; Administrators are asked for a reason.
+
+### Changed
+- **Changed (BW-006)**: appliance-level auto-heal notes (storage, offline, offsite sync) now respect appliance silence. A held-back auto-heal keeps its ticket tracked, so the note is posted on the first scan after the silence or freeze ends.
+- **Changed (BW-006 / BW-007)**: the exclusion expiry sweep skips silenced items and pauses during a freeze instead of changing records whose Autotask write would be held back.
+- **Changed (BW-007)**: during a freeze all automatic Autotask writes stop (previously only new compliance tickets).
+
+### Fixed
+- **Fixed**: cached dashboard responses now include `appVersion`, so the footer's Engine version no longer shows "v…" after a cached load.
+
 ## [Web part 1.25.1] - 2026-10-12
 
 Backend unchanged at 1.24.1 – no Azure deploy needed.

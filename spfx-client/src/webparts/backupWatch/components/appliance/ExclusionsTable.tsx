@@ -6,13 +6,18 @@ export interface IExclusionsTableProps {
   userSecurityLevel: string;
   actionLoading: boolean;
   onRemoveExclusion: (exclusionId: string) => void;
+  /** Change freeze active and the user is below Administrator (BW-007). */
+  changeLocked?: boolean;
+  changeLockedTitle?: string;
 }
 
 export const ExclusionsTable: React.FC<IExclusionsTableProps> = ({
   exclusions,
   userSecurityLevel,
   actionLoading,
-  onRemoveExclusion
+  onRemoveExclusion,
+  changeLocked,
+  changeLockedTitle
 }) => {
   return (
     <div className="bw-main-card">
@@ -82,8 +87,9 @@ export const ExclusionsTable: React.FC<IExclusionsTableProps> = ({
                     {userSecurityLevel !== 'Viewer' ? (
                       <button 
                         onClick={() => onRemoveExclusion(exclusion.id)}
-                        disabled={actionLoading}
-                        className="bw-btn"
+                        disabled={actionLoading || changeLocked}
+                        title={changeLockedTitle}
+                        className="bw-btn bw-change"
                         style={{
                           backgroundColor: 'var(--color-danger)',
                           color: '#ffffff',

@@ -13,6 +13,9 @@ import {
     getSingleTicketFromAutoTask
 } from "../shared/autotask";
 import { requireAuthenticatedUser } from "../shared/auth";
+import { runAsUserAction } from "../shared/autotaskGateway";
+import { AutotaskWriteBlockedError, IAutotaskWriteContext } from "../shared/autotaskPolicy";
+import { requireNoChangeFreeze } from "../shared/changeFreeze";
 import { getAutotaskRoutingConfig } from "../shared/configService";
 
 interface ITrackedTicketEntity {
@@ -276,7 +279,7 @@ ${sectionDivider}
 ${commonInfo}`;
 }
 
-const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
+const handle = async function (context: Context, req: HttpRequest): Promise<void> {
     context.log.info("Processing ticket escalation request...");
 
     const userSec = requireAuthenticatedUser(context, req);
@@ -322,6 +325,19 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         };
         return;
     }
+
+    // Change freeze (BW-007 / D-02): only Administrators, with a reason, may escalate during a blackout
+    const escalationTarget = `${companyName} - ${deviceName}${agentName ? ` - ${agentName}` : ""}`;
+    const freeze = await requireNoChangeFreeze(context, req, userSec, `Escalate ${issueType}`, escalationTarget);
+    if (!freeze) return;
+    const writeCtx: IAutotaskWriteContext = {
+        origin: "user",
+        action: "Manual escalation",
+        deviceName,
+        agentName,
+        user: { email: userSec.email, role: userSec.role },
+        blackoutOverrideReason: freeze.overrideReason
+    };
 
     // 2. Resolve AutoTask Credentials
     const autotaskConfig = getAutoTaskConfig();
@@ -375,7 +391,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                         const noteAdded = await createTicketNoteInAutoTask(ticketIdNum, {
                             title: "BackupWatch Alert Update",
                             description: `The alert details have changed.\n\nNew Message:\n${lastSeenMessage}`
-                        }, autotaskConfig);
+                        }, autotaskConfig, writeCtx);
 
                         if (noteAdded) {
                             existingEntity.lastSeenMessage = lastSeenMessage;
@@ -508,7 +524,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             issueType: issueTypeID && !isNaN(issueTypeID) ? issueTypeID : undefined,
             subIssueType: subIssueTypeID && !isNaN(subIssueTypeID) ? subIssueTypeID : undefined,
             contractID
-        }, autotaskConfig);
+        }, autotaskConfig, writeCtx);
 
         if (!newTicketId) {
             throw new Error("AutoTask API returned a null or empty Ticket ID.");
@@ -576,6 +592,14 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         };
 
     } catch (err: any) {
+        if (err instanceof AutotaskWriteBlockedError) {
+            context.res = {
+                status: 403,
+                body: { error: err.message, code: err.code },
+                headers: { "Content-Type": "application/json" }
+            };
+            return;
+        }
         context.log.error("Failed to escalate issue to AutoTask:", err.message || err);
         context.res = {
             status: 500,
@@ -587,5 +611,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         };
     }
 };
+
+// Engineer actions: their Autotask calls go ahead of background scanner calls (BW-004).
+const httpTrigger: AzureFunction = (context: Context, req: HttpRequest) => runAsUserAction(() => handle(context, req));
 
 export default httpTrigger;
