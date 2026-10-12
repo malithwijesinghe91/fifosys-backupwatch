@@ -2,7 +2,8 @@ import * as React from 'react';
 import { FIFOSYS_ICON_BASE64 } from '../../assets/fifosysLogo';
 
 export interface IHeaderBarProps {
-  version: string;
+  /** Backend engine version (appVersion); undefined until the first response arrives. */
+  version?: string;
   isSettingsOpen: boolean;
   userSecurityLevel: string;
   isDarkMode: boolean;
@@ -81,7 +82,7 @@ export const HeaderBar: React.FC<IHeaderBarProps> = ({
             marginTop: '0.3rem' 
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px #10B981' }}></span>
-            <span style={{ color: '#8AA4B8' }}>Unified Data Protection Desk • v{version}</span>
+            <span style={{ color: '#8AA4B8' }}>Unified Data Protection Desk • v{version || '…'}</span>
           </div>
         </div>
       </div>
