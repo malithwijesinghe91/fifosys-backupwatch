@@ -173,6 +173,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - [ ] Update `CLAUDE.md` section 4 and `.agents/AGENTS.md` section 3 to use the release script.
 - [ ] Release script runs `npm prune --omit=dev` (or equivalent) before publish (found in BW-019: jest/ts-jest/typescript currently ship in `node_modules`).
 - [ ] Clean `dist/` before build (`build` is plain `tsc`, so stale files survive).
+- [ ] Frontend: delete `BackupWatchScaffold\release\` before every `gulp bundle --ship` (permanent step). Found 2026-10-12: `release\assets` had kept 14 old hashed bundles since 2026-09-07 and `package-solution` packed them all into the `.sppkg` (557 KB → 52 KB after cleaning). Cleaned once manually; documented as step 0 in `CLAUDE.md` §4.
 - [x] Publish with explicit build mode – documented 2026-10-12 (BW-019) in `CLAUDE.md` §4, `.agents/AGENTS.md` §3 and `deployment_guide.md` Part 1 step 5: `npm run build` then `func azure functionapp publish backupwatch-api --build local`. **The release script must use `--build local`** (`.funcignore` excludes `*.ts`/`tsconfig.json`, so a remote build would fail).
 
 **Acceptance criteria.** Running the release script for each component produces consistent versions everywhere; manually editing one file makes the build fail; the footer shows both versions.
@@ -295,6 +296,8 @@ This is the single source of truth for every defect found in the October 2026 co
   - Before deploy: confirm `BW_DEV_ROLE` is not set and `AZURE_FUNCTIONS_ENVIRONMENT` is not `Development` in the Function App settings. `RBAC_*_GROUP_ID` app settings are now unused and can be removed after release.
 - 2026-10-12 – **Backend 1.24.0 deployed** to `backupwatch-api` (merge `461f0d7`, tag `backend-1.24.0`; `npm ci` → 140 tests passed → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`). Deployment successful, host Running, all 7 functions listed. Rollback point: tag `backend-1.23.2-live` (`42ee4ed`). Smoke-tested OK by Malith, no errors seen. Status stays `TESTING` until the frontend release (web part uses server `userRole`, stops sending `role`/`user` params and `x-user-*` headers).
 - 2026-10-12 – **Backend 1.24.0 LIVE** (deployed 12/10/2026 ~11:22 UK time). Verified by Malith: `appVersion` 1.24.0; payload returns server-resolved `userRole` = Administrator and `userEmail`; background scanner ran successfully at 11:30. Status stays `TESTING` until the frontend part is done.
+- 2026-10-12 – Frontend 1.23.4 on branch `bw-001-frontend` (not uploaded): web part uses server `userRole`/`userEmail`, sends no role/identity, Graph role lookup removed. Owner decisions: (1) `BackupWatchScaffold\release\` deleted and rebuilt – `.sppkg` now contains only the current bundle (`backup-watch-web-part_d13ab7aa4a2a1f46d9b6.js`), none of the old role code; (2) Graph `GroupMember.Read.All` removed from `package-solution.json` (`.sppkg` now requests only `BackupWatch-Backend-API/user_impersonation` and Graph `User.Read`). Note: `package-solution.json` lives only in the scaffold, which is not under source control (BW-011).
+  - [ ] **Check before revoking:** the tenant-wide `GroupMember.Read.All` approval (SharePoint admin centre → Advanced → API access) is shared by every SPFx solution. Do **not** revoke until it's confirmed no other web part uses it.
 
 ---
 

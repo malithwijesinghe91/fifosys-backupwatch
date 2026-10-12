@@ -29,7 +29,6 @@ export default class BackupWatchWebPart extends BaseClientSideWebPart<IBackupWat
         aadHttpClientFactory: this.context.aadHttpClientFactory,
         backendApiUrl: this.properties.backendApiUrl || 'http://localhost:7071/api/backupWatchTrigger',
         backendApiResourceId: this.properties.backendApiResourceId || 'api://backupwatch-api',
-        msGraphClientFactory: this.context.msGraphClientFactory,
         version: this.context.manifest.version
       }
     );

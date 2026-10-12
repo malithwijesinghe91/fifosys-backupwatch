@@ -9,6 +9,5 @@ export interface IBackupWatchProps {
   aadHttpClientFactory: AadHttpClientFactory;
   backendApiUrl: string;
   backendApiResourceId: string;
-  msGraphClientFactory?: any;
   version: string;
 }

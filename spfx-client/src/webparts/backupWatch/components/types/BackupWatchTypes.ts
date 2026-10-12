@@ -111,8 +111,10 @@ export interface IBackupWatchState {
     errorMessage?: string;
   } | null;
   backendVersion?: string;
+  /** Server-resolved role from the backupWatchTrigger response (BW-001); 'Viewer' until it arrives. */
   userSecurityLevel: 'Viewer' | 'Contributor' | 'Specialist' | 'Administrator';
-  securityRolesLoading: boolean;
+  /** Server-resolved email from the backupWatchTrigger response. */
+  serverUserEmail?: string;
   isAdminModalOpen: boolean;
   adminModalTab: 'diagnostics' | 'routing' | 'blackout' | 'cleanup' | 'assetTester';
   adminDiagnostics: any | null;

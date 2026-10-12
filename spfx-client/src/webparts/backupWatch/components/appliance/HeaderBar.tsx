@@ -8,6 +8,8 @@ export interface IHeaderBarProps {
   isDarkMode: boolean;
   isFullScreen: boolean;
   userDisplayName: string;
+  /** Server-resolved sign-in email (BW-001), shown as a tooltip on the operator badge. */
+  userEmail?: string;
   onToggleSettings: (isOpen: boolean) => void;
   onOpenAuditLogs: () => void;
   onOpenAdminModal: (tab: 'diagnostics' | 'routing' | 'blackout' | 'cleanup' | 'assetTester') => void;
@@ -22,6 +24,7 @@ export const HeaderBar: React.FC<IHeaderBarProps> = ({
   isDarkMode,
   isFullScreen,
   userDisplayName,
+  userEmail,
   onToggleSettings,
   onOpenAuditLogs,
   onOpenAdminModal,
@@ -189,7 +192,7 @@ export const HeaderBar: React.FC<IHeaderBarProps> = ({
         </div>
 
         {/* Cluster 4: Operator Identity with Initials Avatar */}
-        <div className="bw-user-pill">
+        <div className="bw-user-pill" title={userEmail ? `${userEmail} (${userSecurityLevel})` : undefined}>
           <div className="bw-user-avatar">
             {(userDisplayName || 'OP').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
           </div>
