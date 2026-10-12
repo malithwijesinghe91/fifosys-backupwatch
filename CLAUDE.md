@@ -22,7 +22,7 @@ The frontend and backend are completely decoupled:
 1. **Frontend SPFx Client (`spfx-client/`)**:
    - Built using SharePoint Framework (SPFx 1.19.0) with React 17 + TypeScript.
    - Hosted on SharePoint Online (`fifosys365.sharepoint.com/sites/BackupWatchPortal/SitePages/Home.aspx`).
-   - **Versioning**: the header shows the web part (UI) version from its manifest (`this.context.manifest.version`); the footer shows `UI v… · Engine v…`, the engine number coming from `resData.appVersion`.
+   - **Versioning**: the header shows no version. The footer is the only place versions appear: `UI v… · Engine v…` – UI from the web part manifest (`this.context.manifest.version`), Engine from `resData.appVersion`.
 2. **Backend Serverless API (`stateless-backend/`)**:
    - Azure Function App (`backupwatch-api`, Node.js / TypeScript, Linux Flex Consumption).
    - Serves endpoints: `/api/backupWatchTrigger`, `/api/exclusions`, `/api/escalateTrigger`, `/api/auditlogs`, `/api/adminDiagnostics`, `/api/adminRouting`.
@@ -33,7 +33,7 @@ The frontend and backend are completely decoupled:
 - **Never edit version numbers by hand** – from the repo root run `npm run release -- backend|web|both patch|minor|major` (which half changed; fix = patch, something new = minor, changes how it all works = major). It writes that half's files – backend: `stateless-backend/shared/version.ts`, `package.json`, `package-lock.json`; web part: `spfx-client/package.json`, `package-lock.json`, `BackupWatchWebPart.manifest.json`, `scaffold/config/package-solution.json` (solution + every feature version, `x.y.z.0`) – and adds a CHANGELOG stub labelled `Backend x.y.z`, `Web part x.y.z` or both.
 - `npm run verify-versions` fails if any file disagrees with `versions.json`; it runs automatically before every backend build and in `npm run scaffold:prepare`.
 - **Deploy only what changed** (§4): backend change → Azure only; web part change → `.sppkg` upload only; both → both.
-- **Where versions show:** the header shows the web part (UI) version; the footer shows `UI v… · Engine v…`. Different numbers are normal.
+- **Where versions show:** footer only – `UI v… · Engine v…`. The header shows no version. Different numbers are normal.
 - Git tags per deployed half: `backend-x.y.z`, `frontend-x.y.z`.
 
 ---

@@ -1,6 +1,6 @@
 {
   "name": "backupwatch-client",
-  "version": "1.25.0",
+  "version": "1.25.1",
   "description": "BackupWatch SPFx React Client Web Part",
   "main": "lib/index.js",
   "scripts": {

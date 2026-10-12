@@ -1543,7 +1543,6 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
         {/* Header (Next-Gen Gradient Hero Card) */}
         <HeaderBar
-          version={this.props.version}
           isSettingsOpen={isSettingsOpen}
           userSecurityLevel={userSecurityLevel}
           isDarkMode={isDarkMode}
@@ -2682,7 +2681,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   }
 
   /**
-   * Footer version line (BW-011). Web part and backend are versioned separately (decision D-03),
+   * Footer version line (BW-011) – the only place versions are shown (the header has none). Web part and backend are versioned separately (decision D-03),
    * so the two numbers differ whenever only one half changed in a release – that is normal.
    */
   private _renderFooterVersions(): React.ReactNode {
