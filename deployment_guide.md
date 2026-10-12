@@ -49,7 +49,7 @@ We will compile the TypeScript code and deploy it directly to the Flex Consumpti
 
 > **Note on Versioning (v1.22.5+)**:
 > The dashboard UI dynamically loads the backend engine version (`appVersion`) sent directly from the Azure Function API response.
-> For **backend-only updates**, simply running Step 5 above will immediately update the version displayed in the dashboard header upon page refresh. You do **not** need to rebuild or re-upload the SharePoint `.sppkg` package unless frontend React client code was changed.
+> **Shared version (decision D-03, 2026-10-12):** backend and web part always carry the same version number. Every release – even a backend-only fix – bumps all version files, runs Step 5 **and** rebuilds and re-uploads the SharePoint `.sppkg` (Part 2), so both halves stay on the same number. See `CLAUDE.md` §2.
 
 ---
 
