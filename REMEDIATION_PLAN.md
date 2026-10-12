@@ -42,7 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
-| BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `TESTING` | |
+| BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
 | BW-004 | Autotask concurrency can exceed 3-thread limit | High | 2 | Backend | `TODO` | |
@@ -53,7 +53,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-009 | Linux root volume `/` normalised to empty string | High (if Linux agents exist) | 3 | Backend | `TODO` | |
 | BW-010 | Settings handling: dead admin functions, `AT_USER` mismatch, no start-up validation | Medium | 3 | Backend | `TODO` | |
 | BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `DECISION` | |
-| BW-012 | Is the v1.23.2 frontend refactor actually deployed? | Medium | 0 | Verification only | `TODO` | |
+| BW-012 | Is the v1.23.2 frontend refactor actually deployed? | Medium | 0 | Verification only | `DONE` | n/a (Frontend 1.23.4 confirmed live) |
 | BW-013 | Only Autotask status 5 treated as closed | Low/Medium | 3 | Backend | `DECISION` | |
 | BW-014 | Silent `catch {}` blocks hide failures | Low | 4 | Backend | `TODO` | |
 | BW-015 | Raw volume names in `volumesList` | Low | 3 | Backend | `TODO` | |
@@ -184,20 +184,21 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-012 – Is the v1.23.2 frontend refactor actually deployed?
-**Status:** `TODO`  **Severity:** Medium  **Release type:** Verification only
+**Status:** `DONE`  **Severity:** Medium  **Release type:** Verification only
 
 **Finding.** CHANGELOG 1.23.2 is a frontend refactor (`BackupWatch.tsx` split into sub-components), but all frontend version files are 1.23.1. The UI header shows the backend version only, so a stale web part is invisible. (Also: CHANGELOG says `BackupWatch.tsx` is 2,772 lines; the audit measured 2,618.)
 
 **Fix.**
-- [ ] In the SharePoint App Catalog, note the deployed BackupWatch package version and modified date.
-- [ ] Compare with the `.sppkg` in the repo root (modified date) and the current source.
-- [ ] If the refactor isn't live: rebuild via the BW-011 release script as frontend 1.23.2 (or next version) and deploy.
-- [ ] Correct the CHANGELOG line count.
+- [x] In the SharePoint App Catalog, note the deployed BackupWatch package version and modified date.
+- [x] Compare with the `.sppkg` in the repo root (modified date) and the current source.
+- [x] If the refactor isn't live: rebuild via the BW-011 release script as frontend 1.23.2 (or next version) and deploy. *(Superseded: frontend 1.23.4, which contains the refactor, built by hand and deployed – see progress log.)*
+- [x] Correct the CHANGELOG line count. *(No change needed: `BackupWatch.tsx` at `baseline-2026-10-10` is 2,771 lines, matching the CHANGELOG's 2,772; the audit's 2,618 was the outlier.)*
 
 **Acceptance criteria.** Deployed package version is known and recorded here; it matches the source.
 
 **Progress log.**
 - 2026-10-10 – Item created.
+- 2026-10-12 – Frontend **1.23.4** deployed to the App Catalog (Malith). Package = repo-root `backup-watch-scaffold.sppkg` built 2026-10-12 12:19 (52,119 bytes, SHA-256 prefix `12db8f1f9b13fd81`, single bundle `backup-watch-web-part_a96c098e47f7856f4de3.js`) from `main` at `0933d12`; scaffold `src` checked identical to `spfx-client/src` (line endings aside). Deployed version is known and matches source; it includes the 1.23.2 refactor. `DONE`. Remaining risk (a stale web part is invisible because the header shows only the engine version) is covered by BW-011's `UI v<x> · Engine v<y>` footer.
 
 ---
 
@@ -226,7 +227,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ## Phase 1 – Security
 
 ### BW-003 – Confirm Easy Auth / Entra configuration
-**Status:** `TODO`  **Severity:** High  **Release type:** Azure configuration (no code)
+**Status:** `DONE`  **Severity:** High  **Release type:** Azure configuration (no code)
 
 **Finding.** All functions are `authLevel: anonymous`; protection depends entirely on Easy Auth. This can't be confirmed from code.
 
@@ -269,7 +270,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-001 – Backend trusts client-supplied role (privilege escalation)
-**Status:** `TESTING` (backend 1.24.0 live since 2026-10-12; frontend steps open)  **Severity:** Critical  **Release type:** Backend + Entra configuration (+ small frontend change)
+**Status:** `DONE` (backend 1.24.0 + frontend 1.23.4, both live 2026-10-12)  **Severity:** Critical  **Release type:** Backend + Entra configuration (+ small frontend change)
 
 **Finding.** `shared/auth.ts:93-105` adds a role taken from the `x-user-role` header or `?role=` query parameter to the caller's groups; lines 176-186 then pick the highest role. The SPFx client works out the role in the browser (Graph `transitiveMemberOf`) and sends it. Any signed-in Fifosys user can change `role=viewer` to `role=administrator` and gain full admin rights (blackout, table purge, routing changes, permanent exclusions). `x-mock-role` (lines 157-169) has the same effect.
 
@@ -282,9 +283,9 @@ This is the single source of truth for every defect found in the October 2026 co
 - [x] **Backend:** rewrite `getUserSecurityContext` to read roles **only** from the `roles` claim in `X-MS-CLIENT-PRINCIPAL` (set by Easy Auth after validating the token; Azure strips client-supplied copies). Highest role wins; no role = deny (or Viewer – decide during build). *Decided: authenticated with no BackupWatch role = Viewer + warning log; no principal = 401.*
 - [x] **Backend:** delete support for `x-user-role`, `?role=`, `?user=`, `x-mock-role`, and the manual JWT decode. User email also comes from the principal only.
 - [x] **Backend:** return the server-resolved `userRole` in the main payload (plus `userEmail`; additive).
-- [ ] **Frontend:** show the role badge and gate buttons from the server-resolved `userRole` (Graph lookup can be removed or kept as cosmetic only). Stop sending `role`/`user` parameters.
+- [x] **Frontend:** show the role badge and gate buttons from the server-resolved `userRole` (Graph lookup can be removed or kept as cosmetic only). Stop sending `role`/`user` parameters.
 - [x] **Tests (backend):** a request with `?role=administrator` and a Viewer principal is treated as Viewer; each role reaches only its permitted endpoints (matrix from `security_group_rbac_proposal.md`).
-- [ ] **Release order:** Entra roles first → backend → frontend. The old frontend still works against the new backend (extra parameters are simply ignored).
+- [x] **Release order:** Entra roles first → backend → frontend. The old frontend still works against the new backend (extra parameters are simply ignored).
 
 **Acceptance criteria.** Role cannot be changed by anything the browser sends; each role's permissions match the RBAC matrix; audit log shows the server-resolved email and role.
 
@@ -299,6 +300,8 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – Frontend 1.23.4 on branch `bw-001-frontend` (not uploaded): web part uses server `userRole`/`userEmail`, sends no role/identity, Graph role lookup removed. Owner decisions: (1) `BackupWatchScaffold\release\` deleted and rebuilt – `.sppkg` now contains only the current bundle (`backup-watch-web-part_d13ab7aa4a2a1f46d9b6.js`), none of the old role code; (2) Graph `GroupMember.Read.All` removed from `package-solution.json` (`.sppkg` now requests only `BackupWatch-Backend-API/user_impersonation` and Graph `User.Read`). Note: `package-solution.json` lives only in the scaffold, which is not under source control (BW-011).
   - [ ] **Check before revoking:** the tenant-wide `GroupMember.Read.All` approval (SharePoint admin centre → Advanced → API access) is shared by every SPFx solution. Do **not** revoke until it's confirmed no other web part uses it.
 - 2026-10-12 – Branch `bw-001-frontend-2` (still 1.23.4, not released): header shows the **engine version only** (backend `appVersion`, `v…` until the first response) instead of falling back to the web part version and then switching; footer "BCDR Engine v…" fixed the same way. `release\` and `temp\` cleaned, rebuilt; `.sppkg` verified: one bundle (`backup-watch-web-part_a96c098e47f7856f4de3.js`, the one the web part loads), no role/identity params or headers, no Graph role lookup, permissions only `BackupWatch-Backend-API/user_impersonation` + Graph `User.Read`, feature version 1.23.4.0.
+- 2026-10-12 – **Frontend 1.23.4 deployed** to the App Catalog (Malith), from `main` at `0933d12` (PRs #2 and #3); tag `frontend-1.23.4`. Release order Entra → backend → frontend complete. `DONE`.
+  - Still open (tracked here, not blocking): revoke the tenant-wide `GroupMember.Read.All` approval only after the check above; remove the unused `RBAC_*_GROUP_ID` app settings.
 
 ---
 
