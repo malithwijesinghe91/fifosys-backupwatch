@@ -26,11 +26,12 @@ The frontend and backend are completely decoupled:
 2. **Backend Serverless API (`stateless-backend/`)**:
    - Azure Function App (`backupwatch-api`, Node.js / TypeScript, Linux Flex Consumption).
    - Serves endpoints: `/api/backupWatchTrigger`, `/api/exclusions`, `/api/escalateTrigger`, `/api/auditlogs`, `/api/adminDiagnostics`, `/api/adminRouting`.
-   - Single source of truth for version is `stateless-backend/shared/version.ts`.
+   - Backend version lives in `stateless-backend/shared/version.ts` (until the BW-011 single root version file exists).
 
-### Release Rule:
-- **Backend-Only Changes (Bugfixes, API logic, scanner)**: Bump `version.ts`, `package.json`, then from `stateless-backend/` run `npm run build` followed by `func azure functionapp publish backupwatch-api --build local` (remote build is not supported – see §4). **Do NOT rebuild or upload `.sppkg`.**
-- **Frontend Changes (React components, UI styling, layouts)**: Rebuild package in `BackupWatchScaffold`, copy `backup-watch-scaffold.sppkg` to root, and upload to SharePoint App Catalog.
+### Release Rule (shared version – decision D-03, 2026-10-12):
+- **One version for the whole product.** Backend and web part always carry the same number. Every release bumps **all** version files to that number: `stateless-backend/shared/version.ts`, `stateless-backend/package.json`, `spfx-client/package.json`, `BackupWatchWebPart.manifest.json` (repo and scaffold copies), `BackupWatchScaffold/package.json`, and `BackupWatchScaffold/config/package-solution.json` (`solution.version` **and** every `features[].version`, as `x.y.z.0`).
+- **Every release ships both halves**, even if only one side changed: backend (`npm run build` then `func azure functionapp publish backupwatch-api --build local` from `stateless-backend/`; remote build is not supported – see §4) **and** web part (rebuild in `BackupWatchScaffold`, copy `backup-watch-scaffold.sppkg` to root, upload to the SharePoint App Catalog).
+- One `CHANGELOG.md` heading per release. Manual for now; the BW-011 release script will do the bumping.
 
 ---
 

@@ -52,7 +52,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-008 | Expired exclusion deleted before follow-up ticket is confirmed | Medium (to verify) | 3 | Backend | `TODO` | |
 | BW-009 | Linux root volume `/` normalised to empty string | High (if Linux agents exist) | 3 | Backend | `TODO` | |
 | BW-010 | Settings handling: dead admin functions, `AT_USER` mismatch, no start-up validation | Medium | 3 | Backend | `TODO` | |
-| BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `DECISION` | |
+| BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `TODO` | |
 | BW-012 | Is the v1.23.2 frontend refactor actually deployed? | Medium | 0 | Verification only | `DONE` | n/a (Frontend 1.23.4 confirmed live) |
 | BW-013 | Only Autotask status 5 treated as closed | Low/Medium | 3 | Backend | `DECISION` | |
 | BW-014 | Silent `catch {}` blocks hide failures | Low | 4 | Backend | `TODO` | |
@@ -82,7 +82,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|
 | D-01 (BW-006) | When an appliance/agent is silenced and a tracked issue clears, should the auto-heal note still be posted to Autotask? | **No.** No Autotask writes of any kind while silenced. The first scan after un-muting posts the auto-heal note. Suppressed actions are written to the audit log. | | |
 | D-02 (BW-007) | During a global blackout, can engineers still escalate manually? | **Soft block.** Warning shown; Specialist/Administrator may override with a mandatory reason (audited); Contributor blocked. | | |
-| D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | | |
+| D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | **Shared (lockstep) version.** Backend and web part always carry the same number; every release bumps both, deploys the backend **and** builds and uploads the `.sppkg`, even if only one side changed. | 2026-10-12 |
 | D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | | |
 | D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | | |
 | D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | | |
@@ -157,29 +157,32 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-011 – Versions drift between backend, frontend and scaffold
-**Status:** `DECISION` (D-03)  **Severity:** Medium  **Release type:** Tooling
+**Status:** `TODO` (D-03 decided 2026-10-12: shared version)  **Severity:** Medium  **Release type:** Tooling (first use = next release)
 
 **Finding.** `version.ts` and backend `package.json` = 1.23.2; `spfx-client/package.json`, web part manifest and scaffold `package.json` = 1.23.1; `package-solution.json` solution = 1.23.1.0 but `features[0].version` = 1.22.1.0. Versions are typed by hand in up to 7 places.
 
-**Fix (assuming D-03 = separate versions).**
-- [ ] Create `versions.json` at the repo root: `{ "backend": "1.23.2", "frontend": "1.23.1" }`. The only place a version is ever typed.
-- [ ] Create `scripts/release.mjs`: `npm run release -- backend|frontend patch|minor|major`. It bumps `versions.json` and writes:
-  - Backend: `stateless-backend/shared/version.ts`, `stateless-backend/package.json`.
-  - Frontend: `spfx-client/package.json`, `BackupWatchWebPart.manifest.json` (both copies), `BackupWatchScaffold/package.json`, `package-solution.json` (`solution.version` **and** every `features[].version`, in `x.y.z.0` form).
-  - Appends a dated stub to `CHANGELOG.md` for you to fill in.
-- [ ] Create `scripts/verify-versions.mjs` that fails if any file disagrees with `versions.json`. Wire it as `prebuild` for the backend and as the first step of the SPFx build commands in `CLAUDE.md`.
-- [ ] Backend returns `appVersion` **and** `expectedFrontendVersion` in the main payload.
-- [ ] Footer shows `UI v<x> · Engine v<y>`; show a small warning if the deployed web part version is older than `expectedFrontendVersion`.
-- [ ] Update `CLAUDE.md` section 4 and `.agents/AGENTS.md` section 3 to use the release script.
+**Fix (D-03 = one shared version).**
+- [ ] Create `VERSION` (or `versions.json` with a single `version` key) at the repo root. The only place a version is ever typed.
+- [ ] **First shared version = next release after backend 1.24.0 / frontend 1.23.4** (e.g. both become 1.24.1, or 1.25.0 if the release adds a feature). The web part jumps straight from 1.23.4 to the shared number.
+- [ ] Create `scripts/release.mjs`: `npm run release -- patch|minor|major`. It bumps the one version and writes it to **all** of:
+  - `stateless-backend/shared/version.ts`, `stateless-backend/package.json`.
+  - `spfx-client/package.json`, `BackupWatchWebPart.manifest.json` (both copies), `BackupWatchScaffold/package.json`, `package-solution.json` (`solution.version` **and** every `features[].version`, in `x.y.z.0` form).
+  - Appends a dated stub to `CHANGELOG.md` (one heading per release, no separate "Frontend x.y.z" headings).
+- [ ] Create `scripts/verify-versions.mjs` that fails if any file disagrees with the root version. Wire it as `prebuild` for the backend and as the first step of the SPFx build commands in `CLAUDE.md`.
+- [ ] Bring `BackupWatchScaffold` config under source control (at least `config/package-solution.json`, `package.json`, `gulpfile.js`) so every version file is tracked – e.g. a `scaffold/` folder in this repo that the build copies in.
+- [ ] Every release does **both** halves: backend `func publish` **and** `.sppkg` build + App Catalog upload; one git tag per release (`v<x.y.z>`), replacing the separate `backend-*` / `frontend-*` tags.
+- [ ] Footer shows `UI v<x> · Engine v<y>` (web part manifest version vs backend `appVersion`); show a small warning if they differ, i.e. one half of a release was not deployed. Header keeps showing a single version.
+- [ ] Update `CLAUDE.md` §2 and §4, `.agents/AGENTS.md` §3 and `AGENT_PLAYBOOK.md` (Release Manager) to use the release script. *(Release rule itself updated 2026-10-12, see progress log.)*
 - [ ] Release script runs `npm prune --omit=dev` (or equivalent) before publish (found in BW-019: jest/ts-jest/typescript currently ship in `node_modules`).
 - [ ] Clean `dist/` before build (`build` is plain `tsc`, so stale files survive).
 - [ ] Frontend: delete `BackupWatchScaffold\release\` and `BackupWatchScaffold\temp\` before every `gulp bundle --ship` (permanent step). Found 2026-10-12: `release\assets` had kept 14 old hashed bundles since 2026-09-07 and `package-solution` packed them all into the `.sppkg` (557 KB → 52 KB after cleaning). Cleaned once manually; documented as step 0 in `CLAUDE.md` §4.
 - [x] Publish with explicit build mode – documented 2026-10-12 (BW-019) in `CLAUDE.md` §4, `.agents/AGENTS.md` §3 and `deployment_guide.md` Part 1 step 5: `npm run build` then `func azure functionapp publish backupwatch-api --build local`. **The release script must use `--build local`** (`.funcignore` excludes `*.ts`/`tsconfig.json`, so a remote build would fail).
 
-**Acceptance criteria.** Running the release script for each component produces consistent versions everywhere; manually editing one file makes the build fail; the footer shows both versions.
+**Acceptance criteria.** One run of the release script sets the same version in every file (backend, web part, scaffold, `package-solution.json` solution and features); manually editing one file makes the build fail; the footer shows both deployed versions and warns when they differ.
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-03.
+- 2026-10-12 – **D-03 decided (Malith): shared version.** Fix rewritten for one version. Release rule in `CLAUDE.md` §2, `.agents/AGENTS.md` §3 and `AGENT_PLAYBOOK.md` changed now: every release bumps every version file to the same number and ships both the backend and the `.sppkg`. Script and checks still `TODO`.
 
 ---
 
