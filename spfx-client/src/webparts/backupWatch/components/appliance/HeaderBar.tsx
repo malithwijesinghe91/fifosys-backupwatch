@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { FIFOSYS_ICON_BASE64 } from '../../assets/fifosysLogo';
+import { RolePlaceholder } from '../loading/LoadingStates';
 
 export interface IHeaderBarProps {
   isSettingsOpen: boolean;
@@ -9,6 +10,8 @@ export interface IHeaderBarProps {
   userDisplayName: string;
   /** Server-resolved sign-in email (BW-001), shown as a tooltip on the operator badge. */
   userEmail?: string;
+  /** False until a live response has confirmed the role; the badge shows a placeholder meanwhile. */
+  roleResolved?: boolean;
   onToggleSettings: (isOpen: boolean) => void;
   onOpenAuditLogs: () => void;
   onOpenAdminModal: (tab: 'diagnostics' | 'routing' | 'blackout' | 'cleanup' | 'assetTester') => void;
@@ -23,6 +26,7 @@ export const HeaderBar: React.FC<IHeaderBarProps> = ({
   isFullScreen,
   userDisplayName,
   userEmail,
+  roleResolved = true,
   onToggleSettings,
   onOpenAuditLogs,
   onOpenAdminModal,
@@ -190,13 +194,13 @@ export const HeaderBar: React.FC<IHeaderBarProps> = ({
         </div>
 
         {/* Cluster 4: Operator Identity with Initials Avatar */}
-        <div className="bw-user-pill" title={userEmail ? `${userEmail} (${userSecurityLevel})` : undefined}>
+        <div className="bw-user-pill" title={roleResolved && userEmail ? `${userEmail} (${userSecurityLevel})` : undefined}>
           <div className="bw-user-avatar">
             {(userDisplayName || 'OP').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
           </div>
           <div className="bw-user-meta">
             <span className="bw-user-name">{userDisplayName || 'Operator'}</span>
-            <span 
+            {!roleResolved ? <RolePlaceholder /> : <span
               className="bw-user-role"
               style={{
                 color: userSecurityLevel === 'Administrator' ? '#F87171' :
@@ -206,7 +210,7 @@ export const HeaderBar: React.FC<IHeaderBarProps> = ({
               }}
             >
               {userSecurityLevel}
-            </span>
+            </span>}
           </div>
         </div>
       </div>
