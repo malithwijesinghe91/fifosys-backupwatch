@@ -1,12 +1,13 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import axios from "axios";
-import { getUserSecurityContext } from "../shared/auth";
+import { requireAuthenticatedUser } from "../shared/auth";
 import { getTableClient } from "../shared/tableService";
 
 import { APP_VERSION } from "../shared/version";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    const userSec = getUserSecurityContext(req);
+    const userSec = requireAuthenticatedUser(context, req);
+    if (!userSec) return;
     if (userSec.role !== "Administrator") {
         context.res = {
             status: 403,

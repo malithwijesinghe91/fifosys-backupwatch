@@ -1,10 +1,11 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { getTableClient } from "../shared/tableService";
 import { getAutoTaskConfig, getTicketStatusPicklistValues } from "../shared/autotask";
-import { getUserSecurityContext } from "../shared/auth";
+import { requireAuthenticatedUser } from "../shared/auth";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    const userSec = getUserSecurityContext(req);
+    const userSec = requireAuthenticatedUser(context, req);
+    if (!userSec) return;
     if (!userSec.isAuthorizedForAuditLogs) {
         context.res = {
             status: 403,
@@ -23,6 +24,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             logs.push({
                 id: entity.rowKey,
                 userEmail: entity.userEmail || "unknown@fifosys.com",
+                userRole: entity.userRole || null,
                 action: entity.action,
                 target: entity.target,
                 details: entity.details || "",

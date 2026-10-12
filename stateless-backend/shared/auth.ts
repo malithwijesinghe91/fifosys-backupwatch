@@ -1,12 +1,14 @@
-import { HttpRequest } from "@azure/functions";
+import { Context, HttpRequest } from "@azure/functions";
 
 export type UserRole = "Viewer" | "Contributor" | "Specialist" | "Administrator";
 
 export interface IUserSecurityContext {
+    isAuthenticated: boolean;
     email: string;
     name: string;
     userId?: string;
-    groups: string[];
+    /** Raw App Role claim values from the Easy Auth principal (e.g. "BackupWatch.Specialist"). */
+    appRoles: string[];
     role: UserRole;
     isAuthorizedForPermanent: boolean;
     isAuthorizedForModification: boolean;
@@ -14,193 +16,146 @@ export interface IUserSecurityContext {
     isAuthorizedForAuditLogs: boolean;
 }
 
-// Default Entra ID Object IDs configured for BackupWatch Security Groups
-export const RBAC_GROUP_IDS = {
-    ADMINISTRATOR: process.env.RBAC_ADMIN_GROUP_ID || "f146d61d-c629-4685-b757-5d560195a98a",
-    SPECIALIST: process.env.RBAC_SPECIALIST_GROUP_ID || "ca9d0b2c-6f9f-4b94-864c-1cca786dc52d",
-    CONTRIBUTOR: process.env.RBAC_CONTRIBUTOR_GROUP_ID || "d19f391a-6aba-4a25-87b3-aff059c0ff40",
-    VIEWER: process.env.RBAC_VIEWER_GROUP_ID || "f17fa29e-7ea8-405e-b04a-15a6a8fe2f60"
+/** Entra App Role values defined on the BackupWatch-Backend-API app registration. */
+export const APP_ROLE_VALUES: Record<UserRole, string> = {
+    Administrator: "BackupWatch.Administrator",
+    Specialist: "BackupWatch.Specialist",
+    Contributor: "BackupWatch.Contributor",
+    Viewer: "BackupWatch.Viewer"
 };
 
-/**
- * Parses Easy Auth / App Service client principal header (X-MS-CLIENT-PRINCIPAL)
- */
-export function parseClientPrincipal(req: HttpRequest): {
-    identityProvider?: string;
-    userId?: string;
-    userDetails?: string;
-    userRoles?: string[];
-    claims?: { typ: string; val: string }[];
-} | null {
-    const rawHeader = req.headers["x-ms-client-principal"] || req.headers["X-Ms-Client-Principal"];
-    if (!rawHeader) return null;
+// Highest privilege first
+const ROLE_PRIORITY: UserRole[] = ["Administrator", "Specialist", "Contributor", "Viewer"];
 
+// Claim types Easy Auth uses for App Roles: v2 tokens ("roles") and v1 / WS-Fed mapped type.
+const ROLE_CLAIM_TYPES = ["roles", "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+
+const EMAIL_CLAIM_TYPES = [
+    "preferred_username",
+    "upn",
+    "email",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+];
+const NAME_CLAIM_TYPES = ["name"];
+const OBJECT_ID_CLAIM_TYPES = ["oid", "http://schemas.microsoft.com/identity/claims/objectidentifier"];
+
+export interface IClientPrincipal {
+    auth_typ?: string;
+    name_typ?: string;
+    role_typ?: string;
+    claims?: { typ: string; val: string }[];
+}
+
+type LogLike = { warn: (...args: any[]) => void };
+
+function header(req: HttpRequest, name: string): string {
+    const headers: any = req.headers || {};
+    const value = headers[name.toLowerCase()];
+    return typeof value === "string" ? value : "";
+}
+
+/**
+ * Parses the Easy Auth X-MS-CLIENT-PRINCIPAL header (base64 JSON).
+ * Azure App Service sets this after validating the token and strips any client-supplied copy.
+ */
+export function parseClientPrincipal(req: HttpRequest): IClientPrincipal | null {
+    const raw = header(req, "x-ms-client-principal");
+    if (!raw) return null;
     try {
-        const decoded = Buffer.from(rawHeader, "base64").toString("utf-8");
-        return JSON.parse(decoded);
-    } catch (e) {
+        const parsed = JSON.parse(Buffer.from(raw, "base64").toString("utf-8"));
+        return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
         return null;
     }
 }
 
-/**
- * Evaluates caller identity, claims, and role level from HttpRequest.
- */
-export function getUserSecurityContext(req: HttpRequest): IUserSecurityContext {
-    const principal = parseClientPrincipal(req);
-    const groups: string[] = [];
+function claimValues(principal: IClientPrincipal, types: string[]): string[] {
+    const wanted = types.filter(Boolean).map(t => t.toLowerCase());
+    return (Array.isArray(principal.claims) ? principal.claims : [])
+        .filter(c => c && typeof c.typ === "string" && wanted.includes(c.typ.toLowerCase()))
+        .map(c => String(c.val || "").trim())
+        .filter(Boolean);
+}
 
-    // Fallback email extraction
-    let email = req.headers["x-ms-client-principal-name"] ||
-                req.headers["X-Ms-Client-Principal-Name"] ||
-                req.headers["x-user-email"] ||
-                "";
-    let name = "";
-    let userId = "";
+function roleFromAppRole(value: string): UserRole | null {
+    const v = value.trim().toLowerCase();
+    return ROLE_PRIORITY.find(r => APP_ROLE_VALUES[r].toLowerCase() === v) || null;
+}
 
-    if (principal) {
-        userId = principal.userId || "";
-        if (!email && principal.userDetails) {
-            email = principal.userDetails;
-        }
-
-        if (Array.isArray(principal.claims)) {
-            for (const claim of principal.claims) {
-                const typ = (claim.typ || "").toLowerCase();
-                const val = claim.val || "";
-
-                if (typ === "groups" || typ.endsWith("/identity/claims/groups") || typ.endsWith("/groups")) {
-                    if (val && !groups.includes(val)) {
-                        groups.push(val.toLowerCase());
-                    }
-                } else if (typ === "name" || typ.endsWith("/identity/claims/name")) {
-                    if (!name) name = val;
-                } else if (typ === "preferred_username" || typ.endsWith("/emailaddress") || typ.endsWith("/upn")) {
-                    if (!email) email = val;
-                }
-            }
-        }
-
-        if (Array.isArray(principal.userRoles)) {
-            for (const r of principal.userRoles) {
-                if (r && !groups.includes(r.toLowerCase())) {
-                    groups.push(r.toLowerCase());
-                }
-            }
-        }
-    }
-
-    // Direct role header or query parameter passed by authenticated SPFx client
-    const clientRoleHeader = (req.headers["x-user-role"] || req.headers["X-User-Role"] || (req.query && req.query.role) || "").trim().toLowerCase();
-    if (clientRoleHeader) {
-        if (clientRoleHeader === "administrator" || clientRoleHeader === "admin") {
-            groups.push(RBAC_GROUP_IDS.ADMINISTRATOR.toLowerCase());
-        } else if (clientRoleHeader === "specialist") {
-            groups.push(RBAC_GROUP_IDS.SPECIALIST.toLowerCase());
-        } else if (clientRoleHeader === "contributor") {
-            groups.push(RBAC_GROUP_IDS.CONTRIBUTOR.toLowerCase());
-        } else if (clientRoleHeader === "viewer") {
-            groups.push(RBAC_GROUP_IDS.VIEWER.toLowerCase());
-        }
-    }
-
-    // Direct user email passed by SPFx client (header or query param)
-    const clientEmailHeader = req.headers["x-user-email"] || req.headers["X-User-Email"] || (req.query && req.query.user);
-    if (clientEmailHeader && !email) {
-        email = clientEmailHeader;
-    }
-
-    // Decode JWT Bearer Token if present (from AadHttpClient: Authorization: Bearer <token>)
-    const authHeader = req.headers["authorization"] || req.headers["Authorization"] || "";
-    if (authHeader.startsWith("Bearer ") || authHeader.startsWith("bearer ")) {
-        try {
-            const token = authHeader.substring(7).trim();
-            const parts = token.split(".");
-            if (parts.length >= 2) {
-                const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-                const decodedJson = Buffer.from(payloadBase64, "base64").toString("utf-8");
-                const jwtPayload = JSON.parse(decodedJson);
-
-                if (!email) {
-                    email = jwtPayload.upn || jwtPayload.unique_name || jwtPayload.email || jwtPayload.preferred_username || "";
-                }
-                if (!name) {
-                    name = jwtPayload.name || "";
-                }
-                if (!userId) {
-                    userId = jwtPayload.oid || jwtPayload.sub || "";
-                }
-
-                // Parse groups from JWT claims
-                if (Array.isArray(jwtPayload.groups)) {
-                    for (const g of jwtPayload.groups) {
-                        if (g && !groups.includes(String(g).toLowerCase())) {
-                            groups.push(String(g).toLowerCase());
-                        }
-                    }
-                }
-
-                // Parse roles from JWT claims
-                if (Array.isArray(jwtPayload.roles)) {
-                    for (const r of jwtPayload.roles) {
-                        if (r && !groups.includes(String(r).toLowerCase())) {
-                            groups.push(String(r).toLowerCase());
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            // Ignored, fallback gracefully
-        }
-    }
-
-    // Support local / testing mock headers
-    const mockRoleHeader = (req.headers["x-mock-role"] || "").trim().toLowerCase();
-    if (mockRoleHeader) {
-        if (mockRoleHeader === "administrator" || mockRoleHeader === "admin") {
-            groups.push(RBAC_GROUP_IDS.ADMINISTRATOR.toLowerCase());
-        } else if (mockRoleHeader === "specialist") {
-            groups.push(RBAC_GROUP_IDS.SPECIALIST.toLowerCase());
-        } else if (mockRoleHeader === "contributor") {
-            groups.push(RBAC_GROUP_IDS.CONTRIBUTOR.toLowerCase());
-        } else if (mockRoleHeader === "viewer") {
-            groups.push(RBAC_GROUP_IDS.VIEWER.toLowerCase());
-        }
-    }
-
-    const adminId = RBAC_GROUP_IDS.ADMINISTRATOR.toLowerCase();
-    const specialistId = RBAC_GROUP_IDS.SPECIALIST.toLowerCase();
-    const contributorId = RBAC_GROUP_IDS.CONTRIBUTOR.toLowerCase();
-
-    // Resolve Highest Role
-    let role: UserRole = "Viewer";
-
-    if (groups.includes(adminId)) {
-        role = "Administrator";
-    } else if (groups.includes(specialistId)) {
-        role = "Specialist";
-    } else if (groups.includes(contributorId)) {
-        role = "Contributor";
-    } else {
-        role = "Viewer";
-    }
-
-    if (!email) {
-        email = "unknown@fifosys.com";
-    }
-    if (!name) {
-        name = email.split("@")[0] || "User";
-    }
-
+function buildContext(isAuthenticated: boolean, role: UserRole, email: string, name: string, userId: string, appRoles: string[]): IUserSecurityContext {
     return {
+        isAuthenticated,
         email,
         name,
         userId,
-        groups,
+        appRoles,
         role,
-        isAuthorizedForPermanent: role === "Specialist" || role === "Administrator",
-        isAuthorizedForModification: role === "Contributor" || role === "Specialist" || role === "Administrator",
-        isAuthorizedForForceRefresh: role === "Specialist" || role === "Administrator",
-        isAuthorizedForAuditLogs: role === "Contributor" || role === "Specialist" || role === "Administrator"
+        isAuthorizedForPermanent: isAuthenticated && (role === "Specialist" || role === "Administrator"),
+        isAuthorizedForModification: isAuthenticated && (role === "Contributor" || role === "Specialist" || role === "Administrator"),
+        isAuthorizedForForceRefresh: isAuthenticated && (role === "Specialist" || role === "Administrator"),
+        isAuthorizedForAuditLogs: isAuthenticated && (role === "Contributor" || role === "Specialist" || role === "Administrator")
     };
+}
+
+/**
+ * Resolves the caller's identity and role from the Easy Auth headers ONLY.
+ * Nothing the browser sends (custom headers, query parameters, the bearer token itself) is trusted.
+ *
+ * - No principal header -> unauthenticated (callers must return 401).
+ * - Role = highest BackupWatch.* App Role claim; authenticated with no BackupWatch role -> Viewer (warning logged).
+ * - Local development only: AZURE_FUNCTIONS_ENVIRONMENT === "Development" and BW_DEV_ROLE set -> that role.
+ */
+export function getUserSecurityContext(req: HttpRequest, log: LogLike = console): IUserSecurityContext {
+    const devRole = resolveDevRole();
+    if (devRole) {
+        log.warn(`[RBAC] DEVELOPMENT ONLY: using BW_DEV_ROLE=${devRole}. This override is ignored outside AZURE_FUNCTIONS_ENVIRONMENT=Development.`);
+        return buildContext(true, devRole, "dev.user@localhost", "Local Developer", "local-dev", [APP_ROLE_VALUES[devRole]]);
+    }
+
+    const principal = parseClientPrincipal(req);
+    if (!principal) {
+        return buildContext(false, "Viewer", "", "", "", []);
+    }
+
+    const appRoles = Array.from(new Set(claimValues(principal, [principal.role_typ || "", ...ROLE_CLAIM_TYPES])));
+    const matched = appRoles.map(roleFromAppRole).filter((r): r is UserRole => r !== null);
+    const role = ROLE_PRIORITY.find(r => matched.includes(r)) || "Viewer";
+
+    const email = header(req, "x-ms-client-principal-name")
+        || claimValues(principal, [principal.name_typ || "", ...EMAIL_CLAIM_TYPES])[0]
+        || "unknown@fifosys.com";
+    const name = claimValues(principal, NAME_CLAIM_TYPES)[0] || email.split("@")[0] || "User";
+    const userId = claimValues(principal, OBJECT_ID_CLAIM_TYPES)[0] || "";
+
+    if (matched.length === 0) {
+        log.warn(`[RBAC] Authenticated user ${email} has no BackupWatch App Role claim; defaulting to Viewer. Check the Enterprise App role assignment.`);
+    }
+
+    return buildContext(true, role, email, name, userId, appRoles);
+}
+
+function resolveDevRole(): UserRole | null {
+    if (process.env.AZURE_FUNCTIONS_ENVIRONMENT !== "Development") return null;
+    const raw = (process.env.BW_DEV_ROLE || "").trim().toLowerCase();
+    if (!raw) return null;
+    return ROLE_PRIORITY.find(r => r.toLowerCase() === raw || APP_ROLE_VALUES[r].toLowerCase() === raw) || null;
+}
+
+/**
+ * Resolves the caller and enforces authentication. Sets a 401 response and returns null
+ * when there is no Easy Auth principal; otherwise returns the server-resolved context.
+ */
+export function requireAuthenticatedUser(context: Context, req: HttpRequest): IUserSecurityContext | null {
+    const userSec = getUserSecurityContext(req, context.log);
+    if (!userSec.isAuthenticated) {
+        context.res = {
+            status: 401,
+            body: { error: "Unauthorized: sign-in required." },
+            headers: { "Content-Type": "application/json" }
+        };
+        return null;
+    }
+    return userSec;
 }

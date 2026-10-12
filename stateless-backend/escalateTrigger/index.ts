@@ -12,7 +12,7 @@ import {
     queryTicketsInAutoTask,
     getSingleTicketFromAutoTask
 } from "../shared/autotask";
-import { getUserSecurityContext } from "../shared/auth";
+import { requireAuthenticatedUser } from "../shared/auth";
 import { getAutotaskRoutingConfig } from "../shared/configService";
 
 interface ITrackedTicketEntity {
@@ -279,7 +279,8 @@ ${commonInfo}`;
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
     context.log.info("Processing ticket escalation request...");
 
-    const userSec = getUserSecurityContext(req);
+    const userSec = requireAuthenticatedUser(context, req);
+    if (!userSec) return;
     if (!userSec.isAuthorizedForModification) {
         context.res = {
             status: 403,
@@ -551,6 +552,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 partitionKey: "AuditLog",
                 rowKey: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 userEmail: userEmail,
+                userRole: userSec.role,
                 action: "Manual Escalation",
                 target: `${companyName} - ${deviceName}${agentName ? ` - ${agentName}` : ""}`,
                 details: `[Role: ${userSec.role}] Ticket: ${ticketNumber} (ID: ${newTicketId}), Issue: ${issueType}, Msg: ${description}`,

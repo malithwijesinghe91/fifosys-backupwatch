@@ -14,10 +14,13 @@ import {
     getTicketStatusPicklistValues
 } from "../shared/autotask";
 import { normalizeVolumeName, isAgentSilenced, isDeviceSilenced } from "../shared/volumeUtils";
-import { getUserSecurityContext } from "../shared/auth";
+import { requireAuthenticatedUser } from "../shared/auth";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
     const method = (req.method || "").toLowerCase();
+
+    const userSec = requireAuthenticatedUser(context, req);
+    if (!userSec) return;
     
     try {
         const tableClient = await getTableClient();
@@ -63,7 +66,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         }
 
         if (method === "post") {
-            const userSec = getUserSecurityContext(req);
             if (!userSec.isAuthorizedForModification) {
                 context.res = {
                     status: 403,
@@ -348,6 +350,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                     partitionKey: "AuditLog",
                     rowKey: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                     userEmail: userEmail,
+                    userRole: userSec.role,
                     action: action,
                     target: normalizedTarget,
                     details: isEmergency ? `[EMERGENCY OVERRIDE: NO TICKET] ${cleanedReason}` : `[Ticket #${ticketNumber}] ${cleanedReason}`,
@@ -378,7 +381,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         }
 
         if (method === "delete") {
-            const userSec = getUserSecurityContext(req);
             if (!userSec.isAuthorizedForModification) {
                 context.res = {
                     status: 403,
@@ -466,6 +468,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                     partitionKey: "AuditLog",
                     rowKey: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                     userEmail: userEmail,
+                    userRole: userSec.role,
                     action: action,
                     target: target || id,
                     details: reason ? `Previously: ${reason}` : "",

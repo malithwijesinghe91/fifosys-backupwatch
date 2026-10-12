@@ -1,11 +1,12 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { getUserSecurityContext } from "../shared/auth";
+import { requireAuthenticatedUser } from "../shared/auth";
 import { getAutoTaskConfig, getTicketFieldPicklistValues, IPicklistValue } from "../shared/autotask";
 import { getAutotaskRoutingConfig, saveAutotaskRoutingConfig, getAlertRoutingMatrix, saveAlertRoutingMatrix } from "../shared/configService";
 import { getTableClient } from "../shared/tableService";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    const userSec = getUserSecurityContext(req);
+    const userSec = requireAuthenticatedUser(context, req);
+    if (!userSec) return;
     if (userSec.role !== "Administrator") {
         context.res = {
             status: 403,
@@ -162,6 +163,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 partitionKey: "AuditLog",
                 rowKey: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                 userEmail: userSec.email,
+                userRole: userSec.role,
                 action: "Update Autotask Live Routing",
                 target: "Autotask/SystemConfig",
                 details: `Queue: ${newConfig.queueName || newConfig.queueId || "Default"} (ID: ${newConfig.queueId}), Priority: ${newConfig.priorityId}, Category: ${newConfig.categoryId}`,

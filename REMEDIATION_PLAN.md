@@ -42,7 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
-| BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `TODO` | |
+| BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `TESTING` | |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
 | BW-004 | Autotask concurrency can exceed 3-thread limit | High | 2 | Backend | `TODO` | |
@@ -268,21 +268,21 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-001 – Backend trusts client-supplied role (privilege escalation)
-**Status:** `TODO`  **Severity:** Critical  **Release type:** Backend + Entra configuration (+ small frontend change)
+**Status:** `TESTING` (backend 1.24.0 on branch `bw-001-server-side-roles`, not deployed; frontend steps open)  **Severity:** Critical  **Release type:** Backend + Entra configuration (+ small frontend change)
 
 **Finding.** `shared/auth.ts:93-105` adds a role taken from the `x-user-role` header or `?role=` query parameter to the caller's groups; lines 176-186 then pick the highest role. The SPFx client works out the role in the browser (Graph `transitiveMemberOf`) and sends it. Any signed-in Fifosys user can change `role=viewer` to `role=administrator` and gain full admin rights (blackout, table purge, routing changes, permanent exclusions). `x-mock-role` (lines 157-169) has the same effect.
 
 **Intended design (unchanged):** roles come from Entra security group membership. The fix makes the **backend** enforce that.
 
 **Fix.**
-- [ ] **Entra:** on the `BackupWatch-Backend-API` app registration, create App Roles `BackupWatch.Administrator`, `BackupWatch.Specialist`, `BackupWatch.Contributor`, `BackupWatch.Viewer` (allowed member type: Users/Groups).
-- [ ] **Entra:** Enterprise Applications → BackupWatch-Backend-API → Users and groups: assign the four existing security groups to the matching roles (needs Entra ID P1).
-- [ ] **Entra:** set *Assignment required = Yes* so only members of the four groups can get a token. **Do this only after the four groups are assigned**, otherwise everyone is locked out. (Current state 2026-10-11: Assignment required = No, nobody assigned, no app roles, no groups claim.)
-- [ ] **Backend:** rewrite `getUserSecurityContext` to read roles **only** from the `roles` claim in `X-MS-CLIENT-PRINCIPAL` (set by Easy Auth after validating the token; Azure strips client-supplied copies). Highest role wins; no role = deny (or Viewer – decide during build).
-- [ ] **Backend:** delete support for `x-user-role`, `?role=`, `?user=`, `x-mock-role`, and the manual JWT decode. User email also comes from the principal only.
-- [ ] **Backend:** return the server-resolved `userRole` in the main payload.
+- [x] **Entra:** on the `BackupWatch-Backend-API` app registration, create App Roles `BackupWatch.Administrator`, `BackupWatch.Specialist`, `BackupWatch.Contributor`, `BackupWatch.Viewer` (allowed member type: Users/Groups).
+- [x] **Entra:** Enterprise Applications → BackupWatch-Backend-API → Users and groups: assign the four existing security groups to the matching roles (needs Entra ID P1).
+- [x] **Entra:** set *Assignment required = Yes* so only members of the four groups can get a token. **Do this only after the four groups are assigned**, otherwise everyone is locked out. (Current state 2026-10-11: Assignment required = No, nobody assigned, no app roles, no groups claim.)
+- [x] **Backend:** rewrite `getUserSecurityContext` to read roles **only** from the `roles` claim in `X-MS-CLIENT-PRINCIPAL` (set by Easy Auth after validating the token; Azure strips client-supplied copies). Highest role wins; no role = deny (or Viewer – decide during build). *Decided: authenticated with no BackupWatch role = Viewer + warning log; no principal = 401.*
+- [x] **Backend:** delete support for `x-user-role`, `?role=`, `?user=`, `x-mock-role`, and the manual JWT decode. User email also comes from the principal only.
+- [x] **Backend:** return the server-resolved `userRole` in the main payload (plus `userEmail`; additive).
 - [ ] **Frontend:** show the role badge and gate buttons from the server-resolved `userRole` (Graph lookup can be removed or kept as cosmetic only). Stop sending `role`/`user` parameters.
-- [ ] **Tests:** a request with `?role=administrator` and a Viewer principal is treated as Viewer; each role reaches only its permitted endpoints (matrix from `security_group_rbac_proposal.md`).
+- [x] **Tests (backend):** a request with `?role=administrator` and a Viewer principal is treated as Viewer; each role reaches only its permitted endpoints (matrix from `security_group_rbac_proposal.md`).
 - [ ] **Release order:** Entra roles first → backend → frontend. The old frontend still works against the new backend (extra parameters are simply ignored).
 
 **Acceptance criteria.** Role cannot be changed by anything the browser sends; each role's permissions match the RBAC matrix; audit log shows the server-resolved email and role.
@@ -290,6 +290,9 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-10 – Item created.
 - 2026-10-11 – Config step done early: Enterprise app *Assignment required* set to **Yes** (Malith). Code fix still `TODO`.
+- 2026-10-12 – Entra config done (Malith): App Roles `BackupWatch.Administrator`, `BackupWatch.Specialist`, `BackupWatch.Contributor`, `BackupWatch.Viewer` created on BackupWatch-Backend-API; the four security groups assigned to them; Assignment required = Yes.
+- 2026-10-12 – Backend 1.24.0 on branch `bw-001-server-side-roles` (not merged, not deployed). `shared/auth.ts` rewritten: identity/role only from Easy Auth `X-MS-CLIENT-PRINCIPAL` (+ `X-MS-CLIENT-PRINCIPAL-NAME`); role claims via `role_typ`, `roles` and the v1 role URI; highest `BackupWatch.*` role wins; authenticated with none = Viewer + warning; no principal = 401 via new `requireAuthenticatedUser` on every HTTP function (backupWatchTrigger incl. all `?action=` handlers, exclusions GET/POST/DELETE – GET was previously unchecked, escalateTrigger, auditLogs, adminRouting, adminDiagnostics); existing role checks unchanged. Removed `x-user-role`, `x-user-email`, `x-mock-role`, `?role=`, `?user=`, JWT decode and `RBAC_*_GROUP_ID`. Dev-only `BW_DEV_ROLE` honoured only when `AZURE_FUNCTIONS_ENVIRONMENT=Development`. Audit entries record server-resolved `userEmail` + new `userRole`; main payload adds `userRole`/`userEmail`. Tests: 3 BW-001 `test.failing` cases now pass normally; new `endpointAuthorization.test.ts` drives the real handlers. **`npm test`: 9 suites, 140 passed, 0 failed (3 `test.failing` remain, all BW-009).** Mutation checks: re-trusting `?role=` fails 14 tests; removing the 401 fails 28. `npm run build` OK.
+  - Before deploy: confirm `BW_DEV_ROLE` is not set and `AZURE_FUNCTIONS_ENVIRONMENT` is not `Development` in the Function App settings. `RBAC_*_GROUP_ID` app settings are now unused and can be removed after release.
 
 ---
 
