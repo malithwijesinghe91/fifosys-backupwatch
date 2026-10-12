@@ -1543,7 +1543,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
         {/* Header (Next-Gen Gradient Hero Card) */}
         <HeaderBar
-          version={this.state.backendVersion}
+          version={this.props.version}
           isSettingsOpen={isSettingsOpen}
           userSecurityLevel={userSecurityLevel}
           isDarkMode={isDarkMode}
@@ -2682,32 +2682,21 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   }
 
   /**
-   * Footer version line (BW-011). Backend and web part share one version (decision D-03), so a
-   * difference means one half of a release was not deployed – shown as a warning.
+   * Footer version line (BW-011). Web part and backend are versioned separately (decision D-03),
+   * so the two numbers differ whenever only one half changed in a release – that is normal.
    */
   private _renderFooterVersions(): React.ReactNode {
-    const uiVersion = this.props.version;
-    const engineVersion = this.state.backendVersion;
-    const mismatch = !!engineVersion && !!uiVersion && engineVersion !== uiVersion;
     const versionStyle: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
     return (
       <span
         className="footer-powered"
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}
-        title={mismatch
-          ? `Version mismatch: web part v${uiVersion}, engine v${engineVersion}. One half of the last release has not been deployed.`
-          : undefined}
       >
-        <span className="pulse-dot" style={{ backgroundColor: mismatch ? 'var(--color-warning)' : 'var(--color-success)' }} />
-        <span style={versionStyle}>UI v{uiVersion || '…'}</span>
+        <span className="pulse-dot" style={{ backgroundColor: 'var(--color-success)' }} />
+        <span style={versionStyle}>UI v{this.props.version || '…'}</span>
         <span aria-hidden="true">·</span>
-        <span style={versionStyle}>Engine v{engineVersion || '…'}</span>
-        {mismatch && (
-          <strong role="status">
-            Version mismatch – deploy pending
-          </strong>
-        )}
+        <span style={versionStyle}>Engine v{this.state.backendVersion || '…'}</span>
       </span>
     );
   }

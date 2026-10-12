@@ -8,16 +8,16 @@
 
 import { existsSync, rmSync, cpSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { REPO_FILES, SCAFFOLD_FILES, readRootVersion, checkFiles, parseArgs } from './versionFiles.mjs';
+import { REPO_FILES, SCAFFOLD_FILES, readVersionsFile, checkFiles, parseArgs } from './versionFiles.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const scaffold = args.scaffold;
 const fail = (msg) => { console.error(msg); process.exit(1); };
 
-const version = readRootVersion(args.root);
-const repoProblems = checkFiles(args.root, REPO_FILES, version);
+const versions = readVersionsFile(args.root);
+const repoProblems = checkFiles(args.root, REPO_FILES, versions);
 if (repoProblems.length) {
-  fail(`Version check FAILED (shared version ${version}):\n  ${repoProblems.join('\n  ')}\nUse: npm run release -- patch|minor|major`);
+  fail(`Version check FAILED (versions.json):\n  ${repoProblems.join('\n  ')}\nUse: npm run release -- backend|web|both patch|minor|major`);
 }
 
 // Only ever touch a folder that really is the SPFx build project.
@@ -39,10 +39,10 @@ for (const name of readdirSync(join(args.root, 'scaffold'))) {
   console.log(`  copied scaffold/${name}`);
 }
 
-const scaffoldProblems = checkFiles(scaffold, SCAFFOLD_FILES, version);
+const scaffoldProblems = checkFiles(scaffold, SCAFFOLD_FILES, versions);
 if (scaffoldProblems.length) fail(`Scaffold copies disagree after sync:\n  ${scaffoldProblems.join('\n  ')}`);
 
-console.log(`Scaffold ready at ${scaffold} – version ${version}.`);
+console.log(`Scaffold ready at ${scaffold} – web part version ${versions.web}.`);
 console.log('Next (from the scaffold folder):');
 console.log('  node node_modules\\gulp\\bin\\gulp.js bundle --ship');
 console.log('  node node_modules\\gulp\\bin\\gulp.js package-solution --ship');

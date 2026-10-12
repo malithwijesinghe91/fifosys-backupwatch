@@ -48,8 +48,8 @@ We will compile the TypeScript code and deploy it directly to the Flex Consumpti
    `https://backupwatch-api.azurewebsites.net/api/backupWatchTrigger`
 
 > **Note on Versioning (v1.22.5+)**:
-> The dashboard UI dynamically loads the backend engine version (`appVersion`) sent directly from the Azure Function API response.
-> **Shared version (decision D-03, 2026-10-12):** backend and web part always carry the same version number. Every release – even a backend-only fix – runs `npm run release -- patch|minor|major` from the repo root (never edit versions by hand), runs Step 5 **and** rebuilds and re-uploads the SharePoint `.sppkg` (Part 2), so both halves stay on the same number. See `CLAUDE.md` §2.
+> The dashboard header shows the web part (UI) version; the footer shows `UI v… · Engine v…` (backend `appVersion`).
+> **Separate versions (decision D-03, final 2026-10-12):** backend and web part each have their own version. Run `npm run release -- backend|web|both patch|minor|major` from the repo root (never edit versions by hand), then deploy only what changed: a backend-only release needs Step 5 only – **no** `.sppkg` rebuild or upload. See `CLAUDE.md` §2.
 
 ---
 

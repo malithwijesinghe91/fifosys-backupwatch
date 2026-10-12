@@ -2,7 +2,7 @@ import * as React from 'react';
 import { FIFOSYS_ICON_BASE64 } from '../../assets/fifosysLogo';
 
 export interface IHeaderBarProps {
-  /** Backend engine version (appVersion); undefined until the first response arrives. */
+  /** Web part (UI) version from the web part manifest (BW-011); the backend version is in the footer. */
   version?: string;
   isSettingsOpen: boolean;
   userSecurityLevel: string;
