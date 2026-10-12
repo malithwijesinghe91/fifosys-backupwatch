@@ -1,0 +1,12 @@
+{
+  "name": "fifosys-backupwatch",
+  "version": "1.24.1",
+  "private": true,
+  "description": "BackupWatch release tooling. This version is the ONE shared version for backend and web part (decision D-03).",
+  "scripts": {
+    "release": "node scripts/release.mjs",
+    "verify-versions": "node scripts/verify-versions.mjs",
+    "scaffold:prepare": "node scripts/prepare-scaffold.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  }
+}

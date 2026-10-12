@@ -26,12 +26,13 @@ The frontend and backend are completely decoupled:
 2. **Backend Serverless API (`stateless-backend/`)**:
    - Azure Function App (`backupwatch-api`, Node.js / TypeScript, Linux Flex Consumption).
    - Serves endpoints: `/api/backupWatchTrigger`, `/api/exclusions`, `/api/escalateTrigger`, `/api/auditlogs`, `/api/adminDiagnostics`, `/api/adminRouting`.
-   - Backend version lives in `stateless-backend/shared/version.ts` (until the BW-011 single root version file exists).
+   - Backend reports its version as `appVersion` from `stateless-backend/shared/version.ts` (written by the release script).
 
 ### Release Rule (shared version – decision D-03, 2026-10-12):
-- **One version for the whole product.** Backend and web part always carry the same number. Every release bumps **all** version files to that number: `stateless-backend/shared/version.ts`, `stateless-backend/package.json`, `spfx-client/package.json`, `BackupWatchWebPart.manifest.json` (repo and scaffold copies), `BackupWatchScaffold/package.json`, and `BackupWatchScaffold/config/package-solution.json` (`solution.version` **and** every `features[].version`, as `x.y.z.0`).
-- **Every release ships both halves**, even if only one side changed: backend (`npm run build` then `func azure functionapp publish backupwatch-api --build local` from `stateless-backend/`; remote build is not supported – see §4) **and** web part (rebuild in `BackupWatchScaffold`, copy `backup-watch-scaffold.sppkg` to root, upload to the SharePoint App Catalog).
-- One `CHANGELOG.md` heading per release. Manual for now; the BW-011 release script will do the bumping.
+- **One version for the whole product**, held in the repo-root `package.json`. Backend and web part always carry the same number. **Never edit version numbers by hand** – from the repo root run `npm run release -- patch|minor|major` (fix = patch, something new = minor, changes how it all works = major). It writes `stateless-backend/shared/version.ts`, both `package.json`/`package-lock.json` pairs, `BackupWatchWebPart.manifest.json` and `scaffold/config/package-solution.json` (solution + every feature version, `x.y.z.0`), and adds a CHANGELOG stub to fill in.
+- `npm run verify-versions` fails on any mismatch; it runs automatically before every backend build and in `npm run scaffold:prepare`.
+- **Every release ships both halves**, even if only one side changed: backend **and** web part (§4). The footer shows `UI v… · Engine v…` and warns if they differ.
+- One `CHANGELOG.md` heading per release; one git tag per release (`v<x.y.z>`).
 
 ---
 
@@ -44,7 +45,10 @@ c:/Projects/FifoDash/
 ├── REPO_MAP.md                    # Tree-Sitter & PageRank code architecture map
 ├── CHANGELOG.md                   # Semantic version changelog
 ├── BACKUPWATCH_OPERATIONAL_SPECIFICATION.md # Comprehensive 700-line operational spec
-├── backup-watch-scaffold.sppkg    # Compiled production SPFx solution package
+├── backup-watch-scaffold.sppkg    # Compiled production SPFx solution package (git-ignored)
+├── package.json                   # Holds the ONE shared version + release scripts
+├── scripts/                       # release.mjs, verify-versions.mjs, prepare-scaffold.mjs (+ tests)
+├── scaffold/                      # Tracked BackupWatchScaffold config (package-solution.json, gulpfile.js, ...)
 ├── spfx-client/                   # SharePoint Framework client workspace
 │   └── src/webparts/backupWatch/
 │       ├── BackupWatchWebPart.ts  # SPFx web part entrypoint & props binder
@@ -78,28 +82,38 @@ c:/Projects/FifoDash/
 
 ## 4. Build, Test & Deployment Commands
 
+### Release (version bump – once per release, both halves):
+```powershell
+cd c:\Projects\FifoDash
+npm run release -- patch     # or minor / major; then fill in the CHANGELOG stub and commit
+npm test                     # tests for the release tooling itself
+```
+
 ### Backend Build & Deploy:
 ```powershell
 # From stateless-backend/
 cd c:\Projects\FifoDash\stateless-backend
-npm run build      # or: tsc
+npm run build      # checks versions, cleans dist/, then tsc
 func start         # Local emulator (requires local.settings.json)
 
 # Deploy to live Azure (always build locally first, then publish with --build local)
+npm ci
+npm test
 npm run build
+npm prune --omit=dev          # keep jest/ts-jest/typescript out of the deployed node_modules
 func azure functionapp publish backupwatch-api --build local
+npm install                   # restore dev dependencies afterwards
 ```
 > `--build local` is required: `.funcignore` excludes the TypeScript sources and `tsconfig.json`, so a remote build cannot compile the app. Remote build is not supported for this repo.
 
 ### Frontend Build & Bundle:
-> **Note on Windows**: PowerShell execution policies may restrict `gulp.ps1`. Use direct `node` invocation via `BackupWatchScaffold`:
+> **Note on Windows**: PowerShell execution policies may restrict `gulp.ps1`. Use direct `node` invocation via `BackupWatchScaffold`.
+> Scaffold config (`package-solution.json`, `gulpfile.js`, etc.) is tracked in `scaffold/` – edit it there, never in `BackupWatchScaffold` directly.
 
 ```powershell
-# 0. Remove old build output (release\ and temp\) so stale bundles are not packed into the .sppkg
-Remove-Item "c:\Projects\BackupWatchScaffold\release", "c:\Projects\BackupWatchScaffold\temp" -Recurse -Force -ErrorAction SilentlyContinue
-
-# 1. Sync spfx-client/src to BackupWatchScaffold/src
-robocopy "c:\Projects\FifoDash\spfx-client\src" "c:\Projects\BackupWatchScaffold\src" /E /NFL /NDL /NJH /NJS /NC /NS /NP
+# 1. Check versions, delete release\ and temp\ (stale bundles), copy spfx-client/src, package.json and scaffold/ config
+cd c:\Projects\FifoDash
+npm run scaffold:prepare
 
 # 2. Bundle in Ship Mode (Production)
 cd c:\Projects\BackupWatchScaffold
