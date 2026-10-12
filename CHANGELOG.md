@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-10-12
+
+### Security
+- **Security (BW-001)**: roles resolved server-side from Entra App Roles; client-supplied role ignored.
+  - Identity and role come only from the Easy Auth `X-MS-CLIENT-PRINCIPAL` / `X-MS-CLIENT-PRINCIPAL-NAME` headers (`BackupWatch.Administrator/Specialist/Contributor/Viewer`, highest wins; signed in with no BackupWatch role = Viewer, warning logged).
+  - `x-user-role`, `x-user-email`, `x-mock-role`, `?role=`, `?user=` and the manual JWT decode are no longer read. Group-ID mapping (`RBAC_*_GROUP_ID`) removed.
+  - Every HTTP endpoint returns 401 when no Easy Auth principal is present (including `GET /api/exclusions`, previously unchecked).
+  - Local development only: `BW_DEV_ROLE` is honoured when `AZURE_FUNCTIONS_ENVIRONMENT=Development`.
+
+### Added
+- Main `backupWatchTrigger` payload includes server-resolved `userRole` and `userEmail` (additive; existing fields unchanged).
+- Audit log entries record `userRole` alongside the server-resolved `userEmail`; `/api/auditLogs` returns it.
+
 ## [1.23.3] - 2026-10-11
 
 ### Fixed

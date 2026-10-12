@@ -3,7 +3,7 @@ import axios from "axios";
 import { getTableClient } from "../shared/tableService";
 import { getAutoTaskConfig, getAutoTaskBaseUrl, getAutoTaskTicketUrl, getSingleTicketFromAutoTask, createTicketNoteInAutoTask, lookupConfigurationItemInAutoTask, createTicketInAutoTask, queryTicketsInAutoTask, queryTicketByNumber, createComplianceTicket, getTicketStatusPicklistValues, getTicketFieldPicklistValues, updateTicketStatusInAutoTask, IPicklistValue } from "../shared/autotask";
 import { normalizeVolumeName, buildVolumeTargetKey, isVolumeExcluded, isDeviceMuted, isDeviceSilenced, isAgentSilenced } from "../shared/volumeUtils";
-import { getUserSecurityContext } from "../shared/auth";
+import { requireAuthenticatedUser } from "../shared/auth";
 import { getAutotaskRoutingConfig, saveAutotaskRoutingConfig, getGlobalMaintenanceMode, setGlobalMaintenanceMode, getAlertRoutingMatrix, saveAlertRoutingMatrix } from "../shared/configService";
 import { APP_VERSION } from "../shared/version";
 
@@ -1195,12 +1195,15 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
 }
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
+    // Every route (main dashboard GET and all ?action= admin handlers) requires an Easy Auth principal.
+    const userSec = requireAuthenticatedUser(context, req);
+    if (!userSec) return;
+
     try {
         const action = req.query.action;
 
         // 1. Admin Diagnostics
         if (action === "adminDiagnostics") {
-            const userSec = getUserSecurityContext(req);
             if (userSec.role !== "Administrator") {
                 context.res = {
                     status: 403,
@@ -1304,7 +1307,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
         // 2. Admin Routing
         if (action === "adminRouting") {
-            const userSec = getUserSecurityContext(req);
             if (userSec.role !== "Administrator") {
                 context.res = {
                     status: 403,
@@ -1472,7 +1474,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
         // 3. Global Maintenance Mode / Alert Silence Blackout
         if (action === "adminMaintenance") {
-            const userSec = getUserSecurityContext(req);
             if (userSec.role !== "Administrator") {
                 context.res = {
                     status: 403,
@@ -1515,6 +1516,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                         partitionKey: "Audit",
                         rowKey: `Maint-${Date.now()}`,
                         userEmail: userSec.email,
+                        userRole: userSec.role,
                         action: isActive ? "Activate Global Maintenance Blackout" : "Deactivate Global Maintenance Blackout",
                         target: "Global System",
                         details: isActive ? `Duration: ${durationHours}h, Expires: ${expiresAt}, Reason: ${reason}` : "Maintenance Blackout manually deactivated",
@@ -1542,7 +1544,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
         // 4. Stale Ticket & Entity Cleanup Tool
         if (action === "adminCleanup") {
-            const userSec = getUserSecurityContext(req);
             if (userSec.role !== "Administrator") {
                 context.res = {
                     status: 403,
@@ -1685,6 +1686,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                         partitionKey: "Audit",
                         rowKey: `Cleanup-${Date.now()}`,
                         userEmail: userSec.email,
+                        userRole: userSec.role,
                         action: "Bulk Orphan Cleanup",
                         target: "Azure Table Storage",
                         details: `Purged ${purgedTickets} orphan tickets and ${purgedExclusions} orphan exclusions`,
@@ -1708,7 +1710,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
         // 5. Live Autotask Connection Tester & Asset Reconciliation
         if (action === "adminTestAsset") {
-            const userSec = getUserSecurityContext(req);
             if (userSec.role !== "Administrator") {
                 context.res = {
                     status: 403,
@@ -1802,7 +1803,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         const requestedForce = req.query.refresh === 'true' || req.query.force === 'true';
         let forceRefresh = false;
         if (requestedForce) {
-            const userSec = getUserSecurityContext(req);
             if (userSec.isAuthorizedForForceRefresh) {
                 forceRefresh = true;
             } else {
@@ -1812,7 +1812,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         const result = await runPipeline(context, forceRefresh, false);
         context.res = {
             status: 200,
-            body: result,
+            // Spread so the cached pipeline result is never mutated with per-user fields.
+            body: { ...result, userRole: userSec.role, userEmail: userSec.email },
             headers: {
                 "Content-Type": "application/json",
                 "X-Cache-Status": result.cacheStatus
@@ -1843,6 +1844,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 body: {
                     appVersion: APP_VERSION,
                     devices: mappedDevices,
+                    userRole: userSec.role,
+                    userEmail: userSec.email,
                     scanStatus: scanStatus ? {
                         lastScan: scanStatus.lastScan,
                         nextScan: scanStatus.nextScan,

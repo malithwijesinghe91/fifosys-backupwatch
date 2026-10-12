@@ -38,6 +38,7 @@ function blocked(what: string) {
 for (const key of [
   'AUTOTASK_USER', 'AUTOTASK_SECRET', 'AUTOTASK_INTEGRATION_CODE',
   'AT_USER', 'AT_SECRET', 'DATTO_KEY', 'AzureWebJobsStorage',
+  'AZURE_FUNCTIONS_ENVIRONMENT', 'BW_DEV_ROLE',
 ]) {
   delete process.env[key];
 }

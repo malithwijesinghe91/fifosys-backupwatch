@@ -2,9 +2,12 @@
  * Azure Functions test doubles: Context, HttpRequest and Easy Auth principals.
  */
 import type { Context, HttpRequest } from '@azure/functions';
-import { RBAC_GROUP_IDS } from '../../shared/auth';
+import { APP_ROLE_VALUES } from '../../shared/auth';
 
 export type MockRole = 'Viewer' | 'Contributor' | 'Specialist' | 'Administrator';
+
+export const ROLE_CLAIM_V1 = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+export const ROLE_CLAIM_V2 = 'roles';
 
 export function createMockContext(): Context & { log: jest.Mock & Record<'info' | 'warn' | 'error' | 'verbose', jest.Mock> } {
   const log: any = jest.fn();
@@ -15,19 +18,40 @@ export function createMockContext(): Context & { log: jest.Mock & Record<'info' 
   return { log, res: undefined } as any;
 }
 
-/** Base64 X-MS-CLIENT-PRINCIPAL header as Easy Auth would set it for a member of the role's group. */
-export function principalHeaderFor(role: MockRole, email = `${role.toLowerCase()}@fifosys.com`): string {
-  const groupId = {
-    Viewer: RBAC_GROUP_IDS.VIEWER,
-    Contributor: RBAC_GROUP_IDS.CONTRIBUTOR,
-    Specialist: RBAC_GROUP_IDS.SPECIALIST,
-    Administrator: RBAC_GROUP_IDS.ADMINISTRATOR,
-  }[role];
+/**
+ * Base64 X-MS-CLIENT-PRINCIPAL in the App Service Easy Auth format
+ * ({ auth_typ, name_typ, role_typ, claims[] }), carrying the given App Role values.
+ */
+export function principalHeader(opts: {
+  appRoles?: string[];
+  email?: string;
+  roleClaimType?: string;
+  roleTyp?: string;
+  extraClaims?: { typ: string; val: string }[];
+} = {}): string {
+  const roleTyp = opts.roleTyp ?? ROLE_CLAIM_V1;
+  const roleClaimType = opts.roleClaimType ?? roleTyp;
+  const claims = [
+    ...(opts.email ? [{ typ: 'preferred_username', val: opts.email }] : []),
+    { typ: 'name', val: 'Test User' },
+    { typ: 'http://schemas.microsoft.com/identity/claims/objectidentifier', val: '00000000-0000-0000-0000-000000000001' },
+    ...(opts.appRoles || []).map(val => ({ typ: roleClaimType, val })),
+    ...(opts.extraClaims || []),
+  ];
   return Buffer.from(JSON.stringify({
-    userId: `usr-${role.toLowerCase()}`,
-    userDetails: email,
-    claims: [{ typ: 'groups', val: groupId }],
+    auth_typ: 'aad',
+    name_typ: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+    role_typ: roleTyp,
+    claims,
   })).toString('base64');
+}
+
+/** Easy Auth headers for a member of the given BackupWatch role. */
+export function easyAuthHeadersFor(role: MockRole, email = `${role.toLowerCase()}@fifosys.com`): Record<string, string> {
+  return {
+    'x-ms-client-principal': principalHeader({ appRoles: [APP_ROLE_VALUES[role]], email }),
+    'x-ms-client-principal-name': email,
+  };
 }
 
 export function createMockRequest(opts: {
@@ -37,8 +61,10 @@ export function createMockRequest(opts: {
   headers?: Record<string, string>;
   role?: MockRole;
 }): HttpRequest {
-  const headers: Record<string, string> = { ...(opts.headers || {}) };
-  if (opts.role) headers['x-ms-client-principal'] = principalHeaderFor(opts.role);
+  const headers: Record<string, string> = {
+    ...(opts.role ? easyAuthHeadersFor(opts.role) : {}),
+    ...(opts.headers || {}),
+  };
   return {
     method: opts.method || 'GET',
     headers,

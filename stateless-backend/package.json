@@ -1,6 +1,6 @@
 {
   "name": "backupwatch-backend",
-  "version": "1.23.2",
+  "version": "1.24.0",
   "description": "Stateless Backend Proxy for BackupWatch",
   "scripts": {
     "build": "tsc",
