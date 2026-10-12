@@ -47,8 +47,8 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
 | BW-004 | Autotask concurrency can exceed 3-thread limit | High | 2 | Backend | `TODO` | |
 | BW-005 | Datto asset fetch is unbounded `Promise.all` | Medium | 2 | Backend | `TODO` | |
-| BW-006 | Appliance silence does not block all Autotask writes | Medium | 2 | Backend | `DECISION` | |
-| BW-007 | Global blackout not enforced on manual escalation | Medium | 2 | Backend + frontend | `DECISION` | |
+| BW-006 | Appliance silence does not block all Autotask writes | Medium | 2 | Backend | `TODO` | |
+| BW-007 | Global blackout (change freeze) not enforced on manual changes | Medium | 2 | Backend + frontend | `TODO` | |
 | BW-008 | Expired exclusion deleted before follow-up ticket is confirmed | Medium (to verify) | 3 | Backend | `TODO` | |
 | BW-009 | Linux root volume `/` normalised to empty string | High (if Linux agents exist) | 3 | Backend | `TODO` | |
 | BW-010 | Settings handling: dead admin functions, `AT_USER` mismatch, no start-up validation | Medium | 3 | Backend | `TODO` | |
@@ -80,12 +80,12 @@ This is the single source of truth for every defect found in the October 2026 co
 
 | ID | Question | Proposed answer | Decision | Date |
 |---|---|---|---|---|
-| D-01 (BW-006) | When an appliance/agent is silenced and a tracked issue clears, should the auto-heal note still be posted to Autotask? | **No.** No Autotask writes of any kind while silenced. The first scan after un-muting posts the auto-heal note. Suppressed actions are written to the audit log. | | |
-| D-02 (BW-007) | During a global blackout, can engineers still escalate manually? | **Soft block.** Warning shown; Specialist/Administrator may override with a mandatory reason (audited); Contributor blocked. | | |
+| D-01 (BW-006) | When an appliance/agent is silenced and a tracked issue clears, should the auto-heal note still be posted to Autotask? | **No.** No Autotask writes of any kind while silenced. The first scan after un-muting posts the auto-heal note. Suppressed actions are written to the audit log. | **No** (as proposed). Nothing is sent to Autotask while an appliance/agent is silenced; held-back actions are audit-logged; the first scan after un-muting posts any auto-heal note. | 2026-10-12 |
+| D-02 (BW-007) | During a global blackout, can engineers still escalate manually? | **Soft block.** Warning shown; Specialist/Administrator may override with a mandatory reason (audited); Contributor blocked. | **A blackout (change freeze) is a blackout.** While it is active, **every change** is blocked for Specialist, Contributor and Viewer – escalations, exclusions (add/edit/remove), mutes/unmutes and any other write. Only the **Administrator** role may still act, with a mandatory reason that is audited. Automatic Autotask writes by the scanner are also suppressed (see D-01 / BW-006). | 2026-10-12 |
 | D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | **Separate versions** (final). Briefly decided as shared (1.24.1 was cut that way), then changed after reviewing the display: each half has its own number in `versions.json`, only the half that changed is bumped and deployed; versions shown in the footer only (`UI v… · Engine v…`), none in the header. | 2026-10-12 |
-| D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | *Not formally decided.* "Now" part partly applied: max instances lowered 100 → 2 (Malith, 2026-10-11); gateway still to build (BW-004). | |
-| D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | | |
-| D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | | |
+| D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | **Leave as is for now; review later.** Max instances stays at 2 (set 2026-10-11) and the in-process gateway is built in BW-004; the Storage Queue option is not pursued now. **Review again** after BW-004 is live (e.g. if "Thread Threshold Exceeded" alerts return or ticket volume grows). | 2026-10-12 |
+| D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | *Pending* – owner asked what the 6 toggles are (explained 2026-10-12). | |
+| D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | **Deferred – review later** (Malith). BW-013 stays on hold. | 2026-10-12 |
 
 ---
 
@@ -358,6 +358,7 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-10 – Item created.
 - 2026-10-11 – Function App maximum instance count lowered from 100 to **2** (Malith). Layers 1–2 (gateway + guard rails) still `TODO`.
+- 2026-10-12 – D-04 (Malith): leave the instance cap at 2 and build the in-process gateway; Storage Queue not now. Review D-04 after this item is live.
 ---
 
 ### BW-005 – Datto asset fetch is unbounded
@@ -377,7 +378,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-006 – Appliance silence does not block all Autotask writes
-**Status:** `DECISION` (D-01)  **Severity:** Medium  **Release type:** Backend
+**Status:** `TODO` (D-01 decided: no writes while silenced)  **Severity:** Medium  **Release type:** Backend
 
 **Finding.** Storage, offline and offsite-sync auto-heals (`backupWatchTrigger/index.ts:894, 916, 1114`) and the exclusion expiry sweep (`482-764`) don't check appliance silence. The spec promises "0 Autotask calls" for a silenced appliance.
 
@@ -392,25 +393,30 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-01.
+- 2026-10-12 – D-01 decided (Malith): **No** Autotask writes of any kind while silenced. Unblocked; build with BW-004.
 
 ---
 
-### BW-007 – Global blackout not enforced on manual escalation
-**Status:** `DECISION` (D-02)  **Severity:** Medium  **Release type:** Backend + frontend
+### BW-007 – Global blackout (change freeze) not enforced on manual changes
+**Status:** `TODO` (D-02 decided: blackout blocks every change except by Administrator)  **Severity:** Medium  **Release type:** Backend + frontend
 
 **Finding.** Blackout is checked only in `createComplianceTicket` (`shared/autotask.ts:664-671`); `escalateTrigger` never checks it.
 
-**Fix (assuming D-02 = soft block).**
-- [ ] Gateway/suppression (BW-006) blocks escalation writes during blackout unless the request carries `overrideBlackout: true` and a reason.
-- [ ] Backend accepts the override only from Specialist/Administrator (server-resolved role, after BW-001).
-- [ ] Escalation modal shows "Global blackout active until …"; override checkbox + mandatory reason for permitted roles.
-- [ ] Audit action `Escalation During Blackout` with reason.
-- [ ] Tests for each role with blackout on/off.
+**Scope (widened by D-02, 2026-10-12).** Originally escalation only; the owner decided a blackout is a full change freeze, so this item covers every user-initiated write.
 
-**Acceptance criteria.** Contributors can't escalate during blackout; overrides are always audited.
+**Fix (D-02 = full change freeze; Administrator-only override).**
+- [ ] One server-side check (`requireNoBlackout(user, req)`) on **every mutating endpoint**: escalate, exclusions POST/DELETE (incl. permanent and appliance/agent mutes), unmute, bulk cleanup and any other write. Blocked during blackout unless the caller is Administrator **and** the request carries `overrideBlackout: true` plus a reason.
+- [ ] Gateway/suppression (BW-006) also blocks automatic Autotask writes during blackout (scanner auto-tickets, auto-heal notes, expiry-sweep tickets).
+- [ ] Override accepted **only from Administrator** (server-resolved role, after BW-001); Specialist, Contributor and Viewer get 403 "Change freeze active until …".
+- [ ] Web part: a banner "Change freeze active until …"; every change button (escalate, mute, exclude, unmute) disabled for non-Administrators with that reason; Administrators get an override checkbox + mandatory reason.
+- [ ] Audit action `Change During Blackout` (with the action type and reason) for every Administrator override.
+- [ ] Tests: every mutating endpoint × every role × blackout on/off; Administrator without a reason is rejected.
+
+**Acceptance criteria.** During a blackout no role below Administrator can change anything (blocked server-side, not just hidden in the UI); Administrators can act only with a reason; every override is audited.
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-02.
+- 2026-10-12 – D-02 decided (Malith): only the **Administrator** role may act during a blackout; every role below is restricted. Clarified: "a change freeze or a blackout is a blackout" – applies to **all** changes, not just escalation. Scope widened accordingly. Unblocked; build with BW-004/BW-006.
 
 ---
 
@@ -466,6 +472,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-06.
+- 2026-10-12 – D-06 deferred by Malith (review later). On hold.
 
 ---
 
