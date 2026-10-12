@@ -73,7 +73,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010, BW-023 |
 | **4 – Hygiene** | Clean-up, docs, misleading UI | BW-014, BW-016, BW-018 |
 
-> BW-001 is the only item with live exposure today. If time is short, do BW-003 → BW-001 first and pick up Phase 0 straight after.
+> Status 2026-10-12: Phase 0 complete; BW-001/003 done (BW-002 has only an optional step left); BW-004/006/007 live and in their 30-day check. Suggested next: BW-023. On hold by owner: BW-009, BW-013 (D-06). Open decision: D-05 (BW-018).
 
 ---
 
@@ -106,7 +106,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - [x] Verified from local git metadata: 106 tracked files; none of the excluded/secret files tracked.
 - [ ] Add the repo to Claude's GitHub connection so reviews can read it directly.
 - [ ] Later: move the repo into a Fifosys GitHub/Azure DevOps organisation (history is kept).
-- [ ] `C:\Projects\BackupWatchScaffold` is not under source control – handled in BW-011.
+- [x] `C:\Projects\BackupWatchScaffold` is not under source control – handled in BW-011. *(Done: scaffold config tracked in `scaffold/` and copied in by `npm run scaffold:prepare`.)*
 
 **Working rule from now on:** one branch per item (e.g. `bw-017-test-runner`), merged to `main` only after its acceptance criteria pass.
 
@@ -563,6 +563,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-05.
+- 2026-10-12 – Owner asked what the six toggles are; explained (Storage Alerts, Local Backup Failures, Overdue Backups, Offsite Sync Issues, Screenshot Failures, Offline Appliances – none create tickets even when switched on). Options given: grey out (recommended), build some, or remove. Decision pending.
 
 ---
 
@@ -597,4 +598,4 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-12 | 1.25.1 | Web part | BW-011 | No version in header; footer `UI v… · Engine v…`. Tag `frontend-1.25.1` |
 | 2026-10-12 | 1.26.0 | Web part | BW-007 | Change-freeze banner, locked change buttons, Administrator reason prompt |
 | 2026-10-12 | 1.25.0 | Backend | BW-004, BW-006, BW-007 | Autotask gateway, silence enforcement, change freeze. Tag `backend-1.25.0` |
-| 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Built, not yet uploaded |
+| 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Uploaded and confirmed by Malith. Tag `frontend-1.27.0` |
