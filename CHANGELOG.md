@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Web part 1.25.1] - 2026-10-12
+
+Backend unchanged at 1.24.1 – no Azure deploy needed.
+
+### Changed
+- **Changed (BW-011)**: header no longer shows a version (now just "Unified Data Protection Desk"). Both versions are shown only in the footer: `UI v… · Engine v…`.
+
 ## [Web part 1.25.0] - 2026-10-12
 
 Decision D-03 final: **backend and web part are versioned separately** (replaces the shared version used for 1.24.1). Backend unchanged at 1.24.1 – no Azure deploy needed for this release.

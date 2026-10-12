@@ -82,7 +82,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|
 | D-01 (BW-006) | When an appliance/agent is silenced and a tracked issue clears, should the auto-heal note still be posted to Autotask? | **No.** No Autotask writes of any kind while silenced. The first scan after un-muting posts the auto-heal note. Suppressed actions are written to the audit log. | | |
 | D-02 (BW-007) | During a global blackout, can engineers still escalate manually? | **Soft block.** Warning shown; Specialist/Administrator may override with a mandatory reason (audited); Contributor blocked. | | |
-| D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | **Separate versions** (final). Briefly decided as shared (1.24.1 was cut that way), then changed after reviewing the display: each half has its own number in `versions.json`, only the half that changed is bumped and deployed; header shows the web part version, footer `UI v… · Engine v…`. | 2026-10-12 |
+| D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | **Separate versions** (final). Briefly decided as shared (1.24.1 was cut that way), then changed after reviewing the display: each half has its own number in `versions.json`, only the half that changed is bumped and deployed; versions shown in the footer only (`UI v… · Engine v…`), none in the header. | 2026-10-12 |
 | D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | | |
 | D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | | |
 | D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | | |
@@ -157,7 +157,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-011 – Versions drift between backend, frontend and scaffold
-**Status:** `TESTING` (backend 1.24.1 live; web part 1.25.0 built, not uploaded)  **Severity:** Medium  **Release type:** Tooling + web part
+**Status:** `TESTING` (backend 1.24.1 and web part 1.25.0 live; web part 1.25.1 built, not uploaded)  **Severity:** Medium  **Release type:** Tooling + web part
 
 **Finding.** `version.ts` and backend `package.json` = 1.23.2; `spfx-client/package.json`, web part manifest and scaffold `package.json` = 1.23.1; `package-solution.json` solution = 1.23.1.0 but `features[0].version` = 1.22.1.0. Versions are typed by hand in up to 7 places.
 
@@ -170,14 +170,14 @@ This is the single source of truth for every defect found in the October 2026 co
 - [x] `scripts/verify-versions.mjs` fails if any file disagrees with its half in `versions.json` (`--scaffold` also checks the scaffold copies). Wired as backend `prebuild` and inside `scaffold:prepare`.
 - [x] `BackupWatchScaffold` config under source control in `scaffold/` (`config/*.json`, `gulpfile.js`, `tsconfig.json`, `.yo-rc.json`).
 - [x] `npm run scaffold:prepare` replaces the manual clean (`release\`, `temp\`) + robocopy steps.
-- [x] Header shows the web part (UI) version; footer shows `UI v<web part> · Engine v<backend>`, no mismatch warning (different numbers are normal).
+- [x] Versions shown in the footer only: `UI v<web part> · Engine v<backend>`, no mismatch warning (different numbers are normal). Header shows no version (owner choice, web part 1.25.1).
 - [x] Update `CLAUDE.md` §2 and §4, `.agents/AGENTS.md` §3, `AGENT_PLAYBOOK.md` and `deployment_guide.md`: deploy only the half that changed.
 - [x] `npm prune --omit=dev` + `npm install` in the backend deploy steps (`CLAUDE.md` §4); the scripts themselves never deploy.
 - [x] Clean `dist/` before build (backend `prebuild` runs `npm run clean`).
 - [x] Publish with explicit build mode – `func azure functionapp publish backupwatch-api --build local` (BW-019).
 - [ ] Optional later: backend reports a minimum web part version and the footer warns if the deployed web part is older (only needed if a backend change ever requires a new UI).
 
-**Acceptance criteria.** `npm run release -- backend|web|both …` changes only the named half's files, and every one of them; manually editing any version file makes the check (and the backend build) fail; header shows the web part version and the footer both versions.
+**Acceptance criteria.** `npm run release -- backend|web|both …` changes only the named half's files, and every one of them; manually editing any version file makes the check (and the backend build) fail; the footer shows both versions and the header none.
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-03.
@@ -190,6 +190,9 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – **D-03 changed to separate versions (Malith, final).** Seeing `UI v… · Engine v…` in the footer led to a review: one shared number hides which half changed and forces a SharePoint upload for every backend fix. Agreed: separate versions; header shows the web part version, footer both. Tooling reworked on branch `bw-011-separate-versions`: `versions.json` with `backend`/`web`; `npm run release -- backend|web|both patch|minor|major`; per-half verify; labelled CHANGELOG headings; footer mismatch warning removed. Root `npm test`: 10 passed (each half bumps only its own files, `both` bumps each from its own version, a hand edit to any of the 7 files fails the check, a web file carrying the backend number fails, scaffold copy drift caught).
   - Released with the script: **web part 1.25.0** (`release -- web minor`); backend unchanged at 1.24.1, so no Azure deploy. The 1.24.1 `.sppkg` is superseded and should not be uploaded.
   - To finish: merge; upload the 1.25.0 `.sppkg`; check header `V1.25.0` and footer `UI v1.25.0 · Engine v1.24.1`; tag `backend-1.24.1` (`cf94a75`) and `frontend-1.25.0`. Then `DONE`.
+- 2026-10-12 – PR #7 merged (`57cbf93`). **Web part 1.25.0 uploaded** to the App Catalog (Malith); header showed `V1.25.0`. Tags `backend-1.24.1` (`cf94a75`) and `frontend-1.25.0` (`57cbf93`) pushed.
+- 2026-10-12 – Owner chose to show **no version in the header** (option 3); both versions stay in the footer only. Released as **web part 1.25.1** (`release -- web patch`); backend unchanged at 1.24.1, no Azure deploy.
+  - To finish: merge; upload the 1.25.1 `.sppkg`; check the header has no version and the footer shows `UI v1.25.1 · Engine v1.24.1`; tag `frontend-1.25.1`. Then `DONE`.
 
 ---
 

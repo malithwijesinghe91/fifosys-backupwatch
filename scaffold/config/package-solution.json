@@ -3,7 +3,7 @@
     "solution":  {
                      "name":  "backup-watch-scaffold-client-side-solution",
                      "id":  "0f3f29ea-6bfa-4109-8dec-e89fc09cf1c9",
-                     "version": "1.25.0.0",
+                     "version": "1.25.1.0",
                      "includeClientSideAssets":  true,
                      "skipFeatureDeployment":  true,
                      "isDomainIsolated":  false,
@@ -34,7 +34,7 @@
                                           "title":  "backup-watch-scaffold Feature",
                                           "description":  "The feature that activates elements of the backup-watch-scaffold solution.",
                                           "id":  "d2322b80-6337-435f-9006-4dcdadca421a",
-                                          "version":  "1.25.0.0"
+                                          "version":  "1.25.1.0"
                                       }
                                   ],
                      "webApiPermissionRequests":  [

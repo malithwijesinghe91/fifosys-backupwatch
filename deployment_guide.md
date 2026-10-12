@@ -48,7 +48,7 @@ We will compile the TypeScript code and deploy it directly to the Flex Consumpti
    `https://backupwatch-api.azurewebsites.net/api/backupWatchTrigger`
 
 > **Note on Versioning (v1.22.5+)**:
-> The dashboard header shows the web part (UI) version; the footer shows `UI v… · Engine v…` (backend `appVersion`).
+> Versions are shown in the dashboard footer only: `UI v… · Engine v…` (Engine = backend `appVersion`). The header shows no version.
 > **Separate versions (decision D-03, final 2026-10-12):** backend and web part each have their own version. Run `npm run release -- backend|web|both patch|minor|major` from the repo root (never edit versions by hand), then deploy only what changed: a backend-only release needs Step 5 only – **no** `.sppkg` rebuild or upload. See `CLAUDE.md` §2.
 
 ---
