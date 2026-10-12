@@ -1,5 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import axios from "axios";
+import { pingAutotaskZone } from "../shared/autotask";
 import { requireAuthenticatedUser } from "../shared/auth";
 import { getTableClient } from "../shared/tableService";
 
@@ -49,16 +49,13 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         }
     };
 
-    // 1. Autotask API health — inline lightweight ping, no shared module dependency
+    // 1. Autotask API health — zoneInformation ping through the Autotask gateway (BW-004)
     const atUser = process.env.AT_USER;
     if (atUser) {
         diagnostics.autotask.configured = true;
         const atStart = Date.now();
         try {
-            await axios.get(
-                `https://webservices.autotask.net/atservicesrest/v1.0/zoneInformation?user=${encodeURIComponent(atUser)}`,
-                { timeout: 8000 }
-            );
+            await pingAutotaskZone(atUser);
             diagnostics.autotask.latencyMs = Date.now() - atStart;
             diagnostics.autotask.status = "Healthy (200 OK)";
         } catch (atErr: any) {

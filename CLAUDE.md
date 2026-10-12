@@ -145,9 +145,14 @@ uv run --python 3.12 --with "tree-sitter,tree-sitter-language-pack,networkx" pyt
    - `Volume Level`: Silences specific drive letters (e.g., `D`) under an agent.
 2. **Autotask DeepLinks**:
    - Tickets link directly to: `https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId={ticketId}`.
-3. **Autotask Concurrency Mutex**:
-   - To respect Autotask PSA's 3-thread threshold, `getTicketEntityFields` uses an in-flight promise singleton to collapse parallel metadata calls into exactly 1 HTTP request.
-4. **Active vs. Cancelled Appliances**:
+3. **Autotask Gateway (BW-004) – the only way to call Autotask**:
+   - Every Autotask HTTP request goes through `shared/autotaskGateway.ts`: 1 request at a time per instance (2 across the app with the 2-instance cap – Autotask allows 3), engineer actions (`runAsUserAction`) ahead of scanner calls, retries after 1 s / 2 s / 4 s when Autotask is busy, 60 s queue wait cap, safe logging. `tests/autotaskGuardRails.test.ts` fails the build if anything else calls Autotask or builds its credential headers.
+   - `getTicketEntityFields` still collapses parallel metadata calls into 1 request (in-flight promise + 1-hour cache).
+4. **Autotask Write Policy (BW-006 / BW-007, decisions D-01 / D-02)**:
+   - Every write (`createTicketInAutoTask`, `createTicketNoteInAutoTask`, `updateTicketStatusInAutoTask`, `createComplianceTicket`) requires an `IAutotaskWriteContext` (`origin: "scanner" | "user"`, action, device/agent, user, override reason) and is checked by `shared/autotaskPolicy.ts`.
+   - **Silence:** automatic writes for a silenced appliance/agent are held back (audited as "Suppressed Autotask Write"); scanner code checks `getScannerSuppression()` before changing table state so held-back items are retried on a later scan.
+   - **Change freeze (global blackout):** all automatic writes stop; user changes (escalate, mute/exclude, unmute) are blocked server-side by `requireNoChangeFreeze` (`shared/changeFreeze.ts`) for everyone below Administrator. Administrators must send `overrideBlackout: true` + `overrideReason` (audited as "Change During Blackout"). Admin Console settings stay available to Administrators.
+5. **Active vs. Cancelled Appliances**:
    - Filtered dynamically based on `d.isActive !== false`. Cancelled appliances appear under the "Cancelled Appliances" secondary tab.
-5. **Cache Engine**:
+6. **Cache Engine**:
    - 5-minute in-memory caching in Azure host memory; merges live Azure Table Storage exclusion rules on every request so mutes/unmutes take effect instantly.

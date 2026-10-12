@@ -15,8 +15,11 @@ import {
 } from "../shared/autotask";
 import { normalizeVolumeName, isAgentSilenced, isDeviceSilenced } from "../shared/volumeUtils";
 import { requireAuthenticatedUser } from "../shared/auth";
+import { runAsUserAction } from "../shared/autotaskGateway";
+import { AutotaskWriteBlockedError, IAutotaskWriteContext, invalidateSilenceCache } from "../shared/autotaskPolicy";
+import { requireNoChangeFreeze } from "../shared/changeFreeze";
 
-const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
+const handle = async function (context: Context, req: HttpRequest): Promise<void> {
     const method = (req.method || "").toLowerCase();
 
     const userSec = requireAuthenticatedUser(context, req);
@@ -93,6 +96,10 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 };
                 return;
             }
+
+            // Change freeze (BW-007 / D-02): only Administrators, with a reason, may change anything
+            const freeze = await requireNoChangeFreeze(context, req, userSec, `Mute ${type}`, String(target));
+            if (!freeze) return;
 
             const perm = isPermanent !== undefined ? Boolean(isPermanent) : false;
             if (perm && !userSec.isAuthorizedForPermanent) {
@@ -228,6 +235,13 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 }
             } catch (e) { }
 
+            const writeCtx: IAutotaskWriteContext = {
+                origin: "user",
+                action: `Mute ${type}`,
+                user: { email: userSec.email, role: userSec.role },
+                blackoutOverrideReason: freeze.overrideReason
+            };
+
             const autotaskConfig = getAutoTaskConfig();
             if (autotaskConfig) {
                 try {
@@ -251,7 +265,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                                 reason: cleanedReason,
                                 serialNumber: deviceName, // fallback serial
                                 clientCompanyName: undefined
-                            }, autotaskConfig);
+                            }, autotaskConfig, writeCtx);
 
                             if (ticketObj) {
                                 context.log.info(`[Exclusions Auto-Ticket] Successfully created compliance ticket #${ticketObj.ticketId}`);
@@ -311,7 +325,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                             const noteResult = await createTicketNoteInAutoTask(ticketIdNum, {
                                 title: noteTitle,
                                 description: noteDesc
-                            }, autotaskConfig);
+                            }, autotaskConfig, writeCtx);
                             if (noteResult) {
                                 context.log.info(`[Exclusions Note Push] Successfully posted update note to Autotask Ticket #${ticketNumber} (ID: ${ticketIdNum})`);
                             } else {
@@ -323,6 +337,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                     }
                     // CASE 3: Device or Agent with NO ticket number -> 0 Autotask API calls made (Silent mode)
                 } catch (ticketErr: any) {
+                    // A blocked write means the change itself is not allowed – don't save the exclusion.
+                    if (ticketErr instanceof AutotaskWriteBlockedError) throw ticketErr;
                     context.log.error(`[Exclusions Auto-Ticket/Note] Autotask interaction failed: ${ticketErr.message}`);
                 }
             }
@@ -341,6 +357,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             };
 
             await tableClient.upsertEntity(entity, "Replace");
+            invalidateSilenceCache();
 
             try {
                 const auditTableClient = await getTableClient("AuditLogs");
@@ -401,6 +418,10 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 return;
             }
 
+            // Change freeze (BW-007 / D-02): only Administrators, with a reason, may change anything
+            const freeze = await requireNoChangeFreeze(context, req, userSec, "Unmute", String(id));
+            if (!freeze) return;
+
             let target = "";
             let type = "";
             let reason = "";
@@ -460,6 +481,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 }
             }
 
+            invalidateSilenceCache();
+
             try {
                 const auditTableClient = await getTableClient("AuditLogs");
                 const userEmail = userSec.email;
@@ -493,6 +516,14 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         };
 
     } catch (error: any) {
+        if (error instanceof AutotaskWriteBlockedError) {
+            context.res = {
+                status: 403,
+                body: { error: error.message, code: error.code },
+                headers: { "Content-Type": "application/json" }
+            };
+            return;
+        }
         context.log.error("Exclusions function error: ", error.message || error);
         context.res = {
             status: 500,
@@ -504,5 +535,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         };
     }
 };
+
+// Engineer actions: their Autotask calls go ahead of background scanner calls (BW-004).
+const httpTrigger: AzureFunction = (context: Context, req: HttpRequest) => runAsUserAction(() => handle(context, req));
 
 export default httpTrigger;

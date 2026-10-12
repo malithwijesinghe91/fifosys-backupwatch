@@ -45,10 +45,10 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
-| BW-004 | Autotask concurrency can exceed 3-thread limit | High | 2 | Backend | `TODO` | |
+| BW-004 | Autotask concurrency can exceed 3-thread limit | High | 2 | Backend | `TESTING` | |
 | BW-005 | Datto asset fetch is unbounded `Promise.all` | Medium | 2 | Backend | `TODO` | |
-| BW-006 | Appliance silence does not block all Autotask writes | Medium | 2 | Backend | `TODO` | |
-| BW-007 | Global blackout (change freeze) not enforced on manual changes | Medium | 2 | Backend + frontend | `TODO` | |
+| BW-006 | Appliance silence does not block all Autotask writes | Medium | 2 | Backend | `TESTING` | |
+| BW-007 | Global blackout (change freeze) not enforced on manual changes | Medium | 2 | Backend + frontend | `TESTING` | |
 | BW-008 | Expired exclusion deleted before follow-up ticket is confirmed | Medium (to verify) | 3 | Backend | `TODO` | |
 | BW-009 | Linux root volume `/` normalised to empty string | High (if Linux agents exist) | 3 | Backend | `TODO` | |
 | BW-010 | Settings handling: dead admin functions, `AT_USER` mismatch, no start-up validation | Medium | 3 | Backend | `TODO` | |
@@ -341,17 +341,17 @@ This is the single source of truth for every defect found in the October 2026 co
 ## Phase 2 – Autotask gateway & suppression
 
 ### BW-004 – Autotask concurrency can exceed the 3-thread limit
-**Status:** `TODO`  **Severity:** High  **Release type:** Backend
+**Status:** `TESTING` (built on branch `bw-004-autotask-gateway` as backend 1.25.0; not deployed)  **Severity:** High  **Release type:** Backend
 
 **Finding.** Autotask is called from many places, each with its own pacing. `handleAutoHeal` (storage/offline notes) runs inside `Promise.all(devices.map(...))` (`backupWatchTrigger/index.ts:877-920`), so 4+ appliances recovering in one scan can fire 4+ concurrent requests. Flex Consumption can also run several instances, each with its own in-memory limits.
 
 **Fix.**
-- [ ] **Layer 1 – Gateway:** create `shared/autotaskGateway.ts`. Every Autotask HTTP call goes through it. Max 2 concurrent requests per instance (`p-limit`), retry with exponential back-off on "thread threshold" / 429 / 5xx, structured logging of every call.
-- [ ] Refactor `shared/autotask.ts`, `escalateTrigger`, `exclusions` and `backupWatchTrigger` to use only the gateway.
-- [ ] **Layer 2 – Guard rails:** ESLint `no-restricted-imports`/custom rule plus a unit test that fails if any file other than the gateway contains the Autotask base URL or calls axios for Autotask.
+- [x] **Layer 1 – Gateway:** create `shared/autotaskGateway.ts`. Every Autotask HTTP call goes through it. Max 2 concurrent requests per instance (`p-limit`), retry with exponential back-off on "thread threshold" / 429 / 5xx, structured logging of every call. *(Built with **1** per instance, agreed with the owner 2026-10-12: with 2 instances, 2 per instance could reach 4 > 3. No `p-limit` – a small built-in queue that also gives engineer actions priority. Writes are retried only on busy responses, never on 5xx, to avoid duplicate tickets. 60 s queue wait cap.)*
+- [x] Refactor `shared/autotask.ts`, `escalateTrigger`, `exclusions` and `backupWatchTrigger` to use only the gateway. *(Also `adminDiagnostics`. New read helpers `getAutotaskCompanyName` and `pingAutotaskZone` replace the last direct calls; `getAutoTaskHeaders` removed – headers are built only in the gateway.)*
+- [x] **Layer 2 – Guard rails:** ESLint `no-restricted-imports`/custom rule plus a unit test that fails if any file other than the gateway contains the Autotask base URL or calls axios for Autotask. *(Done as `tests/autotaskGuardRails.test.ts` only – the backend has no ESLint set-up. It fails if any file other than the gateway and the Datto pipeline imports axios, if an axios call outside the gateway isn't a Datto URL, if another HTTP client is used, or if Autotask credential headers are built anywhere else. Write functions also require a write context, so the compiler lists every write site.)*
 - [x] **Layer 3 – Multiple instances (D-04):** lower Function App maximum instance count (currently **100**) to the smallest value the portal allows, ideally 1–2. Flex Consumption has historically enforced a minimum (e.g. 40); if it won't go low enough, use the Storage Queue option for Autotask writes instead. Document it in `CLAUDE.md`.
 - [ ] **Later (optional):** Azure Storage Queue for all Autotask writes, consumed by one function with concurrency 1; poison queue alerting.
-- [ ] Tests: simulate 10 simultaneous auto-heals; assert peak concurrency ≤ 2.
+- [x] Tests: simulate 10 simultaneous auto-heals; assert peak concurrency ≤ 2. *(`tests/autotaskGateway.test.ts`: peak = 1 for 10 parallel auto-heals through the real gateway.)*
 
 **Acceptance criteria.** No code path can issue more than 2 concurrent Autotask requests per instance; the guard-rail test catches direct calls; no "Thread Threshold Exceeded" alerts for 30 days after release.
 
@@ -359,6 +359,8 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-10 – Item created.
 - 2026-10-11 – Function App maximum instance count lowered from 100 to **2** (Malith). Layers 1–2 (gateway + guard rails) still `TODO`.
 - 2026-10-12 – D-04 (Malith): leave the instance cap at 2 and build the in-process gateway; Storage Queue not now. Review D-04 after this item is live.
+- 2026-10-12 – Owner agreed: 1 request at a time per instance, engineer actions first, retries 1 s / 2 s / 4 s, ~60 s wait cap. Built with BW-006 and BW-007 on branch `bw-004-autotask-gateway` (backend 1.25.0 + web part 1.26.0, not deployed). `npm test`: **13 suites, 288 passed** (new: `autotaskGateway` 18, `autotaskPolicy` 99, `changeFreeze` 26, `autotaskGuardRails` 5; `autotaskConcurrency` failure test updated because reads are now retried). Mutation checks, each caught: concurrency 2 (5 tests fail), priority reversed (1), writes retried on 5xx (1), auto-heal ignoring silence (3), policy ignoring silence (16), Administrator needing no reason (1), escalation skipping the freeze check (4), Specialists allowed in a freeze (3), a direct Autotask call added to `exclusions` (2). Also fixed: cached dashboard responses lacked `appVersion`.
+  - Acceptance "no Thread Threshold alerts for 30 days" can only be confirmed after release.
 ---
 
 ### BW-005 – Datto asset fetch is unbounded
@@ -378,45 +380,47 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-006 – Appliance silence does not block all Autotask writes
-**Status:** `TODO` (D-01 decided: no writes while silenced)  **Severity:** Medium  **Release type:** Backend
+**Status:** `TESTING` (built with BW-004, backend 1.25.0; not deployed)  **Severity:** Medium  **Release type:** Backend
 
 **Finding.** Storage, offline and offsite-sync auto-heals (`backupWatchTrigger/index.ts:894, 916, 1114`) and the exclusion expiry sweep (`482-764`) don't check appliance silence. The spec promises "0 Autotask calls" for a silenced appliance.
 
 **Fix (policy enforcement point in the gateway from BW-004).**
-- [ ] Create `shared/suppression.ts` with `evaluateSuppression(target)` → `{ suppressed: boolean, reason }`. Checks, in order: global blackout, appliance silence, agent silence, volume exclusion.
-- [ ] Every Autotask **write** through the gateway must include a target (`serial`, `deviceName`, `agentName?`, `volume?`, `alertType`). The gateway calls `evaluateSuppression` and refuses suppressed writes.
-- [ ] Suppressed writes are recorded in `AuditLogs` (`action: "Suppressed"`, with reason).
-- [ ] Remove the scattered per-feature silence checks once the gateway enforces them.
-- [ ] Tests: matrix of every alert type × every silence tier × blackout on/off.
+- [x] Create `shared/suppression.ts` with `evaluateSuppression(target)` → `{ suppressed: boolean, reason }`. Checks, in order: global blackout, appliance silence, agent silence, volume exclusion. *(Built as `shared/autotaskPolicy.ts` `evaluateAutotaskWrite`. Volume exclusions are deliberately **not** a gateway check: the volume-exclusion workflow itself writes to its own ticket (mute notes, expiry reminders, auto-heal); those rules stay in the sweep. Silence applies to **automatic** writes only – an engineer's own action (e.g. the note recording a mute) is not blocked by silence, only by the change freeze.)*
+- [x] Every Autotask **write** through the gateway must include a target (`serial`, `deviceName`, `agentName?`, `volume?`, `alertType`). The gateway calls `evaluateSuppression` and refuses suppressed writes. *(Required `IAutotaskWriteContext` parameter on every write function – origin, action, device, agent, user, override reason; checked in the write functions just before the gateway.)*
+- [x] Suppressed writes are recorded in `AuditLogs` (`action: "Suppressed"`, with reason). *(`Suppressed Autotask Write`, at most once per item per 6 hours so 30-minute scans don't flood the log.)*
+- [ ] Remove the scattered per-feature silence checks once the gateway enforces them. *(Kept on purpose: they stop the scanner changing table state (auto-heal deletes, expiry sweep) and are harmless as a second check. Auto-heal and the sweep now use `getScannerSuppression()` so held-back items stay tracked and are retried after un-muting.)*
+- [x] Tests: matrix of every alert type × every silence tier × blackout on/off. *(`tests/autotaskPolicy.test.ts`: 7 scanner write types × 6 silence tiers × blackout on/off, user roles, and the real write functions sending nothing when suppressed.)*
 
 **Acceptance criteria.** With an appliance silenced, a full scan makes zero Autotask writes for it (verified by mock gateway in tests); suppressed actions visible in the audit trail.
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-01.
 - 2026-10-12 – D-01 decided (Malith): **No** Autotask writes of any kind while silenced. Unblocked; build with BW-004.
+- 2026-10-12 – Built with BW-004 (see its log). Behaviour change: appliance-level auto-heal notes (storage, offline, offsite sync) now respect appliance silence; a held-back auto-heal keeps its ticket tracked so the note is posted on the first scan after un-muting (D-01).
 
 ---
 
 ### BW-007 – Global blackout (change freeze) not enforced on manual changes
-**Status:** `TODO` (D-02 decided: blackout blocks every change except by Administrator)  **Severity:** Medium  **Release type:** Backend + frontend
+**Status:** `TESTING` (built with BW-004: backend 1.25.0 + web part 1.26.0; not deployed)  **Severity:** Medium  **Release type:** Backend + frontend
 
 **Finding.** Blackout is checked only in `createComplianceTicket` (`shared/autotask.ts:664-671`); `escalateTrigger` never checks it.
 
 **Scope (widened by D-02, 2026-10-12).** Originally escalation only; the owner decided a blackout is a full change freeze, so this item covers every user-initiated write.
 
 **Fix (D-02 = full change freeze; Administrator-only override).**
-- [ ] One server-side check (`requireNoBlackout(user, req)`) on **every mutating endpoint**: escalate, exclusions POST/DELETE (incl. permanent and appliance/agent mutes), unmute, bulk cleanup and any other write. Blocked during blackout unless the caller is Administrator **and** the request carries `overrideBlackout: true` plus a reason.
-- [ ] Gateway/suppression (BW-006) also blocks automatic Autotask writes during blackout (scanner auto-tickets, auto-heal notes, expiry-sweep tickets).
-- [ ] Override accepted **only from Administrator** (server-resolved role, after BW-001); Specialist, Contributor and Viewer get 403 "Change freeze active until …".
-- [ ] Web part: a banner "Change freeze active until …"; every change button (escalate, mute, exclude, unmute) disabled for non-Administrators with that reason; Administrators get an override checkbox + mandatory reason.
-- [ ] Audit action `Change During Blackout` (with the action type and reason) for every Administrator override.
-- [ ] Tests: every mutating endpoint × every role × blackout on/off; Administrator without a reason is rejected.
+- [x] One server-side check (`requireNoBlackout(user, req)`) on **every mutating endpoint**: escalate, exclusions POST/DELETE (incl. permanent and appliance/agent mutes), unmute, bulk cleanup and any other write. Blocked during blackout unless the caller is Administrator **and** the request carries `overrideBlackout: true` plus a reason. *(`requireNoChangeFreeze` in `shared/changeFreeze.ts` on escalate and exclusions POST/DELETE. **Admin Console settings (routing, alert matrix, blackout on/off, orphan cleanup) are not guarded**: they are already Administrator-only and are how the freeze is managed – for owner review. If the override can't be audited, the change is refused.)*
+- [x] Gateway/suppression (BW-006) also blocks automatic Autotask writes during blackout (scanner auto-tickets, auto-heal notes, expiry-sweep tickets).
+- [x] Override accepted **only from Administrator** (server-resolved role, after BW-001); Specialist, Contributor and Viewer get 403 "Change freeze active until …".
+- [x] Web part: a banner "Change freeze active until …"; every change button (escalate, mute, exclude, unmute) disabled for non-Administrators with that reason; Administrators get an override checkbox + mandatory reason. *(Administrators get a reason prompt when they make the change, instead of a checkbox – same rule, fewer screens touched. Not yet seen in a browser: needs the web part deployed.)*
+- [x] Audit action `Change During Blackout` (with the action type and reason) for every Administrator override.
+- [x] Tests: every mutating endpoint × every role × blackout on/off; Administrator without a reason is rejected. *(`tests/changeFreeze.test.ts`, 26 tests.)*
 
 **Acceptance criteria.** During a blackout no role below Administrator can change anything (blocked server-side, not just hidden in the UI); Administrators can act only with a reason; every override is audited.
 
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-02.
 - 2026-10-12 – D-02 decided (Malith): only the **Administrator** role may act during a blackout; every role below is restricted. Clarified: "a change freeze or a blackout is a blackout" – applies to **all** changes, not just escalation. Scope widened accordingly. Unblocked; build with BW-004/BW-006.
+- 2026-10-12 – Built with BW-004 (see its log). Release order: backend 1.25.0 first (server-side block works with the current web part – a blocked user just sees the error), then web part 1.26.0 (banner, disabled buttons, Administrator reason prompt).
 
 ---
 

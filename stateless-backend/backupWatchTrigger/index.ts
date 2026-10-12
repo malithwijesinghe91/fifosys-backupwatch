@@ -1,7 +1,9 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import axios from "axios";
 import { getTableClient } from "../shared/tableService";
-import { getAutoTaskConfig, getAutoTaskBaseUrl, getAutoTaskTicketUrl, getSingleTicketFromAutoTask, createTicketNoteInAutoTask, lookupConfigurationItemInAutoTask, createTicketInAutoTask, queryTicketsInAutoTask, queryTicketByNumber, createComplianceTicket, getTicketStatusPicklistValues, getTicketFieldPicklistValues, updateTicketStatusInAutoTask, IPicklistValue } from "../shared/autotask";
+import { getAutoTaskConfig, getAutoTaskBaseUrl, getAutoTaskTicketUrl, getSingleTicketFromAutoTask, createTicketNoteInAutoTask, lookupConfigurationItemInAutoTask, lookupContractInAutoTask, getAutotaskCompanyName, pingAutotaskZone, queryTicketsInAutoTask, queryTicketByNumber, createComplianceTicket, getTicketStatusPicklistValues, getTicketFieldPicklistValues, updateTicketStatusInAutoTask, IPicklistValue } from "../shared/autotask";
+import { runAsUserAction } from "../shared/autotaskGateway";
+import { getScannerSuppression } from "../shared/autotaskPolicy";
 import { normalizeVolumeName, buildVolumeTargetKey, isVolumeExcluded, isDeviceMuted, isDeviceSilenced, isAgentSilenced } from "../shared/volumeUtils";
 import { requireAuthenticatedUser } from "../shared/auth";
 import { getAutotaskRoutingConfig, saveAutotaskRoutingConfig, getGlobalMaintenanceMode, setGlobalMaintenanceMode, getAlertRoutingMatrix, saveAlertRoutingMatrix } from "../shared/configService";
@@ -141,22 +143,34 @@ function isApplianceActive(device: any): boolean {
     return false;
 }
 
-async function handleAutoHeal(
+/**
+ * Posts the auto-heal note and stops tracking the ticket. Returns false (and changes nothing) when
+ * Autotask writes for this appliance/agent are held back by a silence or change freeze (D-01/D-02),
+ * so the note is posted on the first scan after the silence or freeze ends.
+ */
+export async function handleAutoHeal(
     tableClient: any,
     serialNumber: string,
     issueKey: string,
     ticketId: string,
     issueDetail: string,
     config: any,
-    context: Context
-) {
+    context: Context,
+    target: { deviceName: string; agentName?: string; exclusions: IExclusionEntity[] }
+): Promise<boolean> {
+    const suppression = await getScannerSuppression(target.deviceName, target.agentName, target.exclusions);
+    if (!suppression.allowed) {
+        context.log.info(`Auto-heal for ticket #${ticketId} (${target.deviceName}${target.agentName ? ":" + target.agentName : ""}, ${issueKey}) held back: ${suppression.reason}. Ticket stays tracked.`);
+        return false;
+    }
+
     context.log.info(`Auto-healing ticket #${ticketId} for Serial=${serialNumber}, IssueKey=${issueKey}`);
     const ticketIdNum = parseInt(ticketId);
-    if (!isNaN(ticketIdNum)) {
+    if (!isNaN(ticketIdNum) && config) {
         await createTicketNoteInAutoTask(ticketIdNum, {
             title: "BackupWatch Auto-Heal Note",
             description: `[SUCCESS]: BackupWatch detected a successful completion or healthy status for this alert.\n\nDetails: ${issueDetail}\n\nThis ticket has been auto-healed, and future recurrences will log a new ticket.`
-        }, config);
+        }, config, { origin: "scanner", action: "Auto-heal note", deviceName: target.deviceName, agentName: target.agentName });
     }
     try {
         await tableClient.deleteEntity(serialNumber, issueKey);
@@ -164,6 +178,7 @@ async function handleAutoHeal(
     } catch (err: any) {
         context.log.error(`Failed to delete tracked ticket entity for Auto-Heal:`, err.message || err);
     }
+    return true;
 }
 
 function applyExclusionsToDevices(devices: any[], exclusions: IExclusionEntity[]): any[] {
@@ -301,6 +316,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
 
         const mappedDevices = applyExclusionsToDevices(cachedRawData, exclusions);
         return {
+            appVersion: APP_VERSION,
             devices: mappedDevices,
             maintenanceMode: maintMode,
             scanStatus: scanStatus ? {
@@ -525,6 +541,13 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
                     }
                 }
 
+                // Silence / change freeze (D-01, D-02): leave this exclusion untouched until writes are allowed again
+                const sweepSuppression = await getScannerSuppression(devName, agentName, exclusions);
+                if (!sweepSuppression.allowed) {
+                    context.log.info(`[Exclusion Sweep] Skipping ${e.rowKey}: ${sweepSuppression.reason}.`);
+                    continue;
+                }
+
                 // Locate the matching device and asset in live Datto BCDR inventory
                 const matchedDevice = devices.find((d: any) => 
                     (d.name && d.name.toLowerCase() === devName.toLowerCase()) || 
@@ -605,7 +628,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
                                 reason: `[RE-OPENED COMPLIANCE TICKET] Previous Ticket #${atTicket.ticketNumber || ticketIdNum} was closed, but volume [${volName}] remains unprotected in Datto BCDR. Live compliance monitoring has re-engaged.`,
                                 serialNumber: matchedDevice.serialNumber || devName,
                                 clientCompanyName: matchedDevice.clientCompanyName || matchedDevice.organizationName
-                            }, autotaskConfig);
+                            }, autotaskConfig, { origin: "scanner", action: "Re-raised compliance ticket" });
 
                             let newTicketNumber = String(ticketIdNum);
                             let newTicketUrl = e.ticketUrl;
@@ -676,7 +699,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
                             await createTicketNoteInAutoTask(ticketIdNum, {
                                 title: noteTitle,
                                 description: noteDesc
-                            }, autotaskConfig);
+                            }, autotaskConfig, { origin: "scanner", action: "Exclusion expiry note", deviceName: devName, agentName });
 
                             // Update ticket status to Action Required
                             try {
@@ -684,7 +707,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
                                 const actionReqField = statusPicklists.find(p => p.label && p.label.toLowerCase().includes("action required"));
                                 const targetStatusId = actionReqField ? actionReqField.value : (process.env.AUTOTASK_ACTION_REQUIRED_STATUS_ID ? parseInt(process.env.AUTOTASK_ACTION_REQUIRED_STATUS_ID, 10) : 8);
 
-                                const statusUpdated = await updateTicketStatusInAutoTask(ticketIdNum, targetStatusId, autotaskConfig);
+                                const statusUpdated = await updateTicketStatusInAutoTask(ticketIdNum, targetStatusId, autotaskConfig, { origin: "scanner", action: "Exclusion expiry status change", deviceName: devName, agentName });
                                 if (statusUpdated) {
                                     context.log.info(`Successfully updated ticket #${ticketIdNum} status to Action Required (StatusID=${targetStatusId}).`);
                                 }
@@ -732,7 +755,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
                         await createTicketNoteInAutoTask(ticketIdNum, {
                             title: noteTitle,
                             description: noteDesc
-                        }, autotaskConfig);
+                        }, autotaskConfig, { origin: "scanner", action: "Volume auto-heal note", deviceName: devName, agentName });
                     }
 
                     // 1. Delete exclusion record from Table Storage
@@ -815,7 +838,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
                                 reason: "",
                                 serialNumber: d.serialNumber,
                                 clientCompanyName: d.clientCompanyName || d.organizationName
-                            }, autotaskConfig);
+                            }, autotaskConfig, { origin: "scanner", action: "Volume compliance ticket" });
 
                             if (ticketObj) {
                                 ticketLogged = true;
@@ -891,8 +914,8 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
 
         // Auto-heal check for storage alerts
         let storageTicket = deviceTickets.find(t => t.rowKey === "storage");
-        if (storageTicket && storageUsedPercent <= 85 && ticketsTableClient) {
-            await handleAutoHeal(ticketsTableClient, serialNumber, "storage", storageTicket.ticketId, `Appliance storage usage has cleared. Used: ${usedStorageGB} GB of ${totalStorageGB} GB (${storageUsedPercent.toFixed(1)}%).`, autotaskConfig, context);
+        if (storageTicket && storageUsedPercent <= 85 && ticketsTableClient &&
+            await handleAutoHeal(ticketsTableClient, serialNumber, "storage", storageTicket.ticketId, `Appliance storage usage has cleared. Used: ${usedStorageGB} GB of ${totalStorageGB} GB (${storageUsedPercent.toFixed(1)}%).`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(storageTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             storageTicket = undefined;
@@ -913,8 +936,8 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
             }
         }
         const isDeviceOffline = lastCheckinVal ? (Date.now() / 1000 - lastCheckinVal > 3600) : false; // 1hr threshold
-        if (offlineTicket && !isDeviceOffline && ticketsTableClient) {
-            await handleAutoHeal(ticketsTableClient, serialNumber, "offline", offlineTicket.ticketId, `Appliance checkin has resolved. Last checkin: ${lastCheckinVal ? new Date(lastCheckinVal * 1000).toLocaleString() : "N/A"}.`, autotaskConfig, context);
+        if (offlineTicket && !isDeviceOffline && ticketsTableClient &&
+            await handleAutoHeal(ticketsTableClient, serialNumber, "offline", offlineTicket.ticketId, `Appliance checkin has resolved. Last checkin: ${lastCheckinVal ? new Date(lastCheckinVal * 1000).toLocaleString() : "N/A"}.`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(offlineTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             offlineTicket = undefined;
@@ -993,24 +1016,24 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
             const latestScreenshotSuccess = screenshotVerification ? screenshotVerification.success : true;
 
             // Auto-heal agent backup (skip if agent or appliance is silenced)
-            if (!isSilenced && !isApplianceSilenced && backupTicket && latestBackupSuccess && ticketsTableClient) {
-                await handleAutoHeal(ticketsTableClient, serialNumber, `agent:${name}:backup`, backupTicket.ticketId, `Backup Failure for agent ${name} has resolved.`, autotaskConfig, context);
+            if (!isSilenced && !isApplianceSilenced && backupTicket && latestBackupSuccess && ticketsTableClient &&
+                await handleAutoHeal(ticketsTableClient, serialNumber, `agent:${name}:backup`, backupTicket.ticketId, `Backup Failure for agent ${name} has resolved.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
                 const index = deviceTickets.indexOf(backupTicket);
                 if (index > -1) deviceTickets.splice(index, 1);
                 backupTicket = undefined;
             }
 
             // Auto-heal agent screenshot (skip if agent or appliance is silenced)
-            if (!isSilenced && !isApplianceSilenced && screenshotTicket && latestScreenshotSuccess && ticketsTableClient) {
-                await handleAutoHeal(ticketsTableClient, serialNumber, `agent:${name}:screenshot`, screenshotTicket.ticketId, `Screenshot verification for agent ${name} has resolved.`, autotaskConfig, context);
+            if (!isSilenced && !isApplianceSilenced && screenshotTicket && latestScreenshotSuccess && ticketsTableClient &&
+                await handleAutoHeal(ticketsTableClient, serialNumber, `agent:${name}:screenshot`, screenshotTicket.ticketId, `Screenshot verification for agent ${name} has resolved.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
                 const index = deviceTickets.indexOf(screenshotTicket);
                 if (index > -1) deviceTickets.splice(index, 1);
                 screenshotTicket = undefined;
             }
 
             // Auto-heal agent paused status (skip if agent or appliance is silenced)
-            if (!isSilenced && !isApplianceSilenced && statusTicket && !isPaused && ticketsTableClient) {
-                await handleAutoHeal(ticketsTableClient, serialNumber, statusTicket.rowKey, statusTicket.ticketId, `Backup agent status is no longer Paused/Archived for agent ${name}.`, autotaskConfig, context);
+            if (!isSilenced && !isApplianceSilenced && statusTicket && !isPaused && ticketsTableClient &&
+                await handleAutoHeal(ticketsTableClient, serialNumber, statusTicket.rowKey, statusTicket.ticketId, `Backup agent status is no longer Paused/Archived for agent ${name}.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
                 const index = deviceTickets.indexOf(statusTicket);
                 if (index > -1) deviceTickets.splice(index, 1);
                 statusTicket = undefined;
@@ -1111,8 +1134,8 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
         // Check for offsite sync ticket
         let offsitesyncTicket = deviceTickets.find(t => t.rowKey === "offsitesync");
         const isOffsiteSyncFailed = !!(device.offsiteSyncFailed || device.offsiteStatus === 'Error' || device.offsiteSyncStatus === 'Critical' || device.offsiteSyncStatus === 'Warning');
-        if (offsitesyncTicket && !isOffsiteSyncFailed && ticketsTableClient) {
-            await handleAutoHeal(ticketsTableClient, serialNumber, "offsitesync", offsitesyncTicket.ticketId, `Appliance offsite synchronization has resolved.`, autotaskConfig, context);
+        if (offsitesyncTicket && !isOffsiteSyncFailed && ticketsTableClient &&
+            await handleAutoHeal(ticketsTableClient, serialNumber, "offsitesync", offsitesyncTicket.ticketId, `Appliance offsite synchronization has resolved.`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(offsitesyncTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             offsitesyncTicket = undefined;
@@ -1199,6 +1222,15 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     const userSec = requireAuthenticatedUser(context, req);
     if (!userSec) return;
 
+    // Admin Console actions are engineer requests: their Autotask calls go ahead of scanner calls (BW-004).
+    if (req.query.action) {
+        await runAsUserAction(() => handleRequest(context, req, userSec));
+    } else {
+        await handleRequest(context, req, userSec);
+    }
+};
+
+async function handleRequest(context: Context, req: HttpRequest, userSec: NonNullable<ReturnType<typeof requireAuthenticatedUser>>): Promise<void> {
     try {
         const action = req.query.action;
 
@@ -1248,7 +1280,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 try {
                     const baseUrl = await getAutoTaskBaseUrl(atConfig.user);
                     diagnostics.autotask.baseUrl = baseUrl;
-                    await axios.get(`https://webservices.autotask.net/atservicesrest/v1.0/zoneInformation?user=${encodeURIComponent(atConfig.user)}`, { timeout: 8000 });
+                    await pingAutotaskZone(atConfig.user);
                     diagnostics.autotask.latencyMs = Date.now() - atStart;
                     diagnostics.autotask.status = "Healthy (200 OK)";
                 } catch (atErr: any) {
@@ -1754,12 +1786,9 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
                 if (ciResult && ciResult.companyID) {
                     try {
-                        const baseUrl = await getAutoTaskBaseUrl(atConfig.user);
-                        const { getAutoTaskHeaders, lookupContractInAutoTask } = await import("../shared/autotask");
-                        const headers = await getAutoTaskHeaders(atConfig);
-                        const compRes = await axios.get(`${baseUrl}Companies/${ciResult.companyID}`, { headers, timeout: 8000 });
-                        if (compRes.data && compRes.data.item && compRes.data.item.companyName) {
-                            companyName = compRes.data.item.companyName;
+                        const resolvedName = await getAutotaskCompanyName(ciResult.companyID, atConfig);
+                        if (resolvedName) {
+                            companyName = resolvedName;
                         }
 
                         const contractId = await lookupContractInAutoTask(ciResult.companyID, "Datto BCDR", atConfig);
@@ -1871,7 +1900,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             };
         }
     }
-};
+}
 
 export { httpTrigger as index };
 export default httpTrigger;
