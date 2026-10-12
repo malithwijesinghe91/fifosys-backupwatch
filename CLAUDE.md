@@ -29,7 +29,7 @@ The frontend and backend are completely decoupled:
    - Single source of truth for version is `stateless-backend/shared/version.ts`.
 
 ### Release Rule:
-- **Backend-Only Changes (Bugfixes, API logic, scanner)**: Bump `version.ts`, `package.json`, and run `func azure functionapp publish backupwatch-api`. **Do NOT rebuild or upload `.sppkg`.**
+- **Backend-Only Changes (Bugfixes, API logic, scanner)**: Bump `version.ts`, `package.json`, then from `stateless-backend/` run `npm run build` followed by `func azure functionapp publish backupwatch-api --build local` (remote build is not supported – see §4). **Do NOT rebuild or upload `.sppkg`.**
 - **Frontend Changes (React components, UI styling, layouts)**: Rebuild package in `BackupWatchScaffold`, copy `backup-watch-scaffold.sppkg` to root, and upload to SharePoint App Catalog.
 
 ---

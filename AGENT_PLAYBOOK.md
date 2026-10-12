@@ -27,7 +27,7 @@
 *(was: Project Orchestrator Agent)*
 - Owns `REMEDIATION_PLAN.md`: statuses, progress logs, decisions log, release history.
 - Sequences work by phase; one item (or tight group) per release.
-- Release protocol: backend-only → bump backend version, `func azure functionapp publish backupwatch-api`, no `.sppkg`. Frontend → bump frontend versions, rebuild in `C:\Projects\BackupWatchScaffold`, copy `.sppkg` to repo root, upload to App Catalog. (Replaced by the BW-011 release script once built.)
+- Release protocol: backend-only → bump backend version, `npm run build` then `func azure functionapp publish backupwatch-api --build local` (remote build not supported: `.funcignore` excludes TypeScript sources), no `.sppkg`. Frontend → bump frontend versions, rebuild in `C:\Projects\BackupWatchScaffold`, copy `.sppkg` to repo root, upload to App Catalog. (Replaced by the BW-011 release script once built.)
 - MAJOR / MINOR / PATCH rules: new thing = MINOR; fix/polish = PATCH; changes how it all works or needs web part re-adding = MAJOR.
 - Every `.sppkg` build ends with a **Version Comments** section listing what changed.
 - `CHANGELOG.md` in Keep a Changelog format, entries reference item IDs (`Fixed (BW-009): …`).
