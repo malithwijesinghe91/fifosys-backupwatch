@@ -1,7 +1,8 @@
-const { TableClient } = require("@azure/data-tables");
-const localSettings = require("../local.settings.json");
+// LIVE SCRIPT - reads production Table Storage (read-only). Requires --confirm-live. See README.md.
+const { requireLiveConfirmation } = require("./liveGuard");
+const connectionString = requireLiveConfirmation("check_live_status.js");
 
-const connectionString = localSettings.Values.AzureWebJobsStorage;
+const { TableClient } = require("@azure/data-tables");
 
 async function checkStatus() {
     console.log("=== CHECKING LIVE SYSTEM STATUS (READ-ONLY) ===");

@@ -83,8 +83,12 @@ c:/Projects/FifoDash/
 cd c:\Projects\FifoDash\stateless-backend
 npm run build      # or: tsc
 func start         # Local emulator (requires local.settings.json)
-func azure functionapp publish backupwatch-api  # Deploy to live Azure
+
+# Deploy to live Azure (always build locally first, then publish with --build local)
+npm run build
+func azure functionapp publish backupwatch-api --build local
 ```
+> `--build local` is required: `.funcignore` excludes the TypeScript sources and `tsconfig.json`, so a remote build cannot compile the app. Remote build is not supported for this repo.
 
 ### Frontend Build & Bundle:
 > **Note on Windows**: PowerShell execution policies may restrict `gulp.ps1`. Use direct `node` invocation via `BackupWatchScaffold`:
