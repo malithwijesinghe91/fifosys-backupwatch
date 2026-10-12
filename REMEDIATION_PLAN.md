@@ -294,6 +294,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – Backend 1.24.0 on branch `bw-001-server-side-roles` (not merged, not deployed). `shared/auth.ts` rewritten: identity/role only from Easy Auth `X-MS-CLIENT-PRINCIPAL` (+ `X-MS-CLIENT-PRINCIPAL-NAME`); role claims via `role_typ`, `roles` and the v1 role URI; highest `BackupWatch.*` role wins; authenticated with none = Viewer + warning; no principal = 401 via new `requireAuthenticatedUser` on every HTTP function (backupWatchTrigger incl. all `?action=` handlers, exclusions GET/POST/DELETE – GET was previously unchecked, escalateTrigger, auditLogs, adminRouting, adminDiagnostics); existing role checks unchanged. Removed `x-user-role`, `x-user-email`, `x-mock-role`, `?role=`, `?user=`, JWT decode and `RBAC_*_GROUP_ID`. Dev-only `BW_DEV_ROLE` honoured only when `AZURE_FUNCTIONS_ENVIRONMENT=Development`. Audit entries record server-resolved `userEmail` + new `userRole`; main payload adds `userRole`/`userEmail`. Tests: 3 BW-001 `test.failing` cases now pass normally; new `endpointAuthorization.test.ts` drives the real handlers. **`npm test`: 9 suites, 140 passed, 0 failed (3 `test.failing` remain, all BW-009).** Mutation checks: re-trusting `?role=` fails 14 tests; removing the 401 fails 28. `npm run build` OK.
   - Before deploy: confirm `BW_DEV_ROLE` is not set and `AZURE_FUNCTIONS_ENVIRONMENT` is not `Development` in the Function App settings. `RBAC_*_GROUP_ID` app settings are now unused and can be removed after release.
 - 2026-10-12 – **Backend 1.24.0 deployed** to `backupwatch-api` (merge `461f0d7`, tag `backend-1.24.0`; `npm ci` → 140 tests passed → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`). Deployment successful, host Running, all 7 functions listed. Rollback point: tag `backend-1.23.2-live` (`42ee4ed`). Smoke-tested OK by Malith, no errors seen. Status stays `TESTING` until the frontend release (web part uses server `userRole`, stops sending `role`/`user` params and `x-user-*` headers).
+- 2026-10-12 – **Backend 1.24.0 LIVE** (deployed 12/10/2026 ~11:22 UK time). Verified by Malith: `appVersion` 1.24.0; payload returns server-resolved `userRole` = Administrator and `userEmail`; background scanner ran successfully at 11:30. Status stays `TESTING` until the frontend part is done.
 
 ---
 
@@ -408,6 +409,7 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created.
+- 2026-10-12 – Evidence from live dashboard data (Malith): Linux agents `LONITLCENTOS001`, `LONITLAPP008`, `LON-OC-P01` and `m002ukpxt` show `/BOOT` and `/HOME` volumes but **no `/` root volume** – consistent with `/` being normalised to `""` and filtered out. Linux agents are protected, so the High severity applies. Raw Datto payload naming for `/` still to be confirmed (first fix step).
 
 ---
 
@@ -533,3 +535,4 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|
 | 2026-10-10 | baseline-2026-10-10 | Repo | BW-020 | Source control baseline (backend 1.23.2 / frontend 1.23.1) |
 | 2026-10-11 | 1.23.3 | Frontend | BW-022 | Audit Trail hotfix |
+| 2026-10-12 | 1.24.0 | Backend | BW-001 | Live (roles server-side from Entra App Roles). Rollback tag `backend-1.23.2-live` |
