@@ -42,6 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
+| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend | `TODO` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
@@ -69,7 +70,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | **0 – Foundations** | Make every later fix testable, safely releasable and correctly versioned | BW-020, BW-022, BW-017, BW-011, BW-012, BW-019 |
 | **1 – Security** | Roles enforced server-side from Entra; no client trust | BW-003, BW-001, BW-002 |
 | **2 – Autotask gateway & suppression** | One choke point for all Autotask traffic that enforces rate limits, silence and blackout | BW-004, BW-006, BW-007, BW-005 |
-| **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010 |
+| **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010, BW-023 |
 | **4 – Hygiene** | Clean-up, docs, misleading UI | BW-014, BW-016, BW-018 |
 
 > BW-001 is the only item with live exposure today. If time is short, do BW-003 → BW-001 first and pick up Phase 0 straight after.
@@ -341,7 +342,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ## Phase 2 – Autotask gateway & suppression
 
 ### BW-004 – Autotask concurrency can exceed the 3-thread limit
-**Status:** `TESTING` (built on branch `bw-004-autotask-gateway` as backend 1.25.0; not deployed)  **Severity:** High  **Release type:** Backend
+**Status:** `TESTING` (backend 1.25.0 live since 2026-10-12; 30-day alert check pending)  **Severity:** High  **Release type:** Backend
 
 **Finding.** Autotask is called from many places, each with its own pacing. `handleAutoHeal` (storage/offline notes) runs inside `Promise.all(devices.map(...))` (`backupWatchTrigger/index.ts:877-920`), so 4+ appliances recovering in one scan can fire 4+ concurrent requests. Flex Consumption can also run several instances, each with its own in-memory limits.
 
@@ -361,6 +362,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – D-04 (Malith): leave the instance cap at 2 and build the in-process gateway; Storage Queue not now. Review D-04 after this item is live.
 - 2026-10-12 – Owner agreed: 1 request at a time per instance, engineer actions first, retries 1 s / 2 s / 4 s, ~60 s wait cap. Built with BW-006 and BW-007 on branch `bw-004-autotask-gateway` (backend 1.25.0 + web part 1.26.0, not deployed). `npm test`: **13 suites, 288 passed** (new: `autotaskGateway` 18, `autotaskPolicy` 99, `changeFreeze` 26, `autotaskGuardRails` 5; `autotaskConcurrency` failure test updated because reads are now retried). Mutation checks, each caught: concurrency 2 (5 tests fail), priority reversed (1), writes retried on 5xx (1), auto-heal ignoring silence (3), policy ignoring silence (16), Administrator needing no reason (1), escalation skipping the freeze check (4), Specialists allowed in a freeze (3), a direct Autotask call added to `exclusions` (2). Also fixed: cached dashboard responses lacked `appVersion`.
   - Acceptance "no Thread Threshold alerts for 30 days" can only be confirmed after release.
+- 2026-10-12 – PR #11 merged (`2a14e26`). **Web part 1.26.0 uploaded** (Malith). **Backend 1.25.0 deployed** to `backupwatch-api` at 16:40 UTC by Claude on Malith's instruction (`npm ci` → 288 tests passed → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`); host Running, all 7 functions listed, no dev-role settings, anonymous GET 401. Tag `backend-1.25.0`; rollback `backend-1.24.1`. Stays `TESTING` until 30 days without "Thread Threshold Exceeded" alerts (review around 2026-11-11).
 ---
 
 ### BW-005 – Datto asset fetch is unbounded
@@ -380,7 +382,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-006 – Appliance silence does not block all Autotask writes
-**Status:** `TESTING` (built with BW-004, backend 1.25.0; not deployed)  **Severity:** Medium  **Release type:** Backend
+**Status:** `TESTING` (backend 1.25.0 live since 2026-10-12)  **Severity:** Medium  **Release type:** Backend
 
 **Finding.** Storage, offline and offsite-sync auto-heals (`backupWatchTrigger/index.ts:894, 916, 1114`) and the exclusion expiry sweep (`482-764`) don't check appliance silence. The spec promises "0 Autotask calls" for a silenced appliance.
 
@@ -401,7 +403,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-007 – Global blackout (change freeze) not enforced on manual changes
-**Status:** `TESTING` (built with BW-004: backend 1.25.0 + web part 1.26.0; not deployed)  **Severity:** Medium  **Release type:** Backend + frontend
+**Status:** `TESTING` (backend 1.25.0 + web part 1.26.0 live since 2026-10-12)  **Severity:** Medium  **Release type:** Backend + frontend
 
 **Finding.** Blackout is checked only in `createComplianceTicket` (`shared/autotask.ts:664-671`); `escalateTrigger` never checks it.
 
@@ -515,6 +517,25 @@ This is the single source of truth for every defect found in the October 2026 co
 
 ---
 
+### BW-023 – Dashboard request runs the full scan (slow loads; Autotask writes on page load)
+**Status:** `TODO`  **Severity:** Medium  **Release type:** Backend
+
+**Finding (2026-10-12).** When the 5-minute cache has expired, `GET /api/backupWatchTrigger` (opening the dashboard) runs the whole pipeline before replying: Datto device and asset calls, the TrackedTickets sync, the volume-exclusion sweep and auto-heals. The person opening the page waits for background work, and simply opening the dashboard can trigger Autotask writes (sweep notes, auto-heal notes). With the BW-004 gateway sending Autotask calls one at a time, these loads can take longer. Web part 1.27.0 hides most of the wait (shows the browser's last copy), but doesn't fix it.
+
+**Fix (proposed).**
+- [ ] Measure current dashboard response times (Application Insights, read-only) to record a before/after.
+- [ ] The 30-minute background scan saves a finished snapshot (Table or Blob storage). The dashboard request reads the snapshot plus live exclusions and replies without calling Datto or Autotask.
+- [ ] Only the background scan writes to Autotask (sweep, auto-heal, compliance tickets); the dashboard request is read-only.
+- [ ] Forced refresh (Specialist and up) triggers a scan; decide whether it waits for the result or returns the snapshot and refreshes in the background.
+- [ ] Tests: dashboard GET makes no Datto/Autotask calls when a snapshot exists; the scan still performs the sweep and auto-heals.
+
+**Acceptance criteria.** Dashboard loads reply in about 1–2 seconds regardless of cache state; opening the dashboard never sends anything to Autotask.
+
+**Progress log.**
+- 2026-10-12 – Item created (owner agreed to do it after the web part 1.27.0 loading experience).
+
+---
+
 ## Phase 4 – Hygiene
 
 ### BW-014 – Silent `catch {}` blocks hide failures
@@ -574,3 +595,6 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-12 | 1.24.1 | Web part | BW-011 | Built, **never uploaded** (superseded by 1.25.0) |
 | 2026-10-12 | 1.25.0 | Web part | BW-011 | Separate versions (D-03 final); header showed web part version. Tag `frontend-1.25.0` |
 | 2026-10-12 | 1.25.1 | Web part | BW-011 | No version in header; footer `UI v… · Engine v…`. Tag `frontend-1.25.1` |
+| 2026-10-12 | 1.26.0 | Web part | BW-007 | Change-freeze banner, locked change buttons, Administrator reason prompt |
+| 2026-10-12 | 1.25.0 | Backend | BW-004, BW-006, BW-007 | Autotask gateway, silence enforcement, change freeze. Tag `backend-1.25.0` |
+| 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Built, not yet uploaded |

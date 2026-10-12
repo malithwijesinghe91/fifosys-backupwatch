@@ -127,7 +127,9 @@ export const MetricCards: React.FC<IMetricCardsProps> = ({
             }} />
 
             <div style={{ fontSize: '2.2rem', fontWeight: 800, color: colorVar, marginBottom: '0.25rem', fontFamily: 'Outfit, sans-serif', lineHeight: 1.1 }}>
-              {loading ? '...' : card.value}
+              {loading
+                ? <span className="bw-skel" aria-hidden="true" style={{ width: '2.6rem', height: '2rem', margin: '0 auto' }} />
+                : card.value}
             </div>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {card.title}

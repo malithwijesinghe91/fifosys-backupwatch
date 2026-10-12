@@ -563,6 +563,29 @@ export const BackupWatchStyles: React.FC = () => (
     .bw-progress-bar-fill.warning { background: var(--color-warning); }
     .bw-progress-bar-fill.danger  { background: var(--color-danger); }
 
+    /* Loading experience (web part 1.27.0): skeleton blocks and a small spinner */
+    @keyframes bw-skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+    @keyframes bw-spin { to { transform: rotate(360deg); } }
+    .backup-watch-root .bw-skel {
+      display: block;
+      background: var(--border-element);
+      border-radius: 6px;
+      animation: bw-skel-pulse 1.4s ease-in-out infinite;
+    }
+    .backup-watch-root .bw-spinner {
+      display: inline-block;
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border-element);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: bw-spin 0.8s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .backup-watch-root .bw-skel, .backup-watch-root .bw-spinner { animation: none; }
+    }
+
     /* Change freeze (BW-007): change buttons locked for non-Administrators */
     .backup-watch-root .bw-change:disabled {
       opacity: 0.45 !important;

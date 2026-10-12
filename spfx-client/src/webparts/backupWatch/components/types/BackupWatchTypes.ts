@@ -115,6 +115,16 @@ export interface IBackupWatchState {
   userSecurityLevel: 'Viewer' | 'Contributor' | 'Specialist' | 'Administrator';
   /** Server-resolved email from the backupWatchTrigger response. */
   serverUserEmail?: string;
+  /** False until a live response has confirmed the role (the badge shows a placeholder). */
+  roleResolved: boolean;
+  /** A request for fresh data is in flight while data is already on screen. */
+  refreshing: boolean;
+  /** Set while the table shows the browser's copy of an earlier dashboard (its save time). */
+  snapshotSavedAt: number | null;
+  /** Start time of the current load/refresh, for the status message. */
+  loadStartedAt: number | null;
+  /** Re-render tick while loading so the status message can advance. */
+  loadTick: number;
   isAdminModalOpen: boolean;
   adminModalTab: 'diagnostics' | 'routing' | 'blackout' | 'cleanup' | 'assetTester';
   adminDiagnostics: any | null;

@@ -16,6 +16,8 @@ import { AdminModal } from './modals/AdminModal';
 import { MetricCards } from './appliance/MetricCards';
 import { ExclusionsTable } from './appliance/ExclusionsTable';
 import { HeaderBar } from './appliance/HeaderBar';
+import { loadDashboardSnapshot, saveDashboardSnapshot } from './loading/dashboardSnapshot';
+import { DashboardSkeleton, RefreshStrip, LoadErrorPanel } from './loading/LoadingStates';
 
 export {
   IAgentResult,
@@ -38,10 +40,18 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       // Ignore
     }
 
+    // Show the last dashboard this browser saw while fresh data loads (web part 1.27.0).
+    const snapshot = loadDashboardSnapshot();
+
     this.state = {
-      devices: [],
-      exclusions: [],
-      loading: true,
+      devices: snapshot ? snapshot.devices : [],
+      exclusions: snapshot ? snapshot.exclusions : [],
+      loading: !snapshot,
+      roleResolved: false,
+      refreshing: false,
+      snapshotSavedAt: snapshot ? snapshot.savedAt : null,
+      loadStartedAt: null,
+      loadTick: 0,
       error: null,
       cacheStatus: null,
       expandedAppliances: {},
@@ -74,8 +84,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       auditSearchQuery: '',
       auditLoading: false,
       auditError: null,
-      scanStatus: null,
-      backendVersion: undefined,
+      scanStatus: snapshot ? snapshot.scanStatus : null,
+      backendVersion: snapshot ? snapshot.backendVersion : undefined,
       userSecurityLevel: 'Viewer', // until the backend returns the server-resolved role
       serverUserEmail: undefined,
       isAdminModalOpen: false,
@@ -109,8 +119,61 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     };
   }
 
+  private _loadTimer: number | undefined;
+
   public componentDidMount(): void {
+    const snapshot = this.state.snapshotSavedAt ? loadDashboardSnapshot() : null;
+    if (snapshot && snapshot.maintenanceMode) {
+      this.setState({ globalMaintenanceMode: snapshot.maintenanceMode });
+    }
     this._fetchData();
+  }
+
+  public componentWillUnmount(): void {
+    this._stopLoadTimer();
+  }
+
+  private _startLoadTimer(): void {
+    this._stopLoadTimer();
+    this._loadTimer = window.setInterval(() => this.setState({ loadTick: Date.now() }), 1000);
+  }
+
+  private _stopLoadTimer(): void {
+    if (this._loadTimer !== undefined) {
+      window.clearInterval(this._loadTimer);
+      this._loadTimer = undefined;
+    }
+  }
+
+  /** Applies a live dashboard response and keeps a copy in this browser for the next visit. */
+  private _applyDashboardResponse(resData: any, exclusions: any): void {
+    const devicesList = Array.isArray(resData) ? resData : (resData.devices || []);
+    const scanStatus = Array.isArray(resData) ? null : (resData.scanStatus || null);
+    const maintenanceMode = Array.isArray(resData) ? null : (resData.maintenanceMode || null);
+    const backendVersion = (Array.isArray(resData) ? undefined : resData.appVersion) || this.state.backendVersion;
+    const exclusionsList = Array.isArray(exclusions) ? exclusions : [];
+    this._stopLoadTimer();
+    this.setState({
+      userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
+      serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
+      roleResolved: true,
+      devices: devicesList,
+      scanStatus: scanStatus,
+      globalMaintenanceMode: maintenanceMode,
+      backendVersion: backendVersion,
+      exclusions: exclusionsList,
+      loading: false,
+      refreshing: false,
+      snapshotSavedAt: null,
+      error: null
+    });
+    saveDashboardSnapshot({ devices: devicesList, exclusions: exclusionsList, scanStatus, maintenanceMode, backendVersion });
+  }
+
+  /** A failed load keeps whatever is on screen and shows the error with Retry. */
+  private _applyDashboardError(message: string): void {
+    this._stopLoadTimer();
+    this.setState({ error: message, loading: false, refreshing: false });
   }
 
   // BW-001: the role is resolved by the backend from Entra App Roles and returned as userRole.
@@ -1047,7 +1110,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   }
 
   private _fetchData = (): void => {
-    this.setState({ loading: true, error: null });
+    // Keep what's on screen while refreshing; the skeleton only shows when there is nothing yet.
+    const hasData = this.state.devices.length > 0;
+    this._startLoadTimer();
+    this.setState({ loading: !hasData, refreshing: hasData, error: null, loadStartedAt: Date.now() });
 
     const isLocal = this._isLocalDev();
     const devicesUrl = this.props.backendApiUrl;
@@ -1068,28 +1134,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           return res.json();
         })
       ])
-        .then(([resData, exclusions]) => {
-          const devicesList = Array.isArray(resData) ? resData : (resData.devices || []);
-          const scanStatus = Array.isArray(resData) ? null : (resData.scanStatus || null);
-          const maintenanceMode = Array.isArray(resData) ? null : (resData.maintenanceMode || null);
-          const backendVersion = Array.isArray(resData) ? undefined : resData.appVersion;
-          this.setState({
-            userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
-            serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
-            devices: devicesList,
-            scanStatus: scanStatus,
-            globalMaintenanceMode: maintenanceMode,
-            backendVersion: backendVersion || this.state.backendVersion,
-            exclusions: Array.isArray(exclusions) ? exclusions : [],
-            loading: false
-          });
-        })
-        .catch(err => {
-          this.setState({
-            error: err.message || 'Failed to fetch data from local emulator API.',
-            loading: false
-          });
-        });
+        .then(([resData, exclusions]) => this._applyDashboardResponse(resData, exclusions))
+        .catch(err => this._applyDashboardError(err.message || 'Failed to fetch data from local emulator API.'));
     } else {
       // Production: authenticate via AadHttpClient
       this.props.aadHttpClientFactory
@@ -1108,35 +1154,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
               return res.json();
             })
           ])
-            .then(([resData, exclusions]) => {
-              const devicesList = Array.isArray(resData) ? resData : (resData.devices || []);
-              const scanStatus = Array.isArray(resData) ? null : (resData.scanStatus || null);
-              const maintenanceMode = Array.isArray(resData) ? null : (resData.maintenanceMode || null);
-              const backendVersion = Array.isArray(resData) ? undefined : resData.appVersion;
-              this.setState({
-                userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
-                serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
-                devices: devicesList,
-                scanStatus: scanStatus,
-                globalMaintenanceMode: maintenanceMode,
-                backendVersion: backendVersion || this.state.backendVersion,
-                exclusions: Array.isArray(exclusions) ? exclusions : [],
-                loading: false
-              });
-            })
-            .catch(err => {
-              this.setState({
-                error: err.message || 'Failed to query authenticated Azure Function endpoints.',
-                loading: false
-              });
-            });
+            .then(([resData, exclusions]) => this._applyDashboardResponse(resData, exclusions))
+            .catch(err => this._applyDashboardError(err.message || 'Failed to query authenticated Azure Function endpoints.'));
         })
-        .catch(err => {
-          this.setState({
-            error: err.message || 'SSO Identity initialization failed.',
-            loading: false
-          });
-        });
+        .catch(err => this._applyDashboardError(err.message || 'SSO Identity initialization failed.'));
     }
   }
 
@@ -1621,6 +1642,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           isFullScreen={isFullScreen}
           userDisplayName={userDisplayName}
           userEmail={this.state.serverUserEmail}
+          roleResolved={this.state.roleResolved}
           onToggleSettings={(open) => this.setState({ isSettingsOpen: open })}
           onOpenAuditLogs={this._openAuditLogs}
           onOpenAdminModal={this._openAdminModal}
@@ -1720,15 +1742,18 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
             {/* Content Area */}
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-                Loading live Datto BCDR appliance streams...
-              </div>
-            ) : error ? (
-              <div style={{ backgroundColor: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.3)', color: 'var(--color-danger)', padding: '1rem', borderRadius: '6px' }}>
-                <strong>Fetch Error:</strong> {error}
-              </div>
+              <DashboardSkeleton elapsedMs={this.state.loadStartedAt ? Date.now() - this.state.loadStartedAt : 0} />
+            ) : error && devices.length === 0 ? (
+              <LoadErrorPanel error={error} onRetry={this._fetchData} />
             ) : (
               <>
+                <RefreshStrip
+                  refreshing={this.state.refreshing}
+                  snapshotSavedAt={this.state.snapshotSavedAt}
+                  error={error}
+                  elapsedMs={this.state.loadStartedAt ? Date.now() - this.state.loadStartedAt : 0}
+                  onRetry={this._fetchData}
+                />
                 <div className="bw-table-container">
                   <table className="bw-table">
                     <thead>

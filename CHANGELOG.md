@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Web part 1.27.0] - 2026-10-12
+
+Loading experience. Backend unchanged at 1.25.0 – no Azure deploy needed.
+
+### Added
+- **Skeleton loading screen**: on a first visit the metric cards and appliance table appear as grey placeholder blocks in their real positions (gently pulsing) instead of "..." and a single line of text.
+- **Status line with a small spinner** that advances while loading ("Connecting to BackupWatch…", "Fetching appliance data from Datto…", "Checking tickets and exclusions…", then "Taking longer than usual…").
+- **Last dashboard shown instantly**: the browser keeps a copy of the last dashboard (up to 12 hours old) and shows it straight away with "Showing data from 4 min ago · refreshing…" until fresh data arrives. The user's role and email are never stored; change buttons stay hidden until the live response confirms the role.
+- **Errors with Retry**: a failed first load shows "Couldn't load the dashboard" with a Retry button; a failed refresh keeps the data on screen with a warning and Retry.
+
+### Changed
+- The role badge shows a placeholder until the backend confirms the role, instead of "VIEWER".
+- Refreshing after a change (mute, escalate) keeps the table on screen with a small "Refreshing…" indicator instead of blanking it.
+- Animations stop when the viewer has "reduce motion" turned on.
+
 ## [Backend 1.25.0 / Web part 1.26.0] - 2026-10-12
 
 Autotask gateway, silence enforcement and change freeze (decisions D-01, D-02, D-04). Deploy the backend first; the web part can follow.
