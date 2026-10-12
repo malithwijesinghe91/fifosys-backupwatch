@@ -2,7 +2,7 @@
 
 > **Owner:** Malith Wijesinghe
 > **Created:** 2026-10-10
-> **Last updated:** 2026-10-11
+> **Last updated:** 2026-10-12
 > **Baseline:** Backend v1.23.2 / Frontend v1.23.1
 > **Source of findings:** `CODE_VERIFICATION_REPORT.md` (read-only code audit, 2026-10-10)
 
@@ -58,7 +58,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-014 | Silent `catch {}` blocks hide failures | Low | 4 | Backend | `TODO` | |
 | BW-015 | Raw volume names in `volumesList` | Low | 3 | Backend | `TODO` | |
 | BW-016 | Documentation out of date / contradictory | Low | 4 | Docs | `TODO` | |
-| BW-017 | No automated test runner | Medium | 0 | Tooling | `TODO` | |
+| BW-017 | No automated test runner | Medium | 0 | Tooling | `DONE` | |
 | BW-018 | Auto-ticket toggles for 6 alert types do nothing | Medium | 4 | Backend + frontend | `DECISION` | |
 | BW-019 | Scratch scripts can write to live Table Storage | Medium | 0 | Tooling | `TODO` | |
 
@@ -135,20 +135,24 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-017 – No automated test runner
-**Status:** `TODO`  **Severity:** Medium  **Release type:** Tooling (no deployment)
+**Status:** `DONE`  **Severity:** Medium  **Release type:** Tooling (no deployment)
 
 **Finding.** `stateless-backend/package.json` has `"test": "echo \"No tests specified\" && exit 0"`. The eight `scratch/test_*.js` files are ad-hoc and never run automatically. Every fix in this plan needs tests to prove it.
 
 **Fix.**
-- [ ] Add Jest (or Vitest) with `ts-jest` to `stateless-backend`.
-- [ ] Move the mock-only tests from `scratch/test_*.js` into `stateless-backend/tests/` and convert them to the runner.
-- [ ] Add shared mocks for Autotask, Datto and Table Storage (no network calls possible in tests; fail the test if axios is called un-mocked).
-- [ ] `npm test` runs all tests; `npm run build` runs `npm test` first (`prebuild`).
+- [x] Add Jest with `ts-jest` to `stateless-backend`.
+- [x] Move the mock-only tests from `scratch/test_*.js` into `stateless-backend/tests/` and convert them to the runner.
+- [x] Add shared mocks for Autotask, Datto and Table Storage (no network calls possible in tests; fail the test if axios is called un-mocked).
+- [x] `npm test` runs all tests; `npm run verify` runs build + test.
+- [x] Note: Not hooked into `prebuild` as per instructions.
 
-**Acceptance criteria.** `npm test` passes locally with the converted tests; a deliberately broken `normalizeVolumeName` makes the build fail.
+**Acceptance criteria.** `npm test` passes locally with the converted tests; a deliberately broken `normalizeVolumeName` makes the test fail.
 
 **Progress log.**
 - 2026-10-10 – Item created.
+- 2026-10-12 – Reviewed and corrected the first draft (its guard only replaced `global.axios`, which production code never uses, and five test files tested copies of the logic instead of production code). Final state: Jest + ts-jest; `tests/setup.ts` blocks all network access at the socket layer (http/https/net/tls/fetch) and strips live Autotask/Datto/Storage credentials, proven by `networkGuard.test.ts` (fails when the guard is disabled); mocks for Autotask, Datto, Table Storage and Functions context. Tests drive real code: `shared/volumeUtils`, `shared/auth`, `shared/autotask` (getTicketEntityFields lock/cache), the `exclusions` HTTP handler (mandatory ticket, ticket retention, twin cleanup) and `backupWatchTimerTrigger` (exact BW-021 log line). **`npm test`: 8 suites, 74 tests passed, 0 failed; 6 of the 74 are `test.failing` known bugs (3 × BW-009 Linux root `/`, 3 × BW-001 client-supplied role).** Removing `.toUpperCase()` from `normalizeVolumeName` fails 10 tests in 3 suites; restored, `shared/volumeUtils.ts` identical to main. `tsconfig.json` now excludes `tests/`, so `npm run build` emits no test files to `dist/`. No production code changed. `DONE`.
+  - Gap: `scratch/test_exclusion_lifecycle_sync.js` not converted – the reconciliation sweep lives inside `runPipeline` (`backupWatchTrigger/index.ts`) and can't be unit-tested without extracting it; cover when that code is refactored (BW-010).
+  - Deploy finding (config read only, not run): nothing in the repo selects a build mode (no `--build` flag in docs, no `SCM_DO_BUILD_DURING_DEPLOYMENT`/`ENABLE_ORYX_BUILD` setting), so `func azure functionapp publish backupwatch-api` uses Core Tools' default for Node – a **local build** (`npm install` + `npm run build` on the PC, then the folder is zipped and uploaded; `function.json` loads `../dist/*`). There is **no `.funcignore`**, so the package also ships `tests/`, `scratch/` (including `delete_ghost_entity.js`), Jest dev dependencies and any stale `dist/` files, since `build` is plain `tsc` without a clean. Recommend adding `.funcignore` and an explicit `--build local` (fold into BW-011 release script).
 
 ---
 
