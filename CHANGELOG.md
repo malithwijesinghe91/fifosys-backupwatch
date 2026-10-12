@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.1] - 2026-10-12
+
+First release on one shared version for backend and web part (decision D-03). Backend was 1.24.0, web part 1.23.4.
+
+### Added
+- **Added (BW-011)**: release tooling at the repo root. `npm run release -- patch|minor|major` bumps the one shared version (root `package.json`) and writes it to every version file, including `package-solution.json` solution and feature versions; `npm run verify-versions` fails on any mismatch; `npm run scaffold:prepare` cleans `release\`/`temp\`, copies source and config into `BackupWatchScaffold` and checks its copies.
+- **Added (BW-011)**: footer shows `UI v<web part> · Engine v<backend>`; if they differ, the status dot turns amber and "Version mismatch – deploy pending" is shown.
+
+### Changed
+- **Changed (BW-011)**: backend `npm run build` now checks versions first and cleans `dist/` (stale files no longer survive a build).
+- **Changed (BW-011)**: `BackupWatchScaffold` config (`config/*.json`, `gulpfile.js`, `tsconfig.json`, `.yo-rc.json`) now tracked in `scaffold/`; `package-solution.json` is edited there, not in the scaffold.
+
 ## [Frontend 1.23.4] - 2026-10-12
 
 ### Security

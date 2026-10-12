@@ -52,7 +52,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-008 | Expired exclusion deleted before follow-up ticket is confirmed | Medium (to verify) | 3 | Backend | `TODO` | |
 | BW-009 | Linux root volume `/` normalised to empty string | High (if Linux agents exist) | 3 | Backend | `TODO` | |
 | BW-010 | Settings handling: dead admin functions, `AT_USER` mismatch, no start-up validation | Medium | 3 | Backend | `TODO` | |
-| BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `TODO` | |
+| BW-011 | Versions drift between backend, frontend and scaffold | Medium | 0 | Tooling | `TESTING` | |
 | BW-012 | Is the v1.23.2 frontend refactor actually deployed? | Medium | 0 | Verification only | `DONE` | n/a (Frontend 1.23.4 confirmed live) |
 | BW-013 | Only Autotask status 5 treated as closed | Low/Medium | 3 | Backend | `DECISION` | |
 | BW-014 | Silent `catch {}` blocks hide failures | Low | 4 | Backend | `TODO` | |
@@ -157,25 +157,25 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-011 – Versions drift between backend, frontend and scaffold
-**Status:** `TODO` (D-03 decided 2026-10-12: shared version)  **Severity:** Medium  **Release type:** Tooling (first use = next release)
+**Status:** `TESTING` (1.24.1 built on branch `bw-011-release-script`, not deployed)  **Severity:** Medium  **Release type:** Tooling (first use = next release)
 
 **Finding.** `version.ts` and backend `package.json` = 1.23.2; `spfx-client/package.json`, web part manifest and scaffold `package.json` = 1.23.1; `package-solution.json` solution = 1.23.1.0 but `features[0].version` = 1.22.1.0. Versions are typed by hand in up to 7 places.
 
 **Fix (D-03 = one shared version).**
-- [ ] Create `VERSION` (or `versions.json` with a single `version` key) at the repo root. The only place a version is ever typed.
-- [ ] **First shared version = next release after backend 1.24.0 / frontend 1.23.4** (e.g. both become 1.24.1, or 1.25.0 if the release adds a feature). The web part jumps straight from 1.23.4 to the shared number.
-- [ ] Create `scripts/release.mjs`: `npm run release -- patch|minor|major`. It bumps the one version and writes it to **all** of:
+- [x] Create `VERSION` (or `versions.json` with a single `version` key) at the repo root. *(Done as the `version` field of a new repo-root `package.json`, which also holds the scripts.)* The only place a version is ever typed.
+- [x] **First shared version = next release after backend 1.24.0 / frontend 1.23.4** (e.g. both become 1.24.1, or 1.25.0 if the release adds a feature). The web part jumps straight from 1.23.4 to the shared number.
+- [x] Create `scripts/release.mjs`: `npm run release -- patch|minor|major`. It bumps the one version and writes it to **all** of:
   - `stateless-backend/shared/version.ts`, `stateless-backend/package.json`.
   - `spfx-client/package.json`, `BackupWatchWebPart.manifest.json` (both copies), `BackupWatchScaffold/package.json`, `package-solution.json` (`solution.version` **and** every `features[].version`, in `x.y.z.0` form).
   - Appends a dated stub to `CHANGELOG.md` (one heading per release, no separate "Frontend x.y.z" headings).
-- [ ] Create `scripts/verify-versions.mjs` that fails if any file disagrees with the root version. Wire it as `prebuild` for the backend and as the first step of the SPFx build commands in `CLAUDE.md`.
-- [ ] Bring `BackupWatchScaffold` config under source control (at least `config/package-solution.json`, `package.json`, `gulpfile.js`) so every version file is tracked – e.g. a `scaffold/` folder in this repo that the build copies in.
+- [x] Create `scripts/verify-versions.mjs` that fails if any file disagrees with the root version. Wire it as `prebuild` for the backend and as the first step of the SPFx build commands in `CLAUDE.md`.
+- [x] Bring `BackupWatchScaffold` config under source control (at least `config/package-solution.json`, `package.json`, `gulpfile.js`) so every version file is tracked – e.g. a `scaffold/` folder in this repo that the build copies in.
 - [ ] Every release does **both** halves: backend `func publish` **and** `.sppkg` build + App Catalog upload; one git tag per release (`v<x.y.z>`), replacing the separate `backend-*` / `frontend-*` tags.
-- [ ] Footer shows `UI v<x> · Engine v<y>` (web part manifest version vs backend `appVersion`); show a small warning if they differ, i.e. one half of a release was not deployed. Header keeps showing a single version.
-- [ ] Update `CLAUDE.md` §2 and §4, `.agents/AGENTS.md` §3 and `AGENT_PLAYBOOK.md` (Release Manager) to use the release script. *(Release rule itself updated 2026-10-12, see progress log.)*
-- [ ] Release script runs `npm prune --omit=dev` (or equivalent) before publish (found in BW-019: jest/ts-jest/typescript currently ship in `node_modules`).
-- [ ] Clean `dist/` before build (`build` is plain `tsc`, so stale files survive).
-- [ ] Frontend: delete `BackupWatchScaffold\release\` and `BackupWatchScaffold\temp\` before every `gulp bundle --ship` (permanent step). Found 2026-10-12: `release\assets` had kept 14 old hashed bundles since 2026-09-07 and `package-solution` packed them all into the `.sppkg` (557 KB → 52 KB after cleaning). Cleaned once manually; documented as step 0 in `CLAUDE.md` §4.
+- [x] Footer shows `UI v<x> · Engine v<y>` (web part manifest version vs backend `appVersion`); show a small warning if they differ, i.e. one half of a release was not deployed. Header keeps showing a single version.
+- [x] Update `CLAUDE.md` §2 and §4, `.agents/AGENTS.md` §3 and `AGENT_PLAYBOOK.md` (Release Manager) to use the release script. *(Release rule itself updated 2026-10-12, see progress log.)*
+- [x] Release script runs `npm prune --omit=dev` (or equivalent) before publish (found in BW-019: jest/ts-jest/typescript currently ship in `node_modules`).
+- [x] Clean `dist/` before build (`build` is plain `tsc`, so stale files survive).
+- [x] Frontend: delete `BackupWatchScaffold\release\` and `BackupWatchScaffold\temp\` before every `gulp bundle --ship` (permanent step). Found 2026-10-12: `release\assets` had kept 14 old hashed bundles since 2026-09-07 and `package-solution` packed them all into the `.sppkg` (557 KB → 52 KB after cleaning). Cleaned once manually; documented as step 0 in `CLAUDE.md` §4.
 - [x] Publish with explicit build mode – documented 2026-10-12 (BW-019) in `CLAUDE.md` §4, `.agents/AGENTS.md` §3 and `deployment_guide.md` Part 1 step 5: `npm run build` then `func azure functionapp publish backupwatch-api --build local`. **The release script must use `--build local`** (`.funcignore` excludes `*.ts`/`tsconfig.json`, so a remote build would fail).
 
 **Acceptance criteria.** One run of the release script sets the same version in every file (backend, web part, scaffold, `package-solution.json` solution and features); manually editing one file makes the build fail; the footer shows both deployed versions and warns when they differ.
@@ -183,6 +183,10 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-03.
 - 2026-10-12 – **D-03 decided (Malith): shared version.** Fix rewritten for one version. Release rule in `CLAUDE.md` §2, `.agents/AGENTS.md` §3 and `AGENT_PLAYBOOK.md` changed now: every release bumps every version file to the same number and ships both the backend and the `.sppkg`. Script and checks still `TODO`.
+- 2026-10-12 – Built on branch `bw-011-release-script` (not merged, not deployed). Repo-root `package.json` holds the one version and the scripts. `npm run release -- patch|minor|major` (`scripts/release.mjs`) writes `shared/version.ts`, both `package.json`/`package-lock.json` pairs, the web part manifest and `scaffold/config/package-solution.json` (solution + every feature version, `x.y.z.0`) and adds a CHANGELOG stub. `npm run verify-versions` fails on any mismatch; wired as backend `prebuild` together with `npm run clean` (stale `dist/`). `npm run scaffold:prepare` (`scripts/prepare-scaffold.mjs`) checks versions, deletes scaffold `release\`/`temp\`, copies `spfx-client/src`, `spfx-client/package.json` and the tracked `scaffold/` config (`config/*.json`, `gulpfile.js`, `tsconfig.json`, `.yo-rc.json`; `deploy-azure-storage.json` holds placeholders only), then checks the scaffold copies. Footer: `UI v<manifest> · Engine v<appVersion>`; on mismatch the dot turns amber and "Version mismatch – deploy pending" shows (text keeps the muted colour – amber text fails 4.5:1 on the light theme). `npm prune --omit=dev` + `npm install` added to the deploy steps in `CLAUDE.md` §4 (the script itself never deploys).
+  - Tests: root `npm test` (node:test, temp copies only) – 7 passed: every file, both `package-solution.json` versions, lockfile dependencies untouched, CRLF CHANGELOG, and a hand edit to each of the 7 files failing the check. Backend: `npm run build` OK, `npm test` 9 suites / 140 passed; hand-editing `version.ts` makes `npm run build` exit 1.
+  - Release cut with the script: **1.24.1** everywhere (was backend 1.24.0 / web part 1.23.4). `scaffold:prepare` + `gulp bundle --ship` + `package-solution --ship` OK; `.sppkg` (52,326 bytes, SHA-256 prefix `4a8c4ea23564a37a`) copied to repo root: one bundle (`backup-watch-web-part_7f3adfb7728d19e9ae26.js`), all versions 1.24.1(.0), no 1.23.4 left, permissions unchanged (`BackupWatch-Backend-API/user_impersonation`, Graph `User.Read`), no role/identity code.
+  - To finish: merge, deploy backend 1.24.1 **and** upload the 1.24.1 `.sppkg`, check the footer shows `UI v1.24.1 · Engine v1.24.1` with a green dot, tag `v1.24.1`. Then `DONE`.
 
 ---
 

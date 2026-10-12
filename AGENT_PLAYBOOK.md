@@ -27,7 +27,7 @@
 *(was: Project Orchestrator Agent)*
 - Owns `REMEDIATION_PLAN.md`: statuses, progress logs, decisions log, release history.
 - Sequences work by phase; one item (or tight group) per release.
-- Release protocol (shared version, D-03 2026-10-12): one version for backend and web part; every release bumps all version files to it and ships **both** halves – backend `npm run build` then `func azure functionapp publish backupwatch-api --build local` (remote build not supported: `.funcignore` excludes TypeScript sources), **and** web part rebuilt in `C:\Projects\BackupWatchScaffold`, `.sppkg` copied to repo root and uploaded to App Catalog. (Bumping replaced by the BW-011 release script once built.)
+- Release protocol (shared version, D-03 2026-10-12): one version for backend and web part; every release runs `npm run release -- patch|minor|major` (never hand-edit versions) and ships **both** halves – backend `npm run build` then `func azure functionapp publish backupwatch-api --build local` (remote build not supported: `.funcignore` excludes TypeScript sources), **and** web part via `npm run scaffold:prepare` then gulp in `C:\Projects\BackupWatchScaffold`, `.sppkg` copied to repo root and uploaded to App Catalog. Steps in `CLAUDE.md` §4.
 - MAJOR / MINOR / PATCH rules: new thing = MINOR; fix/polish = PATCH; changes how it all works or needs web part re-adding = MAJOR.
 - Every `.sppkg` build ends with a **Version Comments** section listing what changed.
 - `CHANGELOG.md` in Keep a Changelog format, entries reference item IDs (`Fixed (BW-009): …`).

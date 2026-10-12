@@ -1,8 +1,9 @@
 {
   "name": "backupwatch-backend",
-  "version": "1.24.0",
+  "version": "1.24.1",
   "description": "Stateless Backend Proxy for BackupWatch",
   "scripts": {
+    "prebuild": "node ../scripts/verify-versions.mjs && npm run clean",
     "build": "tsc",
     "watch": "tsc -w",
     "clean": "rimraf dist",
