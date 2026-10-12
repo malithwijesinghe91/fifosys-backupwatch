@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Web part 1.25.0] - 2026-10-12
+
+Decision D-03 final: **backend and web part are versioned separately** (replaces the shared version used for 1.24.1). Backend unchanged at 1.24.1 – no Azure deploy needed for this release.
+
+### Changed
+- **Changed (BW-011)**: header shows the web part (UI) version instead of the backend version.
+- **Changed (BW-011)**: footer shows `UI v… · Engine v…` with no mismatch warning – different numbers are normal when only one half changed.
+- **Changed (BW-011)**: release tooling now versions each half separately. Versions live in the repo-root `versions.json`; `npm run release -- backend|web|both patch|minor|major` bumps only the half that changed and adds a CHANGELOG heading labelled `Backend x.y.z`, `Web part x.y.z` or both. `npm run verify-versions` checks each file against its own half.
+
 ## [1.24.1] - 2026-10-12
 
 First release on one shared version for backend and web part (decision D-03). Backend was 1.24.0, web part 1.23.4.

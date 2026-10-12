@@ -1,5 +1,6 @@
-// Shared list of every file that carries the BackupWatch version (BW-011, decision D-03).
-// Backend and web part always share ONE version, held in the repo-root package.json.
+// Every file that carries a BackupWatch version (BW-011, decision D-03 = separate versions).
+// The backend and the web part each have their own version, held in the repo-root versions.json:
+//   { "backend": "x.y.z", "web": "x.y.z" }
 // Used by release.mjs (writes), verify-versions.mjs (checks) and prepare-scaffold.mjs (copies).
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -8,10 +9,12 @@ import { fileURLToPath } from 'node:url';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const DEFAULT_SCAFFOLD = 'C:\\Projects\\BackupWatchScaffold';
+export const PARTS = ['backend', 'web'];
+export const PART_LABEL = { backend: 'Backend', web: 'Web part' };
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
 
-// Each entry: a file plus a regex whose group 2 is the version text.
+// Each entry: the half it belongs to, a file, and a regex whose group 2 is the version text.
 // `count` is how many matches the file must contain; `form` maps x.y.z to the file's format.
 const plain = (v) => v;
 const fourPart = (v) => `${v}.0`;
@@ -20,35 +23,43 @@ const JSON_VERSION = /("version"\s*:\s*")([^"]+)(")/g;
 const SOLUTION_VERSION = /("version"\s*:\s*")(\d+\.\d+\.\d+\.\d+)(")/g;
 
 export const REPO_FILES = [
-  { path: 'stateless-backend/shared/version.ts', regex: /(APP_VERSION\s*=\s*")([^"]+)(")/g, count: 1, form: plain },
-  { path: 'stateless-backend/package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
-  { path: 'stateless-backend/package-lock.json', regex: JSON_VERSION, count: 2, form: plain, firstOnly: true },
-  { path: 'spfx-client/package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
-  { path: 'spfx-client/package-lock.json', regex: JSON_VERSION, count: 2, form: plain, firstOnly: true },
-  { path: 'spfx-client/src/webparts/backupWatch/BackupWatchWebPart.manifest.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
+  { part: 'backend', path: 'stateless-backend/shared/version.ts', regex: /(APP_VERSION\s*=\s*")([^"]+)(")/g, count: 1, form: plain },
+  { part: 'backend', path: 'stateless-backend/package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
+  { part: 'backend', path: 'stateless-backend/package-lock.json', regex: JSON_VERSION, count: 2, form: plain, firstOnly: true },
+  { part: 'web', path: 'spfx-client/package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
+  { part: 'web', path: 'spfx-client/package-lock.json', regex: JSON_VERSION, count: 2, form: plain, firstOnly: true },
+  { part: 'web', path: 'spfx-client/src/webparts/backupWatch/BackupWatchWebPart.manifest.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
   // solution.version and every features[].version (the only x.y.z.w versions in the file)
-  { path: 'scaffold/config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
+  { part: 'web', path: 'scaffold/config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
 ];
 
 // Copies inside the build project, produced by prepare-scaffold.mjs. Checked with --scaffold.
 export const SCAFFOLD_FILES = [
-  { path: 'package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
-  { path: 'src/webparts/backupWatch/BackupWatchWebPart.manifest.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
-  { path: 'config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
+  { part: 'web', path: 'package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
+  { part: 'web', path: 'src/webparts/backupWatch/BackupWatchWebPart.manifest.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
+  { part: 'web', path: 'config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
 ];
 
-export function readRootVersion(root = REPO_ROOT) {
-  const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
-  if (!SEMVER.test(version || '')) throw new Error(`Root package.json version "${version}" is not x.y.z`);
-  return version;
+export function readVersionsFile(root = REPO_ROOT) {
+  const versions = JSON.parse(readFileSync(join(root, 'versions.json'), 'utf8'));
+  for (const part of PARTS) {
+    if (!SEMVER.test(versions[part] || '')) throw new Error(`versions.json "${part}" is "${versions[part]}", not x.y.z`);
+  }
+  return versions;
 }
 
-export function bump(version, part) {
+export function writeVersionsFile(root, versions) {
+  const out = {};
+  for (const part of PARTS) out[part] = versions[part];
+  writeFileSync(join(root, 'versions.json'), JSON.stringify(out, null, 2) + '\n');
+}
+
+export function bump(version, level) {
   const [major, minor, patch] = version.split('.').map(Number);
-  if (part === 'major') return `${major + 1}.0.0`;
-  if (part === 'minor') return `${major}.${minor + 1}.0`;
-  if (part === 'patch') return `${major}.${minor}.${patch + 1}`;
-  throw new Error(`Unknown bump "${part}" – use patch, minor or major`);
+  if (level === 'major') return `${major + 1}.0.0`;
+  if (level === 'minor') return `${major}.${minor + 1}.0`;
+  if (level === 'patch') return `${major}.${minor}.${patch + 1}`;
+  throw new Error(`Unknown bump "${level}" – use patch, minor or major`);
 }
 
 function matchesOf(text, entry) {
@@ -68,14 +79,14 @@ export function readVersions(base, entry) {
   return found;
 }
 
-// Lists every mismatch between the files and the given version (empty array = all good).
-export function checkFiles(base, entries, version) {
+// Lists every file that disagrees with its half's version (empty array = all good).
+export function checkFiles(base, entries, versions) {
   const problems = [];
   for (const entry of entries) {
     try {
-      const want = entry.form(version);
+      const want = entry.form(versions[entry.part]);
       for (const got of readVersions(base, entry)) {
-        if (got !== want) problems.push(`${entry.path}: has ${got}, expected ${want}`);
+        if (got !== want) problems.push(`${entry.path}: has ${got}, expected ${PART_LABEL[entry.part]} ${want}`);
       }
     } catch (e) {
       problems.push(e.message);
@@ -99,13 +110,7 @@ export function writeVersion(base, entry, version) {
   writeFileSync(file, out);
 }
 
-export function setRootVersion(root, version) {
-  const file = join(root, 'package.json');
-  const text = readFileSync(file, 'utf8');
-  writeFileSync(file, text.replace(JSON_VERSION, (m, pre, _old, post) => `${pre}${version}${post}`));
-}
-
-// Parses --root <dir> and --scaffold <dir> (both optional; used by tests and odd checkouts).
+// Parses --root <dir> and --scaffold-dir <dir> (both optional; used by tests and odd checkouts).
 export function parseArgs(argv) {
   const args = { root: REPO_ROOT, scaffold: process.env.BW_SCAFFOLD || DEFAULT_SCAFFOLD, rest: [], flags: new Set() };
   for (let i = 0; i < argv.length; i++) {
