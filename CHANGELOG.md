@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Frontend 1.23.4] - 2026-10-12
+
+### Security
+- **Security (BW-001)**: web part uses server-resolved role; no longer sends role or identity.
+  - Role badge and button gating (Admin Console, escalate, mute/exclusions, permanent exclusions, emergency override, audit trail) come from `userRole` in the `backupWatchTrigger` response; Viewer until the response arrives.
+  - Removed `?role=` / `?user=` query parameters and `x-user-role` / `x-user-email` headers from every request.
+  - Removed the Microsoft Graph `/me/transitiveMemberOf` role lookup (it was only used to work out the role).
+  - Operator badge tooltip shows the server-resolved sign-in email.
+
 ## [1.24.0] - 2026-10-12
 
 ### Security

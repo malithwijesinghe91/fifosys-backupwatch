@@ -76,8 +76,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       auditError: null,
       scanStatus: null,
       backendVersion: undefined,
-      userSecurityLevel: 'Viewer',
-      securityRolesLoading: true,
+      userSecurityLevel: 'Viewer', // until the backend returns the server-resolved role
+      serverUserEmail: undefined,
       isAdminModalOpen: false,
       adminModalTab: 'diagnostics',
       adminDiagnostics: null,
@@ -110,63 +110,13 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   }
 
   public componentDidMount(): void {
-    this._resolveUserSecurityRole();
     this._fetchData();
   }
 
-  private _resolveUserSecurityRole = async (): Promise<void> => {
-    try {
-      if (!this.props.msGraphClientFactory) {
-        this.setState({ userSecurityLevel: 'Contributor', securityRolesLoading: false });
-        return;
-      }
-
-      const client = await this.props.msGraphClientFactory.getClient("3");
-      const res = await client.api('/me/transitiveMemberOf').select('id,displayName').get();
-      const groups = res && Array.isArray(res.value) ? res.value : [];
-
-      // Object IDs & Group Display Names
-      const ADMIN_ID = 'f146d61d-c629-4685-b757-5d560195a98a';
-      const SPECIALIST_ID = 'ca9d0b2c-6f9f-4b94-864c-1cca786dc52d';
-      const CONTRIBUTOR_ID = 'd19f391a-6aba-4a25-87b3-aff059c0ff40';
-      const VIEWER_ID = 'f17fa29e-7ea8-405e-b04a-15a6a8fe2f60';
-
-      const userGroupIds: string[] = [];
-      const userGroupNames: string[] = [];
-
-      for (let i = 0; i < groups.length; i++) {
-        const g = groups[i];
-        if (g.id) userGroupIds.push(String(g.id).toLowerCase());
-        if (g.displayName) userGroupNames.push(String(g.displayName).toLowerCase());
-      }
-
-      const hasAdmin = userGroupIds.indexOf(ADMIN_ID.toLowerCase()) !== -1 ||
-                       userGroupNames.indexOf('backupwatch-administrator') !== -1;
-      const hasSpecialist = userGroupIds.indexOf(SPECIALIST_ID.toLowerCase()) !== -1 ||
-                            userGroupNames.indexOf('backupwatch-specialist') !== -1;
-      const hasContributor = userGroupIds.indexOf(CONTRIBUTOR_ID.toLowerCase()) !== -1 ||
-                             userGroupNames.indexOf('backupwatch-contributor') !== -1;
-      const hasViewer = userGroupIds.indexOf(VIEWER_ID.toLowerCase()) !== -1 ||
-                        userGroupNames.indexOf('backupwatch-viewer') !== -1;
-
-      let level: 'Viewer' | 'Contributor' | 'Specialist' | 'Administrator' = 'Viewer';
-      if (hasAdmin) {
-        level = 'Administrator';
-      } else if (hasSpecialist) {
-        level = 'Specialist';
-      } else if (hasContributor) {
-        level = 'Contributor';
-      } else if (hasViewer) {
-        level = 'Viewer';
-      } else {
-        level = 'Viewer';
-      }
-
-      this.setState({ userSecurityLevel: level, securityRolesLoading: false });
-    } catch (err) {
-      console.warn("[BackupWatch RBAC] Could not resolve user roles via MS Graph, defaulting to Viewer:", err);
-      this.setState({ userSecurityLevel: 'Viewer', securityRolesLoading: false });
-    }
+  // BW-001: the role is resolved by the backend from Entra App Roles and returned as userRole.
+  // The UI only uses it to hide controls; the backend enforces every permission.
+  private _toSecurityLevel = (role: unknown): IBackupWatchState['userSecurityLevel'] => {
+    return role === 'Administrator' || role === 'Specialist' || role === 'Contributor' ? role : 'Viewer';
   };
 
   private _toggleTheme = (): void => {
@@ -347,12 +297,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     this.setState({ actionLoading: true });
 
     const isLocal = this._isLocalDev();
-    const roleParam = `?role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
-    const escalateUrl = this.props.backendApiUrl.substring(0, this.props.backendApiUrl.lastIndexOf('/')) + '/escalate' + roleParam;
+    const escalateUrl = this.props.backendApiUrl.substring(0, this.props.backendApiUrl.lastIndexOf('/')) + '/escalate';
     const reqHeaders = {
-      'Content-Type': 'application/json',
-      'x-user-role': this.state.userSecurityLevel,
-      'x-user-email': this.props.userDisplayName || ''
+      'Content-Type': 'application/json'
     };
 
     const promises = selectedIssues.map(issue => {
@@ -434,12 +381,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     this.setState({ actionLoading: true });
 
     const isLocal = this._isLocalDev();
-    const roleParam = `?role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
-    const escalateUrl = this.props.backendApiUrl.substring(0, this.props.backendApiUrl.lastIndexOf('/')) + '/escalate' + roleParam;
+    const escalateUrl = this.props.backendApiUrl.substring(0, this.props.backendApiUrl.lastIndexOf('/')) + '/escalate';
     const reqHeaders = {
-      'Content-Type': 'application/json',
-      'x-user-role': this.state.userSecurityLevel,
-      'x-user-email': this.props.userDisplayName || ''
+      'Content-Type': 'application/json'
     };
 
     const agent = device.agents && (device.agents as any).find((a: any) => a.name === agentName);
@@ -546,15 +490,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   private _fetchAuditLogs = (): void => {
     this.setState({ auditLoading: true, auditError: null });
     const isLocal = this._isLocalDev();
-    const auditLogsUrl = this._getAuditLogsUrl() + `?role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const auditLogsUrl = this._getAuditLogsUrl();
 
     if (isLocal) {
-      fetch(auditLogsUrl, {
-        headers: {
-          'x-user-role': this.state.userSecurityLevel,
-          'x-user-email': this.props.userDisplayName || ''
-        }
-      })
+      fetch(auditLogsUrl)
         .then(res => {
           if (!res.ok) throw new Error(`Audit Logs API returned status ${res.status}`);
           return res.json();
@@ -575,11 +514,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .getClient(this.props.backendApiResourceId)
         .then(client => {
           return client.fetch(auditLogsUrl, AadHttpClient.configurations.v1, {
-            method: 'GET',
-            headers: {
-              'x-user-role': this.state.userSecurityLevel,
-              'x-user-email': this.props.userDisplayName || ''
-            }
+            method: 'GET'
           });
         })
         .then(res => {
@@ -638,7 +573,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
   private _fetchAdminMaintenance = (): void => {
     const isLocal = this._isLocalDev();
-    const url = this._getAdminActionUrl('adminMaintenance') + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminActionUrl('adminMaintenance');
 
     if (isLocal) {
       fetch(url)
@@ -649,8 +584,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       this.props.aadHttpClientFactory
         .getClient(this.props.backendApiResourceId)
         .then(client => client.fetch(url, AadHttpClient.configurations.v1, {
-          method: 'GET',
-          headers: { 'x-user-role': this.state.userSecurityLevel, 'x-user-email': this.props.userDisplayName || '' }
+          method: 'GET'
         }))
         .then(res => res.json())
         .then(data => this.setState({ globalMaintenanceMode: data }))
@@ -661,7 +595,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   private _saveAdminMaintenance = (isActive: boolean): void => {
     this.setState({ blackoutSaving: true });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminActionUrl('adminMaintenance') + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminActionUrl('adminMaintenance');
 
     const payload = {
       isActive,
@@ -697,9 +631,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .then(client => client.fetch(url, AadHttpClient.configurations.v1, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-user-role': this.state.userSecurityLevel,
-            'x-user-email': this.props.userDisplayName || ''
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
         }))
@@ -715,7 +647,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   private _fetchAdminCleanup = (): void => {
     this.setState({ cleanupScanning: true, cleanupData: null, selectedCleanupTickets: [], selectedCleanupExclusions: [] });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminActionUrl('adminCleanup') + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminActionUrl('adminCleanup');
 
     const handler = (data: any) => {
       this.setState({
@@ -738,8 +670,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
       this.props.aadHttpClientFactory
         .getClient(this.props.backendApiResourceId)
         .then(client => client.fetch(url, AadHttpClient.configurations.v1, {
-          method: 'GET',
-          headers: { 'x-user-role': this.state.userSecurityLevel, 'x-user-email': this.props.userDisplayName || '' }
+          method: 'GET'
         }))
         .then(res => res.json())
         .then(handler)
@@ -763,7 +694,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
     this.setState({ cleanupPurging: true });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminActionUrl('adminCleanup') + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminActionUrl('adminCleanup');
 
     const payload = {
       tickets: selectedCleanupTickets,
@@ -798,9 +729,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .then(client => client.fetch(url, AadHttpClient.configurations.v1, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-user-role': this.state.userSecurityLevel,
-            'x-user-email': this.props.userDisplayName || ''
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
         }))
@@ -822,7 +751,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
     this.setState({ assetTestLoading: true, assetTestResult: null });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminActionUrl('adminTestAsset') + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminActionUrl('adminTestAsset');
 
     const payload = { query };
 
@@ -848,9 +777,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .then(client => client.fetch(url, AadHttpClient.configurations.v1, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-user-role': this.state.userSecurityLevel,
-            'x-user-email': this.props.userDisplayName || ''
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
         }))
@@ -894,7 +821,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   private _fetchAdminDiagnostics = (): void => {
     this.setState({ adminDiagnosticsLoading: true, adminDiagnosticsError: null });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminDiagnosticsUrl() + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminDiagnosticsUrl();
 
     if (isLocal) {
       fetch(url)
@@ -913,11 +840,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .getClient(this.props.backendApiResourceId)
         .then(client => {
           return client.fetch(url, AadHttpClient.configurations.v1, {
-            method: 'GET',
-            headers: {
-              'x-user-role': this.state.userSecurityLevel,
-              'x-user-email': this.props.userDisplayName || ''
-            }
+            method: 'GET'
           });
         })
         .then(res => {
@@ -936,7 +859,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
   private _fetchAdminRouting = (): void => {
     this.setState({ adminRoutingLoading: true, adminRoutingSavedNotice: false });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminRoutingUrl() + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminRoutingUrl();
 
     if (isLocal) {
       fetch(url)
@@ -964,11 +887,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
         .getClient(this.props.backendApiResourceId)
         .then(client => {
           return client.fetch(url, AadHttpClient.configurations.v1, {
-            method: 'GET',
-            headers: {
-              'x-user-role': this.state.userSecurityLevel,
-              'x-user-email': this.props.userDisplayName || ''
-            }
+            method: 'GET'
           });
         })
         .then(res => {
@@ -997,7 +916,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     const { selectedAdminQueueId, selectedAdminPriorityId, selectedAdminCategoryId, selectedAdminWorkTypeId, adminRoutingData, alertMatrix } = this.state;
     this.setState({ adminRoutingSaving: true, adminRoutingSavedNotice: false });
     const isLocal = this._isLocalDev();
-    const url = this._getAdminRoutingUrl() + `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
+    const url = this._getAdminRoutingUrl();
 
     let queueName = '';
     if (adminRoutingData && adminRoutingData.options && adminRoutingData.options.queues) {
@@ -1038,9 +957,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           return client.fetch(url, AadHttpClient.configurations.v1, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'x-user-role': this.state.userSecurityLevel,
-              'x-user-email': this.props.userDisplayName || ''
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
           });
@@ -1107,6 +1024,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           const maintenanceMode = Array.isArray(resData) ? null : (resData.maintenanceMode || null);
           const backendVersion = Array.isArray(resData) ? undefined : resData.appVersion;
           this.setState({
+            userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
+            serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
             devices: devicesList,
             scanStatus: scanStatus,
             globalMaintenanceMode: maintenanceMode,
@@ -1145,6 +1064,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
               const maintenanceMode = Array.isArray(resData) ? null : (resData.maintenanceMode || null);
               const backendVersion = Array.isArray(resData) ? undefined : resData.appVersion;
               this.setState({
+                userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
+                serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
                 devices: devicesList,
                 scanStatus: scanStatus,
                 globalMaintenanceMode: maintenanceMode,
@@ -1262,12 +1183,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
     const isLocal = this._isLocalDev();
     const exclusionsBaseUrl = this._getExclusionsUrl();
-    const roleParam = `?role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
-    const exclusionsUrl = exclusionsBaseUrl + roleParam;
+    const exclusionsUrl = exclusionsBaseUrl;
     const reqHeaders = {
-      'Content-Type': 'application/json',
-      'x-user-role': this.state.userSecurityLevel,
-      'x-user-email': this.props.userDisplayName || ''
+      'Content-Type': 'application/json'
     };
 
     if (isLocal) {
@@ -1330,12 +1248,8 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
     this.setState({ actionLoading: true });
     const isLocal = this._isLocalDev();
-    const roleParam = `&role=${encodeURIComponent(this.state.userSecurityLevel)}&user=${encodeURIComponent(this.props.userDisplayName || '')}`;
-    const exclusionsUrl = this._getExclusionsUrl() + `?id=${encodeURIComponent(id)}` + roleParam;
-    const reqHeaders = {
-      'x-user-role': this.state.userSecurityLevel,
-      'x-user-email': this.props.userDisplayName || ''
-    };
+    const exclusionsUrl = this._getExclusionsUrl() + `?id=${encodeURIComponent(id)}`;
+    const reqHeaders = {};
 
     if (isLocal) {
       fetch(exclusionsUrl, { method: 'DELETE', headers: reqHeaders })
@@ -1635,6 +1549,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           isDarkMode={isDarkMode}
           isFullScreen={isFullScreen}
           userDisplayName={userDisplayName}
+          userEmail={this.state.serverUserEmail}
           onToggleSettings={(open) => this.setState({ isSettingsOpen: open })}
           onOpenAuditLogs={this._openAuditLogs}
           onOpenAdminModal={this._openAdminModal}
