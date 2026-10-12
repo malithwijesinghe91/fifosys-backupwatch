@@ -1543,7 +1543,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
         {/* Header (Next-Gen Gradient Hero Card) */}
         <HeaderBar
-          version={this.state.backendVersion || this.props.version}
+          version={this.state.backendVersion}
           isSettingsOpen={isSettingsOpen}
           userSecurityLevel={userSecurityLevel}
           isDarkMode={isDarkMode}
@@ -2677,7 +2677,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           )}
           <span className="footer-powered">
             <span className="pulse-dot" style={{ backgroundColor: 'var(--color-success)' }} />
-            Powered by BackupWatch BCDR Engine v{this.state.backendVersion || this.props.version}
+            Powered by BackupWatch BCDR Engine v{this.state.backendVersion || '…'}
           </span>
         </div>
       </div>
