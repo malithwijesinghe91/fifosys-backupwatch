@@ -43,7 +43,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
 | BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend | `TODO` | |
-| BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `TESTING` | |
+| BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
@@ -538,7 +538,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-024 – Appliance storage shown in the wrong unit (TB labelled as GB)
-**Status:** `TESTING` (backend 1.25.1 live since 2026-10-16; waiting for the owner to confirm the dashboard figures)  **Severity:** Medium  **Release type:** Backend
+**Status:** `DONE` (backend 1.25.1; figures confirmed by Malith 2026-10-16)  **Severity:** Medium  **Release type:** Backend
 
 **Finding (2026-10-16, reported by Malith).** The dashboard showed ACU-DAT-01 (S5-3, about 3 TB) as "2.80 GB / 2.93 GB (95.7%)". `backupWatchTrigger/index.ts` read `localStorageUsed.size` / `localStorageAvailable.size`, ignored `units` and divided by 1,073,741,824 as if the size were bytes. A read-only GET of the live Datto device list (owner approved; storage fields only printed) showed units "KB" on all 117 appliances (`offsiteStorageUsed` is "B"). ACU-DAT-01: used 3,009,445,320 KB, available 136,282,624 KB = 2.80 TB of 2.93 TB. So every figure was terabytes shown as gigabytes. The percentage, "Storage Critical" card, badges and 85% auto-heal threshold were correct (a ratio). Storage escalation tickets and storage auto-heal notes carried the wrong figures.
 
@@ -552,7 +552,8 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-16 – Reported by Malith from the dashboard; units confirmed by a read-only Datto check; fixed as backend 1.25.1. `npm test`: 14 suites, 311 passed. Already-created Autotask tickets keep their old wording.
-- 2026-10-16 – PR #14 merged (`ca746af`). **Backend 1.25.1 deployed** at 17:23 UTC by Claude on Malith's instruction (`npm ci` → 311 tests passed → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`); host Running, all 7 functions listed, no dev-role settings, anonymous GET 401. Tag `backend-1.25.1`; rollback `backend-1.25.0`. `DONE` once ACU-DAT-01 shows about 2.80 TB / 2.93 TB.
+- 2026-10-16 – PR #14 merged (`ca746af`). **Backend 1.25.1 deployed** at 17:23 UTC by Claude on Malith's instruction (`npm ci` → 311 tests passed → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`); host Running, all 7 functions listed, no dev-role settings, anonymous GET 401. Tag `backend-1.25.1`; rollback `backend-1.25.0`.
+- 2026-10-16 – Malith confirmed the dashboard figures are correct (ACU-DAT-01 about 2.80 TB / 2.93 TB). Item `DONE`.
 
 ---
 
@@ -619,4 +620,4 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-12 | 1.26.0 | Web part | BW-007 | Change-freeze banner, locked change buttons, Administrator reason prompt |
 | 2026-10-12 | 1.25.0 | Backend | BW-004, BW-006, BW-007 | Autotask gateway, silence enforcement, change freeze. Tag `backend-1.25.0` |
 | 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Uploaded and confirmed by Malith. Tag `frontend-1.27.0` |
-| 2026-10-16 | 1.25.1 | Backend | BW-024 | Storage shown in the correct unit (TB, not GB). Deployed 17:23 UTC. Tag `backend-1.25.1` |
+| 2026-10-16 | 1.25.1 | Backend | BW-024 | Storage shown in the correct unit (TB, not GB). Deployed 17:23 UTC; figures confirmed by Malith. Tag `backend-1.25.1` |
