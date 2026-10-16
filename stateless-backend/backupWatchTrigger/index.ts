@@ -8,6 +8,7 @@ import { normalizeVolumeName, buildVolumeTargetKey, isVolumeExcluded, isDeviceMu
 import { requireAuthenticatedUser } from "../shared/auth";
 import { getAutotaskRoutingConfig, saveAutotaskRoutingConfig, getGlobalMaintenanceMode, setGlobalMaintenanceMode, getAlertRoutingMatrix, saveAlertRoutingMatrix } from "../shared/configService";
 import { APP_VERSION } from "../shared/version";
+import { dattoSizeToGB, formatStorageGB } from "../shared/storageUnits";
 
 // Stateless Global Variables for In-Memory Caching (Phase 2: Datto BCDR)
 let cachedRawData: any = null;
@@ -898,13 +899,13 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
 
     // In-Memory Processing, Aggregation, and Muting
     const processedData = await Promise.all(devices.map(async (device: any) => {
-        const usedSize = (device.localStorageUsed && device.localStorageUsed.size) || 0;
-        const availSize = (device.localStorageAvailable && device.localStorageAvailable.size) || 0;
-        const totalSize = usedSize + availSize;
-        const storageUsedPercent = totalSize > 0 ? (usedSize / totalSize) * 100 : 0;
+        // Datto reports { size, units } (units "KB" on every appliance) – convert by unit (BW-024)
+        const usedGBRaw = dattoSizeToGB(device.localStorageUsed);
+        const totalGBRaw = usedGBRaw + dattoSizeToGB(device.localStorageAvailable);
+        const storageUsedPercent = totalGBRaw > 0 ? (usedGBRaw / totalGBRaw) * 100 : 0;
 
-        const usedStorageGB = parseFloat((usedSize / 1073741824).toFixed(2));
-        const totalStorageGB = parseFloat((totalSize / 1073741824).toFixed(2));
+        const usedStorageGB = parseFloat(usedGBRaw.toFixed(2));
+        const totalStorageGB = parseFloat(totalGBRaw.toFixed(2));
 
         const deviceName = device.name || "Unknown Device";
         const serialNumber = device.serialNumber || "Unknown Serial";
@@ -915,7 +916,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
         // Auto-heal check for storage alerts
         let storageTicket = deviceTickets.find(t => t.rowKey === "storage");
         if (storageTicket && storageUsedPercent <= 85 && ticketsTableClient &&
-            await handleAutoHeal(ticketsTableClient, serialNumber, "storage", storageTicket.ticketId, `Appliance storage usage has cleared. Used: ${usedStorageGB} GB of ${totalStorageGB} GB (${storageUsedPercent.toFixed(1)}%).`, autotaskConfig, context, { deviceName, exclusions })) {
+            await handleAutoHeal(ticketsTableClient, serialNumber, "storage", storageTicket.ticketId, `Appliance storage usage has cleared. Used: ${formatStorageGB(usedStorageGB)} of ${formatStorageGB(totalStorageGB)} (${storageUsedPercent.toFixed(1)}%).`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(storageTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             storageTicket = undefined;

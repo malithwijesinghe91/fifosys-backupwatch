@@ -13,6 +13,7 @@ import {
     getSingleTicketFromAutoTask
 } from "../shared/autotask";
 import { requireAuthenticatedUser } from "../shared/auth";
+import { formatStorageGB } from "../shared/storageUnits";
 import { runAsUserAction } from "../shared/autotaskGateway";
 import { AutotaskWriteBlockedError, IAutotaskWriteContext } from "../shared/autotaskPolicy";
 import { requireNoChangeFreeze } from "../shared/changeFreeze";
@@ -156,8 +157,8 @@ The Datto appliance ${params.deviceName} is running low on local storage capacit
 ${sectionDivider}
 ALERT DETAILS
 ${sectionDivider}
-Current Storage Used: ${usedGB} GB of ${totalGB} GB (${percent}%)
-Available Space: ${availGB} GB
+Current Storage Used: ${formatStorageGB(usedGB)} of ${formatStorageGB(totalGB)} (${percent}%)
+Available Space: ${formatStorageGB(availGB)}
 
 Heartbeat Checked-in: ${params.lastSeenHeartbeat || "Unknown"}
 
