@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Backend 1.25.1] - 2026-10-16
+
+Web part unchanged at 1.27.0 – no SharePoint upload needed.
+
+### Fixed
+- **Fixed (BW-024)**: appliance storage was shown in the wrong unit – terabytes labelled as gigabytes (e.g. ACU-DAT-01 "2.80 GB / 2.93 GB" is really 2.80 TB / 2.93 TB). Datto reports storage as `{ size, units }` with units "KB" (confirmed on all 117 appliances by a read-only check); the backend ignored `units` and treated the number as bytes. Storage is now converted by its unit (`shared/storageUnits.ts`), and an unknown or missing unit is logged.
+- **Fixed (BW-024)**: storage escalation tickets and storage auto-heal notes now show the corrected figures, in TB from 1024 GB (e.g. "2.80 TB of 2.93 TB").
+- Percentages, the "Storage Critical (>85%)" card, warning badges and the 85% auto-heal threshold were already correct (a ratio is unaffected by the unit) and are unchanged.
+
 ## [Web part 1.27.0] - 2026-10-12
 
 Loading experience. Backend unchanged at 1.25.0 – no Azure deploy needed.
