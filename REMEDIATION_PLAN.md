@@ -42,7 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
-| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `TODO` | |
+| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `IN PROGRESS` | Backend 1.26.0 + Web part 1.28.0 (built, not deployed) |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
@@ -523,7 +523,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-023 – Dashboard request runs the full scan (slow loads; Autotask writes on page load)
-**Status:** `TODO` (scope reduced by D-08, 2026-10-18)  **Severity:** Medium  **Release type:** Backend + small web part
+**Status:** `IN PROGRESS` (built and tested on branch `bw-023-readonly-loads`; not deployed)  **Severity:** Medium  **Release type:** Backend + small web part
 
 **Finding (2026-10-12).** When the 5-minute cache has expired, `GET /api/backupWatchTrigger` (opening the dashboard) runs the whole pipeline before replying: Datto device and asset calls, the TrackedTickets sync, the volume-exclusion sweep and auto-heals. The person opening the page waits for background work, and simply opening the dashboard can trigger Autotask writes (sweep notes, auto-heal notes). With the BW-004 gateway sending Autotask calls one at a time, these loads can take longer. Web part 1.27.0 hides most of the wait (shows the browser's last copy), but doesn't fix it.
 
@@ -534,11 +534,11 @@ This is the single source of truth for every defect found in the October 2026 co
 - Only new native-exclusion tickets are already limited to the background scan (`isBackground`, `backupWatchTrigger/index.ts:795`). The exclusion sweep, compliance tickets and auto-heal notes still run on a dashboard load.
 
 **Fix (D-08 – reduced scope).**
-- [ ] Dashboard GET runs the pipeline **read-only**: Datto and Autotask reads as now, every piece of information still shown (D-07), but no Autotask writes and no TrackedTickets changes – sweep, compliance tickets and auto-heal notes only on a scan.
-- [ ] **Force Scan:** `refresh=true` from Specialist/Administrator runs a full scan (same rules as the timer: silence, change freeze, audit) and waits for the result; audited with who requested it. Other roles: ignored as now.
-- [ ] **Scan lock** in shared storage so a forced scan and the timer scan never overlap (they run on different instances); a request arriving during a scan waits for that scan instead of starting another.
-- [ ] Web part (small): the button sends `refresh=true`, is labelled "Force Scan", shows the existing Refreshing strip.
-- [ ] Tests (mocks only): dashboard GET makes zero Autotask writes and changes no tracking rows; dashboard shows the same information as before; Force Scan performs sweep/auto-heal; Viewer/Contributor cannot force; lock blocks overlap; timer unaffected. Guard-rail test so a future change can't reintroduce writes on page load.
+- [x] Dashboard GET runs the pipeline **read-only**: Datto and Autotask reads as now, every piece of information still shown (D-07), but no Autotask writes and no TrackedTickets changes – sweep, compliance tickets and auto-heal notes only on a scan.
+- [x] **Force Scan:** `refresh=true` from Specialist/Administrator runs a full scan (same rules as the timer: silence, change freeze, audit) and waits for the result; audited with who requested it. Other roles: ignored as now.
+- [x] **Scan lock** in shared storage so a forced scan and the timer scan never overlap (they run on different instances); a request arriving during a scan waits for that scan instead of starting another.
+- [x] Web part (small): the button sends `refresh=true`, is labelled "Force Scan", shows the existing Refreshing strip.
+- [x] Tests (mocks only): dashboard GET makes zero Autotask writes and changes no tracking rows; dashboard shows the same information as before; Force Scan performs sweep/auto-heal; Viewer/Contributor cannot force; lock blocks overlap; timer unaffected. Guard-rail test so a future change can't reintroduce writes on page load.
 - [ ] Not now (revisit if usage grows): shared snapshot for 1–2 s loads.
 
 **Acceptance criteria.** Opening the dashboard never sends anything to Autotask and shows the same information as before; Force Scan updates tickets and the dashboard in one go; no overlapping scans.
@@ -546,6 +546,8 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-12 – Item created (owner agreed to do it after the web part 1.27.0 loading experience).
 - 2026-10-18 – Measured (above). Full plan (snapshot, queue, instant loads) discussed; owner reduced the scope (D-08) because the dashboard is used occasionally (D-07). Max instances set to 1 (D-04, BW-004).
+- 2026-10-18 – Built on branch `bw-023-readonly-loads` as **backend 1.26.0 + web part 1.28.0** (not deployed). `runPipeline(context, forceRefresh, isScan)`: on a dashboard load (`isScan` false) the sweep, native-exclusion tickets, auto-heal notes, picklist proof row and completed-ticket pruning are skipped; reads unchanged. Force Scan runs `runPipeline(context, true, true)` inside `withScanLock` (`shared/scanLock.ts`: Table Storage row ScanStatus/Lock/BCDRScanner, create-or-replace-expired by ETag, 15-min expiry, fail open if the store is down), audits "Force Scan", records the last scan (keeps the timer's next scan); if a scan is running it waits and returns fresh read-only data (`X-Scan: joined`). Timer takes the same lock and skips its run if a Force Scan holds it. Web part: button "Force Scan" sends `refresh=true`, shows "Scanning…" and is disabled meanwhile. `npm test`: **16 suites, 336 passed** (new: `dashboardReadOnly` 13, `scanLock` 10, timer +2; table mock now has real ETags); root tests 10 passed. Mutation checks, each caught: sweep on page load (7 fail), auto-heal on page load (7), picklist proof on page load (5), completed-ticket pruning on page load (6), native-exclusion tickets on page load (6), Force Scan without the lock (2), anyone can force (1), timer without the lock (1), expired lock never taken over (2), lock ignoring a running scan (5), lock not released (8). `.sppkg` checked: one bundle, version 1.28.0.0, contains `refresh=true`/"Force Scan", no "Force Refresh".
+  - Release order: backend first (web part 1.27.0 keeps working – its button just reloads), then web part 1.28.0. Rollback: `backend-1.25.1` / `frontend-1.27.0`.
 
 ---
 
@@ -634,3 +636,4 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-12 | 1.25.0 | Backend | BW-004, BW-006, BW-007 | Autotask gateway, silence enforcement, change freeze. Tag `backend-1.25.0` |
 | 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Uploaded and confirmed by Malith. Tag `frontend-1.27.0` |
 | 2026-10-16 | 1.25.1 | Backend | BW-024 | Storage shown in the correct unit (TB, not GB). Deployed 17:23 UTC; figures confirmed by Malith. Tag `backend-1.25.1` |
+| 2026-10-18 | 1.26.0 / 1.28.0 | Backend + Web part | BW-023 | Read-only dashboard loads, real Force Scan, scan lock. Built and tested, **not deployed** |

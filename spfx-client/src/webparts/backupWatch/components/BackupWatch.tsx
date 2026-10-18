@@ -1109,14 +1109,24 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     return url.indexOf('localhost') > -1 || url.indexOf('127.0.0.1') > -1;
   }
 
-  private _fetchData = (): void => {
+  /** Force Scan (Specialist/Administrator): asks the backend for a full scan now and waits for it (BW-023). */
+  private _forceScan = (): void => {
+    this._fetchData(true);
+  };
+
+  // `forceScan` must be exactly true: this is also used as a click/Retry handler, which passes an event.
+  private _fetchData = (forceScan?: unknown): void => {
     // Keep what's on screen while refreshing; the skeleton only shows when there is nothing yet.
     const hasData = this.state.devices.length > 0;
     this._startLoadTimer();
     this.setState({ loading: !hasData, refreshing: hasData, error: null, loadStartedAt: Date.now() });
 
     const isLocal = this._isLocalDev();
-    const devicesUrl = this.props.backendApiUrl;
+    const baseDevicesUrl = this.props.backendApiUrl;
+    // Opening the dashboard is read-only; only a Force Scan (refresh=true) makes the backend scan and write to Autotask.
+    const devicesUrl = forceScan === true
+      ? `${baseDevicesUrl}${baseDevicesUrl.indexOf('?') > -1 ? '&' : '?'}refresh=true`
+      : baseDevicesUrl;
     const exclusionsUrl = this._getExclusionsUrl();
 
     if (isLocal) {
@@ -1655,8 +1665,13 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           <div className="bw-status-bar">
             <span>In-Memory Cache Status: <strong>{cacheStatus}</strong></span>
             {(userSecurityLevel === 'Specialist' || userSecurityLevel === 'Administrator') && (
-              <button onClick={this._fetchData} className="bw-btn-refresh">
-                Force Refresh
+              <button
+                onClick={this._forceScan}
+                className="bw-btn-refresh"
+                disabled={this.state.refreshing}
+                title="Run a full scan now: raises and resolves tickets like the 30-minute scan"
+              >
+                {this.state.refreshing ? 'Scanning…' : 'Force Scan'}
               </button>
             )}
           </div>

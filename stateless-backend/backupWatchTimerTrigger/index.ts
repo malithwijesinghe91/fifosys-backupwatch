@@ -1,6 +1,7 @@
 import { AzureFunction, Context } from "@azure/functions";
 import { runPipeline } from "../backupWatchTrigger/index";
 import { getTableClient } from "../shared/tableService";
+import { withScanLock } from "../shared/scanLock";
 
 const timerTrigger: AzureFunction = async function (context: Context, myTimer: any): Promise<void> {
     const timeStamp = new Date().toISOString();
@@ -38,8 +39,13 @@ const timerTrigger: AzureFunction = async function (context: Context, myTimer: a
     const nextScan = formatUkTime(nextScanRaw);
     
     try {
-        // Force refresh to bypass the 5-minute cache and perform a live scan/sync/auto-heal
-        const result = await runPipeline(context, true, true);
+        // Full scan (the only mode that writes – BW-023), under the scan lock so it never overlaps a Force Scan
+        const outcome = await withScanLock(context, "Timer scan", () => runPipeline(context, true, true));
+        if (!outcome.ran) {
+            context.log.info(`BackupWatch Background Scanner skipped this run: a scan is already running${outcome.busy ? ` (${outcome.busy.owner})` : ""}.`);
+            return;
+        }
+        const result = outcome.result;
         const count = result && result.devices ? result.devices.length : 0;
         context.log.info(`BackupWatch Background Scanner successfully executed and cached ${count} appliances.`);
         

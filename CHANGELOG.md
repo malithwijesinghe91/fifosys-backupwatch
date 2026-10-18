@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Backend 1.26.0 / Web part 1.28.0] - 2026-10-18
+
+Read-only dashboard loads and a real Force Scan (BW-023, decisions D-07 / D-08). Deploy the backend first – web part 1.27.0 keeps working with it.
+
+### Changed
+- **Opening the dashboard no longer writes anything (BW-023)**: it still reads Datto and Autotask live and shows exactly the same information, but the exclusion sweep, compliance tickets, auto-heal notes, the expiry reminders and the pruning of completed tickets now happen only in a scan (the 30-minute timer scan or a Force Scan). Before, whoever opened the dashboard after the 5-minute cache expired could trigger Autotask writes.
+- **A resolved issue's ticket stays shown until the next scan** posts its auto-heal note (up to 30 minutes, or straight away with Force Scan). The live Datto status is shown as before.
+
+### Added
+- **Force Scan (BW-023)**: the "Force Refresh" button (Specialist/Administrator) never actually asked for a scan; it now runs a full scan straight away – same work and rules as the timer scan (silence, change freeze) – and shows the updated dashboard when it finishes (about 7–16 s). The button reads "Scanning…" and is disabled meanwhile. Each Force Scan is recorded in the audit trail and as the last scan; the timer's next-scan time is kept. Viewers and Contributors can't trigger one (the backend ignores the request).
+- **Scan lock** (`shared/scanLock.ts`): one Table Storage row (ScanStatus / Lock / BCDRScanner) so a Force Scan and the timer scan never run at the same time – Flex runs the timer on its own instance. A Force Scan during a running scan waits for it and returns fresh data; a timer run during a Force Scan is skipped. The lock expires after 15 minutes if a scan crashes; if the lock store is unavailable the scan still runs.
+- Response header `X-Scan: none | ran | joined`.
+- Tests: `dashboardReadOnly` (13, incl. a guard rail that every write-mode pipeline call is inside the scan lock), `scanLock` (10), timer lock tests (2). The table-storage mock now has real ETags.
+
 ## [Backend 1.25.1] - 2026-10-16
 
 Web part unchanged at 1.27.0 – no SharePoint upload needed.

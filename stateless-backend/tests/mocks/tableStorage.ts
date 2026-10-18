@@ -29,15 +29,24 @@ export function resetTableStorageMocks() {
 
 export function seedTableStorage(tableName: string, entities: MockTableEntity[]) {
   const store = tableStore(tableName);
-  for (const e of entities) store.set(keyOf(e.partitionKey, e.rowKey), { ...e });
+  for (const e of entities) store.set(keyOf(e.partitionKey, e.rowKey), stored(e));
 }
 
 /** All entities currently held in a table (copies). */
 export function getTableEntities(tableName: string): MockTableEntity[] {
-  return Array.from(tableStore(tableName).values()).map(e => ({ ...e }));
+  return Array.from(tableStore(tableName).values()).map(e => { const { etag, ...rest } = out(e); return rest as MockTableEntity; });
 }
 
 const notFound = () => Object.assign(new Error('ResourceNotFound'), { statusCode: 404 });
+const preconditionFailed = () => Object.assign(new Error('UpdateConditionNotSatisfied'), { statusCode: 412 });
+
+// Every write gets a new ETag, so optimistic-concurrency code (the scan lock) can be tested.
+let etagCounter = 0;
+const nextEtag = () => `W/"mock-etag-${++etagCounter}"`;
+const ETAG = Symbol('etag');
+const stored = (entity: MockTableEntity): MockTableEntity => ({ ...entity, [ETAG]: nextEtag() } as any);
+const etagOf = (entity: any): string => entity[ETAG];
+const out = (entity: any) => { const { [ETAG]: etag, ...rest } = entity; return { ...rest, etag }; };
 
 export function getMockTableClient(tableName: string) {
   const store = tableStore(tableName);
@@ -49,31 +58,47 @@ export function getMockTableClient(tableName: string) {
     createEntity: async (entity: MockTableEntity) => {
       const k = keyOf(entity.partitionKey, entity.rowKey);
       if (store.has(k)) throw Object.assign(new Error('EntityAlreadyExists'), { statusCode: 409 });
-      store.set(k, { ...entity });
-      return { etag: 'W/"mock-etag"' };
+      const saved = stored(entity);
+      store.set(k, saved);
+      return { etag: etagOf(saved) };
     },
 
     upsertEntity: async (entity: MockTableEntity, mode: 'Replace' | 'Merge' = 'Merge') => {
       const k = keyOf(entity.partitionKey, entity.rowKey);
       const existing = store.get(k);
-      store.set(k, mode === 'Merge' && existing ? { ...existing, ...entity } : { ...entity });
-      return { etag: 'W/"mock-etag"' };
+      const saved = stored(mode === 'Merge' && existing ? { ...existing, ...entity } : { ...entity });
+      store.set(k, saved);
+      return { etag: etagOf(saved) };
+    },
+
+    updateEntity: async (entity: MockTableEntity, mode: 'Replace' | 'Merge' = 'Merge', options?: { etag?: string }) => {
+      const k = keyOf(entity.partitionKey, entity.rowKey);
+      const existing = store.get(k);
+      if (!existing) throw notFound();
+      if (options && options.etag && options.etag !== '*' && options.etag !== etagOf(existing)) throw preconditionFailed();
+      const saved = stored(mode === 'Merge' ? { ...existing, ...entity } : { ...entity });
+      store.set(k, saved);
+      return { etag: etagOf(saved) };
     },
 
     getEntity: async (partitionKey: string, rowKey: string) => {
       const entity = store.get(keyOf(partitionKey, rowKey));
       if (!entity) throw notFound();
-      return { ...entity, etag: 'W/"mock-etag"' };
+      return out(entity);
     },
 
-    deleteEntity: async (partitionKey: string, rowKey: string) => {
-      if (!store.delete(keyOf(partitionKey, rowKey))) throw notFound();
+    deleteEntity: async (partitionKey: string, rowKey: string, options?: { etag?: string }) => {
+      const k = keyOf(partitionKey, rowKey);
+      const existing = store.get(k);
+      if (!existing) throw notFound();
+      if (options && options.etag && options.etag !== '*' && options.etag !== etagOf(existing)) throw preconditionFailed();
+      store.delete(k);
       return {};
     },
 
     listEntities: (_options?: any) => ({
       async *[Symbol.asyncIterator]() {
-        for (const entity of Array.from(store.values())) yield { ...entity, etag: 'W/"mock-etag"' };
+        for (const entity of Array.from(store.values())) yield out(entity);
       },
     }),
   };

@@ -9,11 +9,18 @@ import { requireAuthenticatedUser } from "../shared/auth";
 import { getAutotaskRoutingConfig, saveAutotaskRoutingConfig, getGlobalMaintenanceMode, setGlobalMaintenanceMode, getAlertRoutingMatrix, saveAlertRoutingMatrix } from "../shared/configService";
 import { APP_VERSION } from "../shared/version";
 import { dattoSizeToGB, formatStorageGB } from "../shared/storageUnits";
+import { withScanLock, waitForScanToFinish } from "../shared/scanLock";
 
 // Stateless Global Variables for In-Memory Caching (Phase 2: Datto BCDR)
 let cachedRawData: any = null;
 let cacheTimestamp: number = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // Strict 5-Minute Cache Window
+
+/** Test hook: forget the in-memory dashboard copy. */
+export function __resetDashboardCacheForTests(): void {
+    cachedRawData = null;
+    cacheTimestamp = 0;
+}
 
 export function getDattoCacheStats() {
     const now = Date.now();
@@ -287,7 +294,15 @@ function applyExclusionsToDevices(devices: any[], exclusions: IExclusionEntity[]
     });
 }
 
-export async function runPipeline(context: Context, forceRefresh: boolean, isBackground: boolean = false): Promise<any> {
+/**
+ * Builds the dashboard data.
+ *
+ * `isScan` true (timer scan or Force Scan, run under the scan lock): the only mode that writes – exclusion sweep,
+ * compliance tickets, auto-heal notes, TrackedTickets pruning.
+ * `isScan` false (someone opening the dashboard): read-only (BW-023, D-08) – the same Datto and Autotask reads, the
+ * same information on screen (D-07), but nothing is written to Autotask or to the Exclusions/TrackedTickets tables.
+ */
+export async function runPipeline(context: Context, forceRefresh: boolean, isScan: boolean = false): Promise<any> {
     const currentTime = Date.now();
 
     // Check Cache Validity
@@ -365,7 +380,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
     let ticketsTableClient: any = null;
     const autotaskConfig = getAutoTaskConfig();
 
-    if (autotaskConfig) {
+    if (autotaskConfig && isScan) {
         // Log & persist live Autotask status picklist mapping for verification
         try {
             const statusPicklists = await getTicketStatusPicklistValues(autotaskConfig);
@@ -435,9 +450,11 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
 
                         if (atTicket) {
                             if (atTicket.status === 5) {
-                                // Ticket is completed! Delete the tracking record.
-                                await ticketsTableClient.deleteEntity(t.partitionKey, t.rowKey);
-                                context.log.info(`Deleted completed ticket reference from Table Storage: Serial=${t.partitionKey}, Issue=${t.rowKey}, TicketID=${t.ticketId}`);
+                                // Ticket is completed: not shown. A scan also deletes the tracking record.
+                                if (isScan) {
+                                    await ticketsTableClient.deleteEntity(t.partitionKey, t.rowKey);
+                                    context.log.info(`Deleted completed ticket reference from Table Storage: Serial=${t.partitionKey}, Issue=${t.rowKey}, TicketID=${t.ticketId}`);
+                                }
                             } else {
                                 // Update ticket status in memory
                                 t.status = mapAutoTaskStatus(atTicket.status);
@@ -496,7 +513,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
     // -----------------------------------------------------------------------------------------
     // Volume Exclusions Reconciliation Sweep (Autotask Sync, Auto-Heal, & Closed Ticket Lifecycle)
     // -----------------------------------------------------------------------------------------
-    if (autotaskConfig && !exclusionsLoadFailed && exclusions.length > 0) {
+    if (isScan && autotaskConfig && !exclusionsLoadFailed && exclusions.length > 0) {
         try {
             const exclusionsTableClient = await getTableClient("Exclusions");
             const nowMs = Date.now();
@@ -792,7 +809,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
     }
 
     // Process new native exclusions sequentially for all Active Appliances (isActive === true)
-    if (isBackground && !exclusionsLoadFailed) {
+    if (isScan && !exclusionsLoadFailed) {
         for (const d of devices) {
             // Skip raising tickets for cancelled/inactive appliances (d.isActive === false)
             const isActive = isApplianceActive(d);
@@ -893,9 +910,12 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
         if (exclusionsLoadFailed) {
             context.log.warn("[Auto-Ticket Native Exclusion] Skipping automatic ticketing because Exclusions Table failed to load.");
         } else {
-            context.log.info("[Auto-Ticket Native Exclusion] Skipping automatic ticketing loop for user HTTP trigger request.");
+            context.log.info("[Auto-Ticket Native Exclusion] Skipping automatic ticketing: dashboard loads are read-only (BW-023).");
         }
     }
+
+    // Auto-heal notes are a write: only a scan posts them. On a dashboard load the ticket stays shown until the next scan.
+    const healClient = isScan ? ticketsTableClient : null;
 
     // In-Memory Processing, Aggregation, and Muting
     const processedData = await Promise.all(devices.map(async (device: any) => {
@@ -915,8 +935,8 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
 
         // Auto-heal check for storage alerts
         let storageTicket = deviceTickets.find(t => t.rowKey === "storage");
-        if (storageTicket && storageUsedPercent <= 85 && ticketsTableClient &&
-            await handleAutoHeal(ticketsTableClient, serialNumber, "storage", storageTicket.ticketId, `Appliance storage usage has cleared. Used: ${formatStorageGB(usedStorageGB)} of ${formatStorageGB(totalStorageGB)} (${storageUsedPercent.toFixed(1)}%).`, autotaskConfig, context, { deviceName, exclusions })) {
+        if (storageTicket && storageUsedPercent <= 85 && healClient &&
+            await handleAutoHeal(healClient, serialNumber, "storage", storageTicket.ticketId, `Appliance storage usage has cleared. Used: ${formatStorageGB(usedStorageGB)} of ${formatStorageGB(totalStorageGB)} (${storageUsedPercent.toFixed(1)}%).`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(storageTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             storageTicket = undefined;
@@ -937,8 +957,8 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
             }
         }
         const isDeviceOffline = lastCheckinVal ? (Date.now() / 1000 - lastCheckinVal > 3600) : false; // 1hr threshold
-        if (offlineTicket && !isDeviceOffline && ticketsTableClient &&
-            await handleAutoHeal(ticketsTableClient, serialNumber, "offline", offlineTicket.ticketId, `Appliance checkin has resolved. Last checkin: ${lastCheckinVal ? new Date(lastCheckinVal * 1000).toLocaleString() : "N/A"}.`, autotaskConfig, context, { deviceName, exclusions })) {
+        if (offlineTicket && !isDeviceOffline && healClient &&
+            await handleAutoHeal(healClient, serialNumber, "offline", offlineTicket.ticketId, `Appliance checkin has resolved. Last checkin: ${lastCheckinVal ? new Date(lastCheckinVal * 1000).toLocaleString() : "N/A"}.`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(offlineTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             offlineTicket = undefined;
@@ -1017,24 +1037,24 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
             const latestScreenshotSuccess = screenshotVerification ? screenshotVerification.success : true;
 
             // Auto-heal agent backup (skip if agent or appliance is silenced)
-            if (!isSilenced && !isApplianceSilenced && backupTicket && latestBackupSuccess && ticketsTableClient &&
-                await handleAutoHeal(ticketsTableClient, serialNumber, `agent:${name}:backup`, backupTicket.ticketId, `Backup Failure for agent ${name} has resolved.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
+            if (!isSilenced && !isApplianceSilenced && backupTicket && latestBackupSuccess && healClient &&
+                await handleAutoHeal(healClient, serialNumber, `agent:${name}:backup`, backupTicket.ticketId, `Backup Failure for agent ${name} has resolved.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
                 const index = deviceTickets.indexOf(backupTicket);
                 if (index > -1) deviceTickets.splice(index, 1);
                 backupTicket = undefined;
             }
 
             // Auto-heal agent screenshot (skip if agent or appliance is silenced)
-            if (!isSilenced && !isApplianceSilenced && screenshotTicket && latestScreenshotSuccess && ticketsTableClient &&
-                await handleAutoHeal(ticketsTableClient, serialNumber, `agent:${name}:screenshot`, screenshotTicket.ticketId, `Screenshot verification for agent ${name} has resolved.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
+            if (!isSilenced && !isApplianceSilenced && screenshotTicket && latestScreenshotSuccess && healClient &&
+                await handleAutoHeal(healClient, serialNumber, `agent:${name}:screenshot`, screenshotTicket.ticketId, `Screenshot verification for agent ${name} has resolved.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
                 const index = deviceTickets.indexOf(screenshotTicket);
                 if (index > -1) deviceTickets.splice(index, 1);
                 screenshotTicket = undefined;
             }
 
             // Auto-heal agent paused status (skip if agent or appliance is silenced)
-            if (!isSilenced && !isApplianceSilenced && statusTicket && !isPaused && ticketsTableClient &&
-                await handleAutoHeal(ticketsTableClient, serialNumber, statusTicket.rowKey, statusTicket.ticketId, `Backup agent status is no longer Paused/Archived for agent ${name}.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
+            if (!isSilenced && !isApplianceSilenced && statusTicket && !isPaused && healClient &&
+                await handleAutoHeal(healClient, serialNumber, statusTicket.rowKey, statusTicket.ticketId, `Backup agent status is no longer Paused/Archived for agent ${name}.`, autotaskConfig, context, { deviceName, agentName: name, exclusions })) {
                 const index = deviceTickets.indexOf(statusTicket);
                 if (index > -1) deviceTickets.splice(index, 1);
                 statusTicket = undefined;
@@ -1135,8 +1155,8 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
         // Check for offsite sync ticket
         let offsitesyncTicket = deviceTickets.find(t => t.rowKey === "offsitesync");
         const isOffsiteSyncFailed = !!(device.offsiteSyncFailed || device.offsiteStatus === 'Error' || device.offsiteSyncStatus === 'Critical' || device.offsiteSyncStatus === 'Warning');
-        if (offsitesyncTicket && !isOffsiteSyncFailed && ticketsTableClient &&
-            await handleAutoHeal(ticketsTableClient, serialNumber, "offsitesync", offsitesyncTicket.ticketId, `Appliance offsite synchronization has resolved.`, autotaskConfig, context, { deviceName, exclusions })) {
+        if (offsitesyncTicket && !isOffsiteSyncFailed && healClient &&
+            await handleAutoHeal(healClient, serialNumber, "offsitesync", offsitesyncTicket.ticketId, `Appliance offsite synchronization has resolved.`, autotaskConfig, context, { deviceName, exclusions })) {
             const index = deviceTickets.indexOf(offsitesyncTicket);
             if (index > -1) deviceTickets.splice(index, 1);
             offsitesyncTicket = undefined;
@@ -1216,6 +1236,60 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isBac
         } : null,
         cacheStatus: "MISS"
     };
+}
+
+/**
+ * Force Scan (Specialist/Administrator, BW-023 / D-08): a full scan now – the same work and rules as the timer scan
+ * (silence, change freeze, audit) – under the scan lock. If a scan is already running, waits for it and returns fresh
+ * read-only data instead of starting a second one.
+ */
+async function runForceScan(context: Context, userEmail: string): Promise<{ result: any; scan: "ran" | "joined" }> {
+    try {
+        const audit = await getTableClient("AuditLogs");
+        await audit.createEntity({
+            partitionKey: "AuditLog",
+            rowKey: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            userEmail,
+            action: "Force Scan",
+            target: "All appliances",
+            details: "Full scan requested from the dashboard.",
+            createdTime: new Date().toISOString()
+        });
+    } catch (auditErr: any) {
+        context.log.warn("Failed to write Force Scan audit log:", auditErr.message || auditErr);
+    }
+
+    const outcome = await withScanLock(context, `Force Scan by ${userEmail}`, async () => {
+        try {
+            const scanned = await runPipeline(context, true, true);
+            await recordForcedScanStatus(context, "Success", "");
+            return scanned;
+        } catch (scanErr: any) {
+            await recordForcedScanStatus(context, "Failed", scanErr.message || String(scanErr));
+            throw scanErr;
+        }
+    });
+    if (outcome.ran) return { result: outcome.result, scan: "ran" };
+
+    await waitForScanToFinish(context);
+    return { result: await runPipeline(context, true, false), scan: "joined" };
+}
+
+/** Records a Force Scan as the last scan, keeping the timer's next-scan time. */
+async function recordForcedScanStatus(context: Context, status: "Success" | "Failed", errorMessage: string): Promise<void> {
+    try {
+        const statusClient = await getTableClient("ScanStatus");
+        await statusClient.upsertEntity({
+            partitionKey: "Status",
+            rowKey: "BCDRScanner",
+            lastScan: new Date().toLocaleString("en-GB", { timeZone: "Europe/London" }),
+            status,
+            errorMessage,
+            updatedTime: new Date().toISOString()
+        }, "Merge");
+    } catch (dbErr: any) {
+        context.log.error(`Failed to update scan status after Force Scan: ${dbErr.message || dbErr}`);
+    }
 }
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
@@ -1839,14 +1913,22 @@ async function handleRequest(context: Context, req: HttpRequest, userSec: NonNul
                 context.log.warn(`[RBAC] User ${userSec.email} with role ${userSec.role} requested force refresh without Specialist/Administrator permissions. Falling back to cached data.`);
             }
         }
-        const result = await runPipeline(context, forceRefresh, false);
+        // Opening the dashboard is read-only (BW-023); only a Force Scan (or the timer) writes.
+        let result: any;
+        let scan: "none" | "ran" | "joined" = "none";
+        if (forceRefresh) {
+            ({ result, scan } = await runForceScan(context, userSec.email));
+        } else {
+            result = await runPipeline(context, false, false);
+        }
         context.res = {
             status: 200,
             // Spread so the cached pipeline result is never mutated with per-user fields.
             body: { ...result, userRole: userSec.role, userEmail: userSec.email },
             headers: {
                 "Content-Type": "application/json",
-                "X-Cache-Status": result.cacheStatus
+                "X-Cache-Status": result.cacheStatus,
+                "X-Scan": scan
             }
         };
     } catch (error: any) {

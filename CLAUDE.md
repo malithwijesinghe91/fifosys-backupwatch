@@ -156,3 +156,7 @@ uv run --python 3.12 --with "tree-sitter,tree-sitter-language-pack,networkx" pyt
    - Filtered dynamically based on `d.isActive !== false`. Cancelled appliances appear under the "Cancelled Appliances" secondary tab.
 6. **Cache Engine**:
    - 5-minute in-memory caching in Azure host memory; merges live Azure Table Storage exclusion rules on every request so mutes/unmutes take effect instantly.
+7. **Read-only dashboard loads, scans write (BW-023, decisions D-07 / D-08)**:
+   - `runPipeline(context, forceRefresh, isScan)`: `isScan` false (someone opening the dashboard) reads Datto and Autotask and shows **everything**, but writes nothing to Autotask or the Exclusions/TrackedTickets tables. Only a scan (`isScan` true) runs the exclusion sweep, compliance tickets, auto-heal notes and ticket pruning.
+   - Scans: the 30-minute timer and **Force Scan** (`?refresh=true`, Specialist/Administrator only, audited). Both run inside `withScanLock` (`shared/scanLock.ts`, one Table Storage row, 15-minute expiry) so they never overlap – Flex runs the timer on its own instance. A test fails the build if `runPipeline(…, true)` is called outside the lock.
+   - The dashboard must always show complete information (D-07): never remove information from it to make it faster.
