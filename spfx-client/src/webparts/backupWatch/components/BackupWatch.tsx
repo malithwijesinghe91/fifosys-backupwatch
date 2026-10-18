@@ -154,6 +154,9 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     const exclusionsList = Array.isArray(exclusions) ? exclusions : [];
     this._stopLoadTimer();
     this.setState({
+      // From the response body: SharePoint can't read the X-Cache-Status header (the backend's CORS doesn't expose it),
+      // which kept the status bar and its Force Scan button hidden.
+      cacheStatus: (Array.isArray(resData) ? null : resData.cacheStatus) || this.state.cacheStatus,
       userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
       serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
       roleResolved: true,
