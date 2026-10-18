@@ -146,7 +146,7 @@ uv run --python 3.12 --with "tree-sitter,tree-sitter-language-pack,networkx" pyt
 2. **Autotask DeepLinks**:
    - Tickets link directly to: `https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId={ticketId}`.
 3. **Autotask Gateway (BW-004) – the only way to call Autotask**:
-   - Every Autotask HTTP request goes through `shared/autotaskGateway.ts`: 1 request at a time per instance (2 across the app with the 2-instance cap – Autotask allows 3), engineer actions (`runAsUserAction`) ahead of scanner calls, retries after 1 s / 2 s / 4 s when Autotask is busy, 60 s queue wait cap, safe logging. `tests/autotaskGuardRails.test.ts` fails the build if anything else calls Autotask or builds its credential headers.
+   - Every Autotask HTTP request goes through `shared/autotaskGateway.ts`: 1 request at a time per instance (max instances is 1, but Flex runs the timer scan on its own instance, so at most 2 at once – Autotask allows 3), engineer actions (`runAsUserAction`) ahead of scanner calls, retries after 1 s / 2 s / 4 s when Autotask is busy, 60 s queue wait cap, safe logging. `tests/autotaskGuardRails.test.ts` fails the build if anything else calls Autotask or builds its credential headers.
    - `getTicketEntityFields` still collapses parallel metadata calls into 1 request (in-flight promise + 1-hour cache).
 4. **Autotask Write Policy (BW-006 / BW-007, decisions D-01 / D-02)**:
    - Every write (`createTicketInAutoTask`, `createTicketNoteInAutoTask`, `updateTicketStatusInAutoTask`, `createComplianceTicket`) requires an `IAutotaskWriteContext` (`origin: "scanner" | "user"`, action, device/agent, user, override reason) and is checked by `shared/autotaskPolicy.ts`.

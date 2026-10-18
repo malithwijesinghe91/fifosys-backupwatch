@@ -42,7 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
-| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend | `TODO` | |
+| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `TODO` | |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
@@ -74,7 +74,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010, BW-023, BW-024 |
 | **4 – Hygiene** | Clean-up, docs, misleading UI | BW-014, BW-016, BW-018 |
 
-> Status 2026-10-12: Phase 0 complete; BW-001/003 done (BW-002 has only an optional step left); BW-004/006/007 live and in their 30-day check. Suggested next: BW-023. On hold by owner: BW-009, BW-013 (D-06). Open decision: D-05 (BW-018).
+> Status 2026-10-18: Phase 0 complete; BW-001/003/024 done (BW-002 has only an optional step left); BW-004/006/007 live and in their 30-day check. Max instances now 1 (D-04). Next: BW-023 (reduced scope, D-08), then D-05 / BW-018 (priority raised by D-07), then scanner reliability (BW-008, BW-005, BW-014). On hold by owner: BW-009, BW-013 (D-06). Parked: moving the web part to Azure Static Web Apps (feasible; reviewed 2026-10-18, not pursued now).
 
 ---
 
@@ -85,9 +85,11 @@ This is the single source of truth for every defect found in the October 2026 co
 | D-01 (BW-006) | When an appliance/agent is silenced and a tracked issue clears, should the auto-heal note still be posted to Autotask? | **No.** No Autotask writes of any kind while silenced. The first scan after un-muting posts the auto-heal note. Suppressed actions are written to the audit log. | **No** (as proposed). Nothing is sent to Autotask while an appliance/agent is silenced; held-back actions are audit-logged; the first scan after un-muting posts any auto-heal note. | 2026-10-12 |
 | D-02 (BW-007) | During a global blackout, can engineers still escalate manually? | **Soft block.** Warning shown; Specialist/Administrator may override with a mandatory reason (audited); Contributor blocked. | **A blackout (change freeze) is a blackout.** While it is active, **every change** is blocked for Specialist, Contributor and Viewer – escalations, exclusions (add/edit/remove), mutes/unmutes and any other write. Only the **Administrator** role may still act, with a mandatory reason that is audited. Automatic Autotask writes by the scanner are also suppressed (see D-01 / BW-006). | 2026-10-12 |
 | D-03 (BW-011) | Lockstep versioning, or separate backend/frontend versions? | **Separate versions** (matches the existing release rule that backend-only changes don't rebuild the `.sppkg`), managed by one script and shown side by side in the UI. | **Separate versions** (final). Briefly decided as shared (1.24.1 was cut that way), then changed after reviewing the display: each half has its own number in `versions.json`, only the half that changed is bumped and deployed; versions shown in the footer only (`UI v… · Engine v…`), none in the header. | 2026-10-12 |
-| D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | **Leave as is for now; review later.** Max instances stays at 2 (set 2026-10-11) and the in-process gateway is built in BW-004; the Storage Queue option is not pursued now. **Review again** after BW-004 is live (e.g. if "Thread Threshold Exceeded" alerts return or ticket volume grows). | 2026-10-12 |
+| D-04 (BW-004) | Multi-instance protection: cap Function App instances, or queue all Autotask writes? | **Now:** cap max instances (1–2) + in-process gateway. **Later, if volume grows:** Azure Storage Queue with a single consumer for all Autotask writes. | **Leave as is for now; review later.** Max instances stays at 2 (set 2026-10-11) and the in-process gateway is built in BW-004; the Storage Queue option is not pursued now. **Review again** after BW-004 is live (e.g. if "Thread Threshold Exceeded" alerts return or ticket volume grows). **Updated 2026-10-18 (Malith): max instances set to 1.** Usage is low (153 dashboard loads in 30 days, peak 9 requests a minute). The timer scan always runs on its own instance (Flex scales HTTP and timer functions separately and the cap applies to each group), so at most 2 instances run at once and at most 2 Autotask requests are in flight (previously up to 3). | 2026-10-12, updated 2026-10-18 |
 | D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | *Pending* – owner asked what the 6 toggles are (explained 2026-10-12). | |
 | D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | **Deferred – review later** (Malith). BW-013 stays on hold. | 2026-10-12 |
+| D-07 (all) | What is the dashboard for? | – | **Occasional use now, possibly the main alert view later** (Malith). Day to day the team relies on alerts and uses the dashboard mainly to add exclusions, but the dashboard must **always show complete information** – no change may strip information from it – because Datto's own alerts may later be retired in favour of BackupWatch. Consequence: alerting must come from the background scan, not from someone opening the page (raises the priority of D-05 / BW-018 and the scanner reliability items). | 2026-10-18 |
+| D-08 (BW-023) | How far should BW-023 go? | Full version: shared snapshot, instant loads, queued refresh. | **Reduced scope** (Malith). Opening the dashboard stays a live read (5–15 s is fine for occasional use) but never writes to Autotask; only scans write. The Force Refresh button becomes a real **Force Scan** (Specialist/Administrator) that runs a full scan and waits for it (scans take about 7 s). A shared lock stops a forced scan overlapping the timer scan. The snapshot / instant-load version can be revisited if usage grows. | 2026-10-18 |
 
 ---
 
@@ -318,6 +320,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – Branch `bw-001-frontend-2` (still 1.23.4, not released): header shows the **engine version only** (backend `appVersion`, `v…` until the first response) instead of falling back to the web part version and then switching; footer "BCDR Engine v…" fixed the same way. `release\` and `temp\` cleaned, rebuilt; `.sppkg` verified: one bundle (`backup-watch-web-part_a96c098e47f7856f4de3.js`, the one the web part loads), no role/identity params or headers, no Graph role lookup, permissions only `BackupWatch-Backend-API/user_impersonation` + Graph `User.Read`, feature version 1.23.4.0.
 - 2026-10-12 – **Frontend 1.23.4 deployed** to the App Catalog (Malith), from `main` at `0933d12` (PRs #2 and #3); tag `frontend-1.23.4`. Release order Entra → backend → frontend complete. `DONE`.
   - Still open (tracked here, not blocking): revoke the tenant-wide `GroupMember.Read.All` approval only after the check above; remove the unused `RBAC_*_GROUP_ID` app settings.
+- 2026-10-17 – Housekeeping check (read-only). `RBAC_*_GROUP_ID`: **already gone** – none of the 17 live app settings is `RBAC_*` and no backend code reads them. `GroupMember.Read.All`: still in the tenant-wide Microsoft Graph grant to *SharePoint Online Web Client Extensibility*, alongside about 35 other scopes that look like Microsoft's defaults; SharePoint's API access list could not be read from the Azure CLI, so which package requested it is unknown. **Not revoked.** Owner to check SharePoint admin centre → Advanced → API access → Approved requests: remove it only if the package is `backup-watch-scaffold` (or blank).
 
 ---
 
@@ -364,6 +367,7 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-12 – Owner agreed: 1 request at a time per instance, engineer actions first, retries 1 s / 2 s / 4 s, ~60 s wait cap. Built with BW-006 and BW-007 on branch `bw-004-autotask-gateway` (backend 1.25.0 + web part 1.26.0, not deployed). `npm test`: **13 suites, 288 passed** (new: `autotaskGateway` 18, `autotaskPolicy` 99, `changeFreeze` 26, `autotaskGuardRails` 5; `autotaskConcurrency` failure test updated because reads are now retried). Mutation checks, each caught: concurrency 2 (5 tests fail), priority reversed (1), writes retried on 5xx (1), auto-heal ignoring silence (3), policy ignoring silence (16), Administrator needing no reason (1), escalation skipping the freeze check (4), Specialists allowed in a freeze (3), a direct Autotask call added to `exclusions` (2). Also fixed: cached dashboard responses lacked `appVersion`.
   - Acceptance "no Thread Threshold alerts for 30 days" can only be confirmed after release.
 - 2026-10-12 – PR #11 merged (`2a14e26`). **Web part 1.26.0 uploaded** (Malith). **Backend 1.25.0 deployed** to `backupwatch-api` at 16:40 UTC by Claude on Malith's instruction (`npm ci` → 288 tests passed → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`); host Running, all 7 functions listed, no dev-role settings, anonymous GET 401. Tag `backend-1.25.0`; rollback `backend-1.24.1`. Stays `TESTING` until 30 days without "Thread Threshold Exceeded" alerts (review around 2026-11-11).
+- 2026-10-18 – **Max instances lowered from 2 to 1** (Claude, on Malith's instruction; `az functionapp scale config set --maximum-instance-count 1`; app Running, anonymous GET 401). Application Insights, last 30 days: the timer scan and HTTP requests **never** shared an instance (0 of 1,594 instance IDs) – Flex scales them as separate groups and the cap applies per group – so up to 2 HTTP instances + 1 timer instance could send 3 Autotask requests at once. Now at most 2. Watch for HTTP 429s after the change. See D-04.
 ---
 
 ### BW-005 – Datto asset fetch is unbounded
@@ -519,21 +523,29 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-023 – Dashboard request runs the full scan (slow loads; Autotask writes on page load)
-**Status:** `TODO`  **Severity:** Medium  **Release type:** Backend
+**Status:** `TODO` (scope reduced by D-08, 2026-10-18)  **Severity:** Medium  **Release type:** Backend + small web part
 
 **Finding (2026-10-12).** When the 5-minute cache has expired, `GET /api/backupWatchTrigger` (opening the dashboard) runs the whole pipeline before replying: Datto device and asset calls, the TrackedTickets sync, the volume-exclusion sweep and auto-heals. The person opening the page waits for background work, and simply opening the dashboard can trigger Autotask writes (sweep notes, auto-heal notes). With the BW-004 gateway sending Autotask calls one at a time, these loads can take longer. Web part 1.27.0 hides most of the wait (shows the browser's last copy), but doesn't fix it.
 
-**Fix (proposed).**
-- [ ] Measure current dashboard response times (Application Insights, read-only) to record a before/after.
-- [ ] The 30-minute background scan saves a finished snapshot (Table or Blob storage). The dashboard request reads the snapshot plus live exclusions and replies without calling Datto or Autotask.
-- [ ] Only the background scan writes to Autotask (sweep, auto-heal, compliance tickets); the dashboard request is read-only.
-- [ ] Forced refresh (Specialist and up) triggers a scan; decide whether it waits for the result or returns the snapshot and refreshes in the background.
-- [ ] Tests: dashboard GET makes no Datto/Autotask calls when a snapshot exists; the scan still performs the sweep and auto-heals.
+**Measured (2026-10-18, Application Insights, last 30 days, read-only).** 153 dashboard loads (about 5 a day); 85 (56%) took over 5 s – median 5.7 s, slowest 16.6 s. 1,439 timer scans – median 6.6 s, 95% under 16 s. About 55 different instances a day: Flex shuts idle instances down, and the timer scan always runs on a different instance from the dashboard, so the 5-minute in-memory cache almost never helps a visitor.
 
-**Acceptance criteria.** Dashboard loads reply in about 1–2 seconds regardless of cache state; opening the dashboard never sends anything to Autotask.
+**Further findings.**
+- The web part's "Force Refresh" button (`BackupWatch.tsx:1658`) never sends `refresh=true`; it just reloads like a normal visit.
+- Only new native-exclusion tickets are already limited to the background scan (`isBackground`, `backupWatchTrigger/index.ts:795`). The exclusion sweep, compliance tickets and auto-heal notes still run on a dashboard load.
+
+**Fix (D-08 – reduced scope).**
+- [ ] Dashboard GET runs the pipeline **read-only**: Datto and Autotask reads as now, every piece of information still shown (D-07), but no Autotask writes and no TrackedTickets changes – sweep, compliance tickets and auto-heal notes only on a scan.
+- [ ] **Force Scan:** `refresh=true` from Specialist/Administrator runs a full scan (same rules as the timer: silence, change freeze, audit) and waits for the result; audited with who requested it. Other roles: ignored as now.
+- [ ] **Scan lock** in shared storage so a forced scan and the timer scan never overlap (they run on different instances); a request arriving during a scan waits for that scan instead of starting another.
+- [ ] Web part (small): the button sends `refresh=true`, is labelled "Force Scan", shows the existing Refreshing strip.
+- [ ] Tests (mocks only): dashboard GET makes zero Autotask writes and changes no tracking rows; dashboard shows the same information as before; Force Scan performs sweep/auto-heal; Viewer/Contributor cannot force; lock blocks overlap; timer unaffected. Guard-rail test so a future change can't reintroduce writes on page load.
+- [ ] Not now (revisit if usage grows): shared snapshot for 1–2 s loads.
+
+**Acceptance criteria.** Opening the dashboard never sends anything to Autotask and shows the same information as before; Force Scan updates tickets and the dashboard in one go; no overlapping scans.
 
 **Progress log.**
 - 2026-10-12 – Item created (owner agreed to do it after the web part 1.27.0 loading experience).
+- 2026-10-18 – Measured (above). Full plan (snapshot, queue, instant loads) discussed; owner reduced the scope (D-08) because the dashboard is used occasionally (D-07). Max instances set to 1 (D-04, BW-004).
 
 ---
 
@@ -585,6 +597,7 @@ This is the single source of truth for every defect found in the October 2026 co
 **Progress log.**
 - 2026-10-10 – Item created. Waiting on D-05.
 - 2026-10-12 – Owner asked what the six toggles are; explained (Storage Alerts, Local Backup Failures, Overdue Backups, Offsite Sync Issues, Screenshot Failures, Offline Appliances – none create tickets even when switched on). Options given: grey out (recommended), build some, or remove. Decision pending.
+- 2026-10-18 – **Priority raised by D-07:** the team relies on alerts and may retire Datto's own alerts, so these six types raising tickets from the background scan becomes the main value. Suggested first: Offline Appliance, Local Backup Failure, Storage Alert. Next after BW-023; D-05 still to be decided.
 
 ---
 
