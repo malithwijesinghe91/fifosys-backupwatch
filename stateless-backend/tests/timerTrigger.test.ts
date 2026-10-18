@@ -8,7 +8,7 @@ jest.mock('../shared/tableService', () => require('./mocks/tableStorage').tableS
 
 import timerTrigger from '../backupWatchTimerTrigger/index';
 import { runPipeline } from '../backupWatchTrigger/index';
-import { resetTableStorageMocks, getTableEntities } from './mocks/tableStorage';
+import { resetTableStorageMocks, getTableEntities, seedTableStorage } from './mocks/tableStorage';
 import { createMockContext } from './mocks/functions';
 
 const mockRunPipeline = runPipeline as jest.Mock;
@@ -53,5 +53,26 @@ describe('BackupWatch Timer Trigger', () => {
 
     expect(context.log.info).toHaveBeenCalledWith('Timer function is running late!');
     expect(mockRunPipeline).toHaveBeenCalledTimes(1);
+  });
+  test('a scan already running (Force Scan): skips this run, writes no status', async () => {
+    seedTableStorage('ScanStatus', [{
+      partitionKey: 'Lock', rowKey: 'BCDRScanner', owner: 'Force Scan by s@fifosys.com',
+      acquiredAt: new Date().toISOString(), lockedUntil: new Date(Date.now() + 60000).toISOString(),
+    }]);
+    const context = createMockContext();
+
+    await timerTrigger(context, { isPastDue: false });
+
+    expect(mockRunPipeline).not.toHaveBeenCalled();
+    expect(context.log.info).toHaveBeenCalledWith(
+      'BackupWatch Background Scanner skipped this run: a scan is already running (Force Scan by s@fifosys.com).'
+    );
+    expect(getTableEntities('ScanStatus').find(e => e.rowKey === 'BCDRScanner' && e.partitionKey === 'Status')).toBeUndefined();
+  });
+
+  test('releases the scan lock after the run', async () => {
+    mockRunPipeline.mockResolvedValue({ devices: [] });
+    await timerTrigger(createMockContext(), { isPastDue: false });
+    expect(getTableEntities('ScanStatus').find(e => e.partitionKey === 'Lock')).toBeUndefined();
   });
 });

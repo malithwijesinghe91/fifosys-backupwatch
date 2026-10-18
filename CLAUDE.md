@@ -146,7 +146,7 @@ uv run --python 3.12 --with "tree-sitter,tree-sitter-language-pack,networkx" pyt
 2. **Autotask DeepLinks**:
    - Tickets link directly to: `https://ww16.autotask.net/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId={ticketId}`.
 3. **Autotask Gateway (BW-004) – the only way to call Autotask**:
-   - Every Autotask HTTP request goes through `shared/autotaskGateway.ts`: 1 request at a time per instance (2 across the app with the 2-instance cap – Autotask allows 3), engineer actions (`runAsUserAction`) ahead of scanner calls, retries after 1 s / 2 s / 4 s when Autotask is busy, 60 s queue wait cap, safe logging. `tests/autotaskGuardRails.test.ts` fails the build if anything else calls Autotask or builds its credential headers.
+   - Every Autotask HTTP request goes through `shared/autotaskGateway.ts`: 1 request at a time per instance (max instances is 1, but Flex runs the timer scan on its own instance, so at most 2 at once – Autotask allows 3), engineer actions (`runAsUserAction`) ahead of scanner calls, retries after 1 s / 2 s / 4 s when Autotask is busy, 60 s queue wait cap, safe logging. `tests/autotaskGuardRails.test.ts` fails the build if anything else calls Autotask or builds its credential headers.
    - `getTicketEntityFields` still collapses parallel metadata calls into 1 request (in-flight promise + 1-hour cache).
 4. **Autotask Write Policy (BW-006 / BW-007, decisions D-01 / D-02)**:
    - Every write (`createTicketInAutoTask`, `createTicketNoteInAutoTask`, `updateTicketStatusInAutoTask`, `createComplianceTicket`) requires an `IAutotaskWriteContext` (`origin: "scanner" | "user"`, action, device/agent, user, override reason) and is checked by `shared/autotaskPolicy.ts`.
@@ -156,3 +156,7 @@ uv run --python 3.12 --with "tree-sitter,tree-sitter-language-pack,networkx" pyt
    - Filtered dynamically based on `d.isActive !== false`. Cancelled appliances appear under the "Cancelled Appliances" secondary tab.
 6. **Cache Engine**:
    - 5-minute in-memory caching in Azure host memory; merges live Azure Table Storage exclusion rules on every request so mutes/unmutes take effect instantly.
+7. **Read-only dashboard loads, scans write (BW-023, decisions D-07 / D-08)**:
+   - `runPipeline(context, forceRefresh, isScan)`: `isScan` false (someone opening the dashboard) reads Datto and Autotask and shows **everything**, but writes nothing to Autotask or the Exclusions/TrackedTickets tables. Only a scan (`isScan` true) runs the exclusion sweep, compliance tickets, auto-heal notes and ticket pruning.
+   - Scans: the 30-minute timer and **Force Scan** (`?refresh=true`, Specialist/Administrator only, audited). Both run inside `withScanLock` (`shared/scanLock.ts`, one Table Storage row, 15-minute expiry) so they never overlap – Flex runs the timer on its own instance. A test fails the build if `runPipeline(…, true)` is called outside the lock.
+   - The dashboard must always show complete information (D-07): never remove information from it to make it faster.
