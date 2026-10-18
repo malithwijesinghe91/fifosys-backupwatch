@@ -24,6 +24,9 @@ function loadAutotask(): typeof import('../shared/autotask') {
 }
 
 describe('Autotask ticket-field metadata: concurrency lock & cache', () => {
+  // Compile the modules once up front, so a busy machine's ts-jest compile time doesn't count against the first test.
+  beforeAll(() => { loadAutotask(); }, 120000);
+
   let fieldCalls: number;
   let inFlight: number;
   let peakInFlight: number;

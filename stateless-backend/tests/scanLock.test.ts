@@ -86,6 +86,7 @@ describe('waitForScanToFinish', () => {
   });
 
   test('returns true when the running scan finishes', async () => {
+    __setScanLockTimingForTests(5, 10000); // generous cap: on a busy machine the 15 ms timer can fire late
     seedLock(60000);
     setTimeout(() => resetTableStorageMocks(), 15);
     expect(await waitForScanToFinish(createMockContext())).toBe(true);

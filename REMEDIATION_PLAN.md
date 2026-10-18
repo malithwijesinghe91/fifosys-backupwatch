@@ -42,7 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
-| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `IN PROGRESS` | Backend 1.26.0 + Web part 1.28.0 (built, not deployed) |
+| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `IN PROGRESS` | Backend 1.26.0 (live) + Web part 1.28.0 (built, not uploaded) |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
@@ -523,7 +523,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-023 – Dashboard request runs the full scan (slow loads; Autotask writes on page load)
-**Status:** `IN PROGRESS` (built and tested on branch `bw-023-readonly-loads`; not deployed)  **Severity:** Medium  **Release type:** Backend + small web part
+**Status:** `IN PROGRESS` (backend 1.26.0 live since 2026-10-18; web part 1.28.0 waiting for upload)  **Severity:** Medium  **Release type:** Backend + small web part
 
 **Finding (2026-10-12).** When the 5-minute cache has expired, `GET /api/backupWatchTrigger` (opening the dashboard) runs the whole pipeline before replying: Datto device and asset calls, the TrackedTickets sync, the volume-exclusion sweep and auto-heals. The person opening the page waits for background work, and simply opening the dashboard can trigger Autotask writes (sweep notes, auto-heal notes). With the BW-004 gateway sending Autotask calls one at a time, these loads can take longer. Web part 1.27.0 hides most of the wait (shows the browser's last copy), but doesn't fix it.
 
@@ -548,6 +548,10 @@ This is the single source of truth for every defect found in the October 2026 co
 - 2026-10-18 – Measured (above). Full plan (snapshot, queue, instant loads) discussed; owner reduced the scope (D-08) because the dashboard is used occasionally (D-07). Max instances set to 1 (D-04, BW-004).
 - 2026-10-18 – Built on branch `bw-023-readonly-loads` as **backend 1.26.0 + web part 1.28.0** (not deployed). `runPipeline(context, forceRefresh, isScan)`: on a dashboard load (`isScan` false) the sweep, native-exclusion tickets, auto-heal notes, picklist proof row and completed-ticket pruning are skipped; reads unchanged. Force Scan runs `runPipeline(context, true, true)` inside `withScanLock` (`shared/scanLock.ts`: Table Storage row ScanStatus/Lock/BCDRScanner, create-or-replace-expired by ETag, 15-min expiry, fail open if the store is down), audits "Force Scan", records the last scan (keeps the timer's next scan); if a scan is running it waits and returns fresh read-only data (`X-Scan: joined`). Timer takes the same lock and skips its run if a Force Scan holds it. Web part: button "Force Scan" sends `refresh=true`, shows "Scanning…" and is disabled meanwhile. `npm test`: **16 suites, 336 passed** (new: `dashboardReadOnly` 13, `scanLock` 10, timer +2; table mock now has real ETags); root tests 10 passed. Mutation checks, each caught: sweep on page load (7 fail), auto-heal on page load (7), picklist proof on page load (5), completed-ticket pruning on page load (6), native-exclusion tickets on page load (6), Force Scan without the lock (2), anyone can force (1), timer without the lock (1), expired lock never taken over (2), lock ignoring a running scan (5), lock not released (8). `.sppkg` checked: one bundle, version 1.28.0.0, contains `refresh=true`/"Force Scan", no "Force Refresh".
   - Release order: backend first (web part 1.27.0 keeps working – its button just reloads), then web part 1.28.0. Rollback: `backend-1.25.1` / `frontend-1.27.0`.
+- 2026-10-18 – Owner reviewed the diff and a local preview of web part 1.28.0 (real component, fake local backend, made-up data; preview removed afterwards). PR #17 merged (`91a57e9`, includes #16). **Backend 1.26.0 deployed** at 14:05 UTC by Claude on Malith's approval (`npm ci` → tests → build → `npm prune --omit=dev` → `func azure functionapp publish backupwatch-api --build local`); all 7 functions listed, no dev-role settings, anonymous GET (incl. `?refresh=true`) and exclusions 401. Tag `backend-1.26.0`; rollback `backend-1.25.1`.
+  - The first `npm test` before the deploy had 2 failures; reruns passed 336/336 ten times. Cause: under heavy CPU load (straight after `npm ci`) older BW-004 gateway/concurrency tests overran Jest's 5 s limit, and a timed-out test upset the next one; `scanLock`'s "scan finishes" test had the same weakness. Test-only fix on branch `bw-023-deployed`: `testTimeout` 30 s, module compile moved into a `beforeAll`, wider wait cap in that `scanLock` test. Four full runs in parallel: 336/336 each. Not part of the deployed code.
+  - Application Insights after deploy (read-only): 14:30 timer scan ran on 1.26.0 – "successfully executed and cached 117 appliances" (15.1 s); one dashboard load (4.0 s) with **no** write log lines; no exceptions; no failed requests.
+  - Remaining: owner uploads web part 1.28.0, tries Force Scan once, audit log checked together; then `DONE`.
 
 ---
 
@@ -636,4 +640,5 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-12 | 1.25.0 | Backend | BW-004, BW-006, BW-007 | Autotask gateway, silence enforcement, change freeze. Tag `backend-1.25.0` |
 | 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Uploaded and confirmed by Malith. Tag `frontend-1.27.0` |
 | 2026-10-16 | 1.25.1 | Backend | BW-024 | Storage shown in the correct unit (TB, not GB). Deployed 17:23 UTC; figures confirmed by Malith. Tag `backend-1.25.1` |
-| 2026-10-18 | 1.26.0 / 1.28.0 | Backend + Web part | BW-023 | Read-only dashboard loads, real Force Scan, scan lock. Built and tested, **not deployed** |
+| 2026-10-18 | 1.26.0 | Backend | BW-023 | Read-only dashboard loads, Force Scan endpoint, scan lock. Deployed 14:05 UTC. Tag `backend-1.26.0` |
+| 2026-10-18 | 1.28.0 | Web part | BW-023 | "Force Scan" button. Built, **waiting for upload** |
