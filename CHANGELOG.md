@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Web part 1.28.1] - 2026-10-18
+
+Backend unchanged at 1.26.0 – no Azure deploy needed.
+
+### Changed
+- **Status bar in plain English**: "In-Memory Cache Status: HIT/MISS" (developer jargon – "MISS" looked like a failure) replaced with "Live data, fetched just now · Last full scan 15:30 · Next scan 16:00", "Data from the last few minutes · …", or after Force Scan "Full scan completed just now · Next scan 16:00". A failed last scan is marked "(failed)". Suggested by Malith.
+
 ## [Backend 1.26.0 / Web part 1.28.0] - 2026-10-18
 
 Read-only dashboard loads and a real Force Scan (BW-023, decisions D-07 / D-08). Deploy the backend first – web part 1.27.0 keeps working with it.
