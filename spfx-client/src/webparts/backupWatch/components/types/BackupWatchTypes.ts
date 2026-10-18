@@ -70,6 +70,8 @@ export interface IBackupWatchState {
   loading: boolean;
   error: string | null;
   cacheStatus: string | null;
+  /** True when the data on screen came from a Force Scan (shown as "Full scan completed just now"). */
+  lastLoadWasScan?: boolean;
   expandedAppliances: { [key: string]: boolean };
   activeTab: 'active' | 'cancelled';
   activeFilter: string | null;

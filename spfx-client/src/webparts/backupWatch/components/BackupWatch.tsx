@@ -154,6 +154,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     const exclusionsList = Array.isArray(exclusions) ? exclusions : [];
     this._stopLoadTimer();
     this.setState({
+      // From the response body: SharePoint can't read the X-Cache-Status header (the backend's CORS doesn't expose it),
+      // which kept the status bar and its Force Scan button hidden.
+      cacheStatus: (Array.isArray(resData) ? null : resData.cacheStatus) || this.state.cacheStatus,
+      lastLoadWasScan: this._lastFetchWasForceScan,
       userSecurityLevel: this._toSecurityLevel(Array.isArray(resData) ? undefined : resData.userRole),
       serverUserEmail: Array.isArray(resData) ? undefined : resData.userEmail,
       roleResolved: true,
@@ -1109,6 +1113,24 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
     return url.indexOf('localhost') > -1 || url.indexOf('127.0.0.1') > -1;
   }
 
+  private _lastFetchWasForceScan = false;
+
+  /** Plain-English status bar text (replaces "In-Memory Cache Status: HIT/MISS"). */
+  private _describeDataFreshness(): string {
+    const clock = (s?: string | null): string | null => {
+      const m = s ? /(\d{1,2}):(\d{2})/.exec(s) : null;
+      return m ? `${('0' + m[1]).slice(-2)}:${m[2]}` : null;
+    };
+    const scan = this.state.scanStatus;
+    const last = clock(scan && scan.lastScan);
+    const next = clock(scan && scan.nextScan);
+    const nextPart = next ? ` · Next scan ${next}` : '';
+    if (this.state.lastLoadWasScan) return `Full scan completed just now${nextPart}`;
+    const lead = this.state.cacheStatus === 'HIT' ? 'Data from the last few minutes' : 'Live data, fetched just now';
+    const failed = scan && scan.status === 'Failed' ? ' (failed)' : '';
+    return `${lead}${last ? ` · Last full scan ${last}${failed}` : ''}${nextPart}`;
+  }
+
   /** Force Scan (Specialist/Administrator): asks the backend for a full scan now and waits for it (BW-023). */
   private _forceScan = (): void => {
     this._fetchData(true);
@@ -1116,6 +1138,7 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
 
   // `forceScan` must be exactly true: this is also used as a click/Retry handler, which passes an event.
   private _fetchData = (forceScan?: unknown): void => {
+    this._lastFetchWasForceScan = forceScan === true;
     // Keep what's on screen while refreshing; the skeleton only shows when there is nothing yet.
     const hasData = this.state.devices.length > 0;
     this._startLoadTimer();
@@ -1660,10 +1683,10 @@ export default class BackupWatch extends React.Component<IBackupWatchProps, IBac
           onToggleFullScreen={() => this.setState({ isFullScreen: !isFullScreen })}
         />
 
-        {/* Cache status info box (Force refresh restricted to Specialist/Admin) */}
+        {/* Data freshness and Force Scan (Force Scan restricted to Specialist/Admin) */}
         {cacheStatus && !isSettingsOpen && (
           <div className="bw-status-bar">
-            <span>In-Memory Cache Status: <strong>{cacheStatus}</strong></span>
+            <span>{this._describeDataFreshness()}</span>
             {(userSecurityLevel === 'Specialist' || userSecurityLevel === 'Administrator') && (
               <button
                 onClick={this._forceScan}
