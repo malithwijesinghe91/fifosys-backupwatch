@@ -42,7 +42,7 @@ This is the single source of truth for every defect found in the October 2026 co
 |---|---|---|---|---|---|---|
 | BW-020 | No source control | High | 0 | Tooling | `DONE` | baseline-2026-10-10 |
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
-| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `IN PROGRESS` | Backend 1.26.0 (live) + Web part 1.28.0 (built, not uploaded) |
+| BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `DONE` | Backend 1.26.0 + Web part 1.28.1 |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
@@ -74,7 +74,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010, BW-023, BW-024 |
 | **4 – Hygiene** | Clean-up, docs, misleading UI | BW-014, BW-016, BW-018 |
 
-> Status 2026-10-18: Phase 0 complete; BW-001/003/024 done (BW-002 has only an optional step left); BW-004/006/007 live and in their 30-day check. Max instances now 1 (D-04). Next: BW-023 (reduced scope, D-08), then D-05 / BW-018 (priority raised by D-07), then scanner reliability (BW-008, BW-005, BW-014). On hold by owner: BW-009, BW-013 (D-06). Parked: moving the web part to Azure Static Web Apps (feasible; reviewed 2026-10-18, not pursued now).
+> Status 2026-10-18: Phase 0 complete; BW-001/003/024 done (BW-002 has only an optional step left); BW-004/006/007 live and in their 30-day check. Max instances now 1 (D-04). BW-023 done (backend 1.26.0 + web part 1.28.1). Next: D-05 / BW-018 (priority raised by D-07), then scanner reliability (BW-008, BW-005, BW-014). On hold by owner: BW-009, BW-013 (D-06). Parked: moving the web part to Azure Static Web Apps (feasible; reviewed 2026-10-18, not pursued now).
 
 ---
 
@@ -523,7 +523,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-023 – Dashboard request runs the full scan (slow loads; Autotask writes on page load)
-**Status:** `IN PROGRESS` (backend 1.26.0 live since 2026-10-18; web part 1.28.0 waiting for upload)  **Severity:** Medium  **Release type:** Backend + small web part
+**Status:** `DONE` (backend 1.26.0 + web part 1.28.1, confirmed live 2026-10-18)  **Severity:** Medium  **Release type:** Backend + small web part
 
 **Finding (2026-10-12).** When the 5-minute cache has expired, `GET /api/backupWatchTrigger` (opening the dashboard) runs the whole pipeline before replying: Datto device and asset calls, the TrackedTickets sync, the volume-exclusion sweep and auto-heals. The person opening the page waits for background work, and simply opening the dashboard can trigger Autotask writes (sweep notes, auto-heal notes). With the BW-004 gateway sending Autotask calls one at a time, these loads can take longer. Web part 1.27.0 hides most of the wait (shows the browser's last copy), but doesn't fix it.
 
@@ -552,7 +552,8 @@ This is the single source of truth for every defect found in the October 2026 co
   - The first `npm test` before the deploy had 2 failures; reruns passed 336/336 ten times. Cause: under heavy CPU load (straight after `npm ci`) older BW-004 gateway/concurrency tests overran Jest's 5 s limit, and a timed-out test upset the next one; `scanLock`'s "scan finishes" test had the same weakness. Test-only fix on branch `bw-023-deployed`: `testTimeout` 30 s, module compile moved into a `beforeAll`, wider wait cap in that `scanLock` test. Four full runs in parallel: 336/336 each. Not part of the deployed code.
   - Application Insights after deploy (read-only): 14:30 timer scan ran on 1.26.0 – "successfully executed and cached 117 appliances" (15.1 s); one dashboard load (4.0 s) with **no** write log lines; no exceptions; no failed requests.
   - Owner couldn't find the button: the whole status bar was missing on the live site, and always had been. The web part read the cache status only from the `X-Cache-Status` header, which the browser hides cross-origin (the backend's CORS doesn't expose it), so the bar never rendered in SharePoint (the local preview's fake backend exposed it, which hid the bug). Fixed in 1.28.0 before upload (PR #19): read `cacheStatus` from the response body. `.sppkg` rebuilt and checked (one bundle, 1.28.0.0, fix present).
-  - Remaining: owner uploads web part 1.28.0, tries Force Scan once, audit log checked together; then `DONE`.
+- 2026-10-18 – Owner found "In-Memory Cache Status: HIT/MISS" misleading ("MISS" looked like a failure). **Web part 1.28.1** (PR #20, built on #19): plain-English status bar – "Live data, fetched just now · Last full scan 16:03 · Next scan 16:30", "Data from the last few minutes · …", "Full scan completed just now · …" after a Force Scan, "(failed)" when the last scan failed. A first build hit a type error and still produced a package; it was deleted and rebuilt after the fix (checked: one bundle, 1.28.1.0, new text present, old text gone).
+- 2026-10-18 – **Web part 1.28.1 uploaded** (Malith) and **confirmed live**: status bar visible with the new wording. Owner pressed Force Scan (15:55 and 16:03 UK); audit trail shows both "Force Scan" entries by m.wijesinghe@fifosys.com. Application Insights for 16:00–16:04 UK: 16:00 timer scan OK (117 appliances, 13 s); 16:03:00 page load logged "dashboard loads are read-only" and wrote nothing; 16:03:15 Force Scan ran the full scan in 10 s (scan-only steps logged, silenced appliance ICE-DATTO2 correctly skipped); no exceptions, no failed requests, no scan overlap. Note: App Insights request URLs omit the query string, so Force Scans are identified by their scan-only log lines, not `refresh=true`. **`DONE`.** Tag `frontend-1.28.1` once PRs #18–#20 are merged.
 
 ---
 
@@ -642,4 +643,5 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-12 | 1.27.0 | Web part | – | Loading experience (skeleton, last dashboard shown instantly, Retry). Uploaded and confirmed by Malith. Tag `frontend-1.27.0` |
 | 2026-10-16 | 1.25.1 | Backend | BW-024 | Storage shown in the correct unit (TB, not GB). Deployed 17:23 UTC; figures confirmed by Malith. Tag `backend-1.25.1` |
 | 2026-10-18 | 1.26.0 | Backend | BW-023 | Read-only dashboard loads, Force Scan endpoint, scan lock. Deployed 14:05 UTC. Tag `backend-1.26.0` |
-| 2026-10-18 | 1.28.0 | Web part | BW-023 | "Force Scan" button. Built, **waiting for upload** |
+| 2026-10-18 | 1.28.0 | Web part | BW-023 | "Force Scan" button; status bar now shows on the live site. Superseded by 1.28.1 before use |
+| 2026-10-18 | 1.28.1 | Web part | BW-023 | Plain-English status bar. Uploaded and confirmed by Malith |
