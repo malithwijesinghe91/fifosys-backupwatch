@@ -503,6 +503,7 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isSca
             assets = assetResponse.data || [];
         } catch (assetErr: any) {
             context.log.warn(`Failed to fetch assets/agents for device ${device.name}: ${assetErr.message || assetErr}`);
+            return { ...device, assets, assetsFetchFailed: true };
         }
         return {
             ...device,
@@ -517,6 +518,53 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isSca
         try {
             const exclusionsTableClient = await getTableClient("Exclusions");
             const nowMs = Date.now();
+
+            /**
+             * The agent is archived in Datto (every copy), so its exclusion can never heal or be re-raised (BW-025, Option A).
+             * Open ticket: post one note, then remove the exclusion. Closed ticket or none: remove it. Audited either way.
+             * If the note can't be posted, nothing is removed and the next scan tries again.
+             */
+            const retireArchivedAgentExclusion = async (e: IExclusionEntity, ticketId: number | null, atTicket: any): Promise<void> => {
+                const parts = (e.target || "").split(":");
+                const devName = parts[0] || "";
+                const agentName = parts[1] || "";
+                const volName = parts.slice(2).join(":");
+                const ticketOpen = !!atTicket && atTicket.status !== 5;
+                const ticketLabel = atTicket ? `#${atTicket.ticketNumber || ticketId}` : (e.ticketNumber || "none");
+
+                if (ticketOpen && ticketId) {
+                    const posted = await createTicketNoteInAutoTask(ticketId, {
+                        title: `[BACKUPWATCH] Agent archived in Datto - exclusion removed - ${volName}`,
+                        description: `Agent [${agentName}] on appliance [${devName}] is archived in Datto BCDR, so volume [${volName}] is no longer monitored.\n\n` +
+                            `BackupWatch has removed the exclusion for this volume. No further reminders will be posted on this ticket.\n\n` +
+                            `Engineer next steps: confirm the server was decommissioned or replaced, then close this ticket.`
+                    }, autotaskConfig, { origin: "scanner", action: "Archived agent exclusion note", deviceName: devName, agentName });
+                    if (!posted) {
+                        context.log.warn(`[Exclusion Sweep] ${e.rowKey}: agent archived but the note to ticket ${ticketLabel} was not posted; will retry next scan.`);
+                        return;
+                    }
+                }
+
+                await exclusionsTableClient.deleteEntity(e.partitionKey, e.rowKey);
+                const idx = exclusions.findIndex(item => item.rowKey === e.rowKey);
+                if (idx > -1) exclusions.splice(idx, 1);
+                context.log.info(`[Exclusion Sweep] Removed ${e.rowKey}: agent ${agentName} is archived in Datto (ticket ${ticketLabel}, ${ticketOpen ? "open - note posted" : "closed or none"}).`);
+
+                try {
+                    const auditTableClient = await getTableClient("AuditLogs");
+                    await auditTableClient.createEntity({
+                        partitionKey: "AuditLog",
+                        rowKey: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                        userEmail: "system@fifosys.com",
+                        action: "Removed Exclusion (Agent Archived)",
+                        target: e.target || e.rowKey,
+                        details: `Agent ${agentName} is archived in Datto. Ticket ${ticketLabel} ${ticketOpen ? "was open: note posted" : "was closed or missing"}. Exclusion removed.`,
+                        createdTime: new Date().toISOString()
+                    });
+                } catch (auditErr: any) {
+                    context.log.error("Failed to write archived-agent audit log:", auditErr.message || auditErr);
+                }
+            };
 
             // Process exclusions sequentially (1 thread at a time with 100ms pacing) to strictly adhere to Autotask 3-thread limit
             const exclusionList = [...exclusions];
@@ -571,17 +619,31 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isSca
                     (d.name && d.name.toLowerCase() === devName.toLowerCase()) || 
                     (d.serialNumber && d.serialNumber.toLowerCase() === devName.toLowerCase())
                 );
-                const matchedAsset = matchedDevice && matchedDevice.assets ? 
-                    matchedDevice.assets.find((a: any) => 
-                        (a.name && a.name.toLowerCase() === agentName.toLowerCase()) || 
+                const agentMatches: any[] = matchedDevice && matchedDevice.assets ?
+                    matchedDevice.assets.filter((a: any) =>
+                        (a.name && a.name.toLowerCase() === agentName.toLowerCase()) ||
                         (a.hostname && a.hostname.toLowerCase() === agentName.toLowerCase())
-                    ) : null;
+                    ) : [];
+                // Datto can list an archived copy and a live copy under the same name: use the live one (BW-025)
+                const matchedAsset = agentMatches.find((a: any) => !a.isArchived) || null;
+                // Every copy of the agent is archived in Datto: the exclusion is retired below (BW-025, Option A)
+                const agentArchived = agentMatches.length > 0 && !matchedAsset;
 
-                // If device or asset cannot be found or is archived/inactive, skip auto-heal/reopen to prevent false actions
-                if (!matchedDevice || !matchedAsset || matchedAsset.isArchived) continue;
+                if (!matchedDevice) {
+                    context.log.info(`[Exclusion Sweep] Skipping ${e.rowKey}: appliance ${devName} not found in Datto.`);
+                    continue;
+                }
+                if (matchedDevice.assetsFetchFailed) {
+                    context.log.info(`[Exclusion Sweep] Skipping ${e.rowKey}: agent list for ${devName} could not be fetched this scan.`);
+                    continue;
+                }
+                if (!matchedAsset && !agentArchived) {
+                    context.log.warn(`[Exclusion Sweep] Skipping ${e.rowKey}: agent ${agentName} not found on ${devName} (renamed or removed?). Review it in Admin Console > Cleanup.`);
+                    continue;
+                }
 
                 // Check live Datto protection status for this volume
-                const rawUnprotected = matchedAsset.unprotectedVolumeNames || [];
+                const rawUnprotected = (matchedAsset && matchedAsset.unprotectedVolumeNames) || [];
                 const isVolumeStillUnprotected = rawUnprotected.some((uv: string) => normalizeVolumeName(uv) === volName);
 
                 // Resolve Autotask numeric Ticket ID
@@ -612,7 +674,14 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isSca
                     }
                 }
 
-                if (!ticketIdNum) continue;
+                if (!ticketIdNum) {
+                    if (agentArchived) {
+                        await retireArchivedAgentExclusion(e, null, null);
+                    } else {
+                        context.log.info(`[Exclusion Sweep] Skipping ${e.rowKey}: no Autotask ticket to check.`);
+                    }
+                    continue;
+                }
 
                 let atTicket: any = null;
                 try {
@@ -621,7 +690,15 @@ export async function runPipeline(context: Context, forceRefresh: boolean, isSca
                     context.log.warn(`[Exclusion Sweep] Could not fetch ticket #${ticketIdNum} from Autotask: ${tErr.message}`);
                     continue;
                 }
-                if (!atTicket) continue;
+                if (!atTicket) {
+                    context.log.warn(`[Exclusion Sweep] Skipping ${e.rowKey}: ticket #${ticketIdNum} not returned by Autotask.`);
+                    continue;
+                }
+
+                if (agentArchived) {
+                    await retireArchivedAgentExclusion(e, ticketIdNum, atTicket);
+                    continue;
+                }
 
                 const isTicketClosed = (atTicket.status === 5); // 5 = Completed (Closed in Autotask)
 
@@ -1663,6 +1740,14 @@ async function handleRequest(context: Context, req: HttpRequest, userSec: NonNul
             const method = req.method ? req.method.toLowerCase() : "get";
 
             if (method === "get") {
+                // Straight after a restart there is nothing in memory: load the dashboard data first (read-only, BW-025)
+                if (!cachedRawData) {
+                    try {
+                        await runPipeline(context, false, false);
+                    } catch (loadErr: any) {
+                        context.log.warn("Cleanup: could not load appliance data:", loadErr.message || loadErr);
+                    }
+                }
                 const activeSerials = new Set<string>();
                 const activeAgentKeys = new Set<string>();
 
@@ -1672,7 +1757,8 @@ async function handleRequest(context: Context, req: HttpRequest, userSec: NonNul
                         if (dev.deviceName) {
                             const dName = dev.deviceName.toLowerCase();
                             for (const ag of (dev.agents || [])) {
-                                if (ag.name) activeAgentKeys.add(`${dName}:${ag.name.toLowerCase()}`);
+                                // An archived agent no longer counts as existing (BW-025)
+                                if (ag.name && !ag.isArchived) activeAgentKeys.add(`${dName}:${ag.name.toLowerCase()}`);
                             }
                         }
                     }
