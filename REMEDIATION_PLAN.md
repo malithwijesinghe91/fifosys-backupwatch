@@ -44,7 +44,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
 | BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `DONE` | Backend 1.26.0 + Web part 1.28.1 |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
-| BW-025 | Exclusions on archived agents never cleaned up; duplicate agent names | Medium | 3 | Backend | `IN PROGRESS` | Backend 1.26.1 (built, not deployed) |
+| BW-025 | Exclusions on archived agents never cleaned up; duplicate agent names | Medium | 3 | Backend | `DONE` | Backend 1.26.1 |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
@@ -580,7 +580,7 @@ This is the single source of truth for every defect found in the October 2026 co
 ---
 
 ### BW-025 – Exclusions on archived agents never cleaned up; duplicate agent names
-**Status:** `IN PROGRESS` (backend 1.26.1 built and tested, not deployed)  **Severity:** Medium  **Release type:** Backend
+**Status:** `DONE` (backend 1.26.1, confirmed by the 2026-10-19 10:00 scan)  **Severity:** Medium  **Release type:** Backend
 
 **Finding (2026-10-19, reported by Malith).** KUI-DATTO-05:KSLCARPEDIEM01:G showed "TEMP (0D LEFT)" with ticket T20260827.0293, which is closed in Autotask. Read-only checks: the exclusion expired 2026-09-10 (F, T20260827.0292: 2026-09-08) and the scan had not touched either since – no expiry notes, no re-raise. Datto lists KSLCARPEDIEM01 twice on KUI-DATTO-05, **both archived**. The sweep did `if (!matchedDevice || !matchedAsset || matchedAsset.isArchived) continue;` – a silent skip before the ticket was ever checked. Also: Datto lists archived and live copies under the same name (KSLSQL01, KSLDC01/02/03, KSLFS01, KSLHRNET, KSLPRINT01, KSLPARTNER on KUI-DATTO-05) and `.find()` took the first, so an exclusion on a live server whose archived twin came first would be skipped the same way. Admin Console Cleanup missed both: it counted archived agents as existing and found nothing with an empty cache. A read-only audit of all 16 exclusions against Datto: only these 2 affected today; none hidden by a duplicate yet.
 
@@ -596,6 +596,10 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-19 – Reported by Malith; cause found read-only (App Insights, Exclusions table, Datto assets); Option A chosen; built as backend 1.26.1 on branch `bw-025-archived-agents`. Not deployed.
+- 2026-10-19 – PR #21 merged (`47d757d`). **Backend 1.26.1 deployed** 08:59 UTC by Claude on Malith's approval (348 tests passed; no dev-role settings; anonymous GET 401). Tag `backend-1.26.1`; rollback `backend-1.26.0`. 09:00 UTC scan: **removed** KUI-DATTO-05:KSLCARPEDIEM01 G and F (both tickets closed, so no note), scan OK (117 appliances), no exceptions. `DONE`.
+  - The new skip logging surfaced two more: (1) MP-DATTO-01:MP-HV-01:D (T20260909.0057, expired 2026-09-24) – MP-HV-01 no longer exists on MP-DATTO-01 at all (only MP-DC-01), so it is left for the owner to remove by hand (listed in Admin Console › Cleanup); (2) ARK-WAT-DATTO-01:JTS2-SVR:F – permanent, deliberate (Veeam), no ticket: nothing to do (quieten that log line for permanent exclusions later).
+  - **Decision (Malith): no automatic handling of agents that disappear entirely** (e.g. "missing for 7 days, treat as archived") for now; clear them by hand via Cleanup.
+  - Data note: four ARK-WAT-DATTO-01 exclusions (JTS2-SVR F; LOGIKAL2-SVR H, J, K) were saved in August with drive letters as `F:\` etc. rather than normalised `F`; the scan copes (it normalises when comparing). Optional one-off tidy-up later.
 
 ---
 
@@ -667,4 +671,4 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-18 | 1.26.0 | Backend | BW-023 | Read-only dashboard loads, Force Scan endpoint, scan lock. Deployed 14:05 UTC. Tag `backend-1.26.0` |
 | 2026-10-18 | 1.28.0 | Web part | BW-023 | "Force Scan" button; status bar now shows on the live site. Superseded by 1.28.1 before use |
 | 2026-10-18 | 1.28.1 | Web part | BW-023 | Plain-English status bar. Uploaded and confirmed by Malith |
-| 2026-10-19 | 1.26.1 | Backend | BW-025 | Archived-agent exclusions retired; live agent preferred over archived twin. Built and tested, **not deployed** |
+| 2026-10-19 | 1.26.1 | Backend | BW-025 | Archived-agent exclusions retired; live agent preferred over archived twin. Deployed 08:59 UTC. Tag `backend-1.26.1` |
