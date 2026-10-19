@@ -44,6 +44,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-022 | Audit Trail button unresponsive since 1.23.2 (unbound click handler) | High | 0 | Frontend | `DONE` | Frontend 1.23.3 |
 | BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `DONE` | Backend 1.26.0 + Web part 1.28.1 |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
+| BW-025 | Exclusions on archived agents never cleaned up; duplicate agent names | Medium | 3 | Backend | `IN PROGRESS` | Backend 1.26.1 (built, not deployed) |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
@@ -71,7 +72,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | **0 – Foundations** | Make every later fix testable, safely releasable and correctly versioned | BW-020, BW-022, BW-017, BW-011, BW-012, BW-019 |
 | **1 – Security** | Roles enforced server-side from Entra; no client trust | BW-003, BW-001, BW-002 |
 | **2 – Autotask gateway & suppression** | One choke point for all Autotask traffic that enforces rate limits, silence and blackout | BW-004, BW-006, BW-007, BW-005 |
-| **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010, BW-023, BW-024 |
+| **3 – Correctness** | Fix data-handling bugs | BW-009, BW-008, BW-013, BW-015, BW-010, BW-023, BW-024, BW-025 |
 | **4 – Hygiene** | Clean-up, docs, misleading UI | BW-014, BW-016, BW-018 |
 
 > Status 2026-10-18: Phase 0 complete; BW-001/003/024 done (BW-002 has only an optional step left); BW-004/006/007 live and in their 30-day check. Max instances now 1 (D-04). BW-023 done (backend 1.26.0 + web part 1.28.1). Next: D-05 / BW-018 (priority raised by D-07), then scanner reliability (BW-008, BW-005, BW-014). On hold by owner: BW-009, BW-013 (D-06). Parked: moving the web part to Azure Static Web Apps (feasible; reviewed 2026-10-18, not pursued now).
@@ -89,6 +90,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | D-05 (BW-018) | The 6 non-volume auto-ticket toggles do nothing. Hide them, or implement auto-ticketing? | **Short term:** disable them in the UI with "Not yet available". **Long term:** implement per alert type, one at a time, behind the existing toggle. | *Pending* – owner asked what the 6 toggles are (explained 2026-10-12). | |
 | D-06 (BW-013) | Which Autotask statuses count as "closed"? | Make it configurable in Admin Console (default: Completed + any status whose label contains "Cancel" or "Closed"). Needs the live status picklist to confirm. | **Deferred – review later** (Malith). BW-013 stays on hold. | 2026-10-12 |
 | D-07 (all) | What is the dashboard for? | – | **Occasional use now, possibly the main alert view later** (Malith). Day to day the team relies on alerts and uses the dashboard mainly to add exclusions, but the dashboard must **always show complete information** – no change may strip information from it – because Datto's own alerts may later be retired in favour of BackupWatch. Consequence: alerting must come from the background scan, not from someone opening the page (raises the priority of D-05 / BW-018 and the scanner reliability items). | 2026-10-18 |
+| D-09 (BW-025) | What should the scan do with an exclusion whose agent is archived in Datto? | **Option A:** open ticket – post one note, then remove; closed or no ticket – remove. Audited. Option B: never remove; flag "Agent archived – review". | **Option A** (Malith). | 2026-10-19 |
 | D-08 (BW-023) | How far should BW-023 go? | Full version: shared snapshot, instant loads, queued refresh. | **Reduced scope** (Malith). Opening the dashboard stays a live read (5–15 s is fine for occasional use) but never writes to Autotask; only scans write. The Force Refresh button becomes a real **Force Scan** (Specialist/Administrator) that runs a full scan and waits for it (scans take about 7 s). A shared lock stops a forced scan overlapping the timer scan. The snapshot / instant-load version can be revisited if usage grows. | 2026-10-18 |
 
 ---
@@ -577,6 +579,26 @@ This is the single source of truth for every defect found in the October 2026 co
 
 ---
 
+### BW-025 – Exclusions on archived agents never cleaned up; duplicate agent names
+**Status:** `IN PROGRESS` (backend 1.26.1 built and tested, not deployed)  **Severity:** Medium  **Release type:** Backend
+
+**Finding (2026-10-19, reported by Malith).** KUI-DATTO-05:KSLCARPEDIEM01:G showed "TEMP (0D LEFT)" with ticket T20260827.0293, which is closed in Autotask. Read-only checks: the exclusion expired 2026-09-10 (F, T20260827.0292: 2026-09-08) and the scan had not touched either since – no expiry notes, no re-raise. Datto lists KSLCARPEDIEM01 twice on KUI-DATTO-05, **both archived**. The sweep did `if (!matchedDevice || !matchedAsset || matchedAsset.isArchived) continue;` – a silent skip before the ticket was ever checked. Also: Datto lists archived and live copies under the same name (KSLSQL01, KSLDC01/02/03, KSLFS01, KSLHRNET, KSLPRINT01, KSLPARTNER on KUI-DATTO-05) and `.find()` took the first, so an exclusion on a live server whose archived twin came first would be skipped the same way. Admin Console Cleanup missed both: it counted archived agents as existing and found nothing with an empty cache. A read-only audit of all 16 exclusions against Datto: only these 2 affected today; none hidden by a duplicate yet.
+
+**Fix (D-09 = Option A).**
+- [x] Prefer the live (non-archived) agent when names repeat; "archived" only when every copy is archived.
+- [x] Archived agent: open ticket – one note, then remove; closed or no ticket – remove; audited "Removed Exclusion (Agent Archived)"; note not posted – nothing removed, retried next scan; ticket not fetched – retried next scan. Silence and change freeze still win (the sweep's suppression check runs first).
+- [x] Never treat missing data as archived: agent list fetch failed, or agent not found at all – left alone, reason logged.
+- [x] Every sweep skip logs its reason.
+- [x] Cleanup: archived agents count as gone; loads data itself after a restart.
+- [x] Tests (`archivedAgentExclusions`, 12). Mutation checks, each caught: first-match bug back (2 fail), archived skipped (3), fetch failure as archived (1), removed though note failed (1), note on closed ticket (1), cleanup counts archived (1), cleanup without load (1), missing agent as archived (1). `npm test`: 17 suites, 348 passed.
+
+**Acceptance criteria.** After deploy, the next scan removes the two KUI-DATTO-05:KSLCARPEDIEM01 exclusions (F: note on T20260827.0292 if still open; G: closed, removed) and the audit trail shows both.
+
+**Progress log.**
+- 2026-10-19 – Reported by Malith; cause found read-only (App Insights, Exclusions table, Datto assets); Option A chosen; built as backend 1.26.1 on branch `bw-025-archived-agents`. Not deployed.
+
+---
+
 ## Phase 4 – Hygiene
 
 ### BW-014 – Silent `catch {}` blocks hide failures
@@ -645,3 +667,4 @@ This is the single source of truth for every defect found in the October 2026 co
 | 2026-10-18 | 1.26.0 | Backend | BW-023 | Read-only dashboard loads, Force Scan endpoint, scan lock. Deployed 14:05 UTC. Tag `backend-1.26.0` |
 | 2026-10-18 | 1.28.0 | Web part | BW-023 | "Force Scan" button; status bar now shows on the live site. Superseded by 1.28.1 before use |
 | 2026-10-18 | 1.28.1 | Web part | BW-023 | Plain-English status bar. Uploaded and confirmed by Malith |
+| 2026-10-19 | 1.26.1 | Backend | BW-025 | Archived-agent exclusions retired; live agent preferred over archived twin. Built and tested, **not deployed** |

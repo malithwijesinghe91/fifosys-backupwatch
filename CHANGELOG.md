@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Backend 1.26.1] - 2026-10-19
+
+Web part unchanged at 1.28.1 – no SharePoint upload needed.
+
+### Fixed
+- **Exclusions on archived agents went stale (BW-025)**: when an agent was archived in Datto, the scan skipped its exclusions silently, so a closed ticket was never noticed and the exclusion stayed for ever (found by Malith: KUI-DATTO-05:KSLCARPEDIEM01 F and G, tickets T20260827.0292 / .0293, expired in September). Now (decision D-09, Option A) an exclusion whose agent is archived (every copy) is retired by the scan: an open ticket gets one note ("agent archived in Datto – exclusion removed"), then the exclusion is removed; a closed ticket (or none): just removed. Audited as "Removed Exclusion (Agent Archived)". If the note can't be posted, nothing is removed and the next scan retries.
+- **Duplicate agent names (BW-025)**: Datto lists archived and live copies of an agent under the same name (e.g. KSLSQL01, KSLDC01 on KUI-DATTO-05); the scan used the first one, which could be the archived copy, silently skipping exclusions on the live server. The live copy is now used.
+- **Never mistakes missing data for "archived"**: if an appliance's agent list can't be fetched, or the agent isn't found at all (renamed or removed), the exclusion is left alone and the reason is logged.
+- **Admin Console › Cleanup**: archived agents no longer count as existing, so their exclusions are listed as orphans; it also works straight after a restart (it used to find nothing until the dashboard had loaded).
+- Every exclusion the sweep skips now logs why.
+
 ## [Web part 1.28.1] - 2026-10-18
 
 Backend unchanged at 1.26.0 – no Azure deploy needed.
