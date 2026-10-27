@@ -45,6 +45,7 @@ This is the single source of truth for every defect found in the October 2026 co
 | BW-023 | Dashboard request runs the full scan (slow loads; Autotask writes on page load) | Medium | 3 | Backend + small web part | `DONE` | Backend 1.26.0 + Web part 1.28.1 |
 | BW-024 | Appliance storage shown in the wrong unit (TB labelled as GB) | Medium | 3 | Backend | `DONE` | |
 | BW-025 | Exclusions on archived agents never cleaned up; duplicate agent names | Medium | 3 | Backend | `DONE` | Backend 1.26.1 |
+| BW-026 | Automatic handling of backup and screenshot failures (smart ticketing) | Medium | 5 | Backend + web part | `BACKLOG` | |
 | BW-001 | Backend trusts client-supplied role (privilege escalation) | Critical | 1 | Backend + Entra config (+ small frontend) | `DONE` | Backend 1.24.0 + Frontend 1.23.4 |
 | BW-002 | JWT decoded but not verified; all functions `anonymous` | High | 1 | Backend | `TODO` | |
 | BW-003 | Confirm Easy Auth / Entra configuration | High | 1 | Azure config (no code) | `DONE` | n/a (config check) |
@@ -649,6 +650,40 @@ This is the single source of truth for every defect found in the October 2026 co
 
 **Progress log.**
 - 2026-10-10 – Item created.
+
+---
+
+## Backlog – planned, not scheduled
+
+### BW-026 – Automatic handling of backup and screenshot failures (smart ticketing)
+**Status:** `BACKLOG` (discussed 2026-10-27; owner asked to keep it for later)  **Severity:** Medium  **Release type:** Backend + web part  **Closes:** D-05 / BW-018 when built
+
+**Idea.** Today BackupWatch raises Autotask tickets only for volume exclusions; backup and screenshot failures come from Datto's own email alerts. The scanner already tracks and auto-heals backup/screenshot tickets (`agent:<name>:backup|screenshot` in TrackedTickets) – only the automatic raising is missing.
+
+**What the data supports (read-only sample of 121 agents, 2026-10-27).** Each agent's last 10 backup attempts with status and Datto's error text; the latest screenshot attempt (pass/fail, time, image link) but no failure reason. Common messages: "A backup hasn't been taken in over 24 hours" (49), "Cannot connect to the host" (44), volumes unavailable (9), SNAPSHOT_INSUFFICIENT_FREE_SPACE (7), VSS export error (4), job stalled >900 s (4), agent failed to report / rebooted (1).
+
+**Levels.**
+1. Detect and ticket – yes (persisting failures only; update, don't duplicate; auto-heal note when cleared).
+2. Diagnose and guide – yes for backups (cause and next steps from Datto's message, priority by severity and age); partly for screenshots (no reason given).
+3. Fix – **not from BackupWatch**: the BCDR API is, as far as known, read-only for us (to confirm against Datto's docs), and BackupWatch must not touch client servers. Possible later via Datto RMM approved scripts – a separate project.
+
+**Proposed rules (thresholds to agree).**
+| Problem | Raise when | Priority | Ticket content |
+|---|---|---|---|
+| Backup failing | 3 failed attempts in a row, or failing ≥ 12 h | Medium → High at 48 h | Agent, last good backup, Datto error, likely cause, next steps |
+| No backup in 24 h | Datto says so, or last success > 24 h | High | Plus "check agent service / schedule" |
+| Host unreachable | 3 in a row | Medium | "Check server on, network, Datto agent service" |
+| Insufficient snapshot space | First occurrence | Medium | "Free space on drive X or move snapshot location" |
+| VSS error | 2 in a row | Medium | "Check VSS writers" |
+| Volume unavailable | First occurrence | Medium | Which drive is missing |
+| Screenshot failing | 2 in a row while backups succeed | Low | Screenshot link; "check boot / verification settings" |
+
+**Safety.** One ticket per agent per problem; reopen-protection (a recurrence within 24 h of healing adds a note to the same ticket); silence and change freeze win; Autotask gateway limits; flood guard (more than ~10 new tickets in one scan → one alert to Fifosys, hold the rest); **dry run first** (1–2 weeks: dashboard and audit show "would have raised", nothing sent); every rule switchable in the Admin Console; dashboard shows "ticket in ~30 min if still failing".
+
+**Decisions needed when picked up.** Scope (backup + screenshot first?); thresholds; one ticket per agent or per appliance; dry run (recommended); Level 3 via Datto RMM parked.
+
+**Progress log.**
+- 2026-10-27 – Discussed with Malith; parked in the backlog at his request.
 
 ---
 
