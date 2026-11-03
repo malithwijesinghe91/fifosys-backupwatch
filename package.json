@@ -5,7 +5,7 @@
   "scripts": {
     "release": "node scripts/release.mjs",
     "verify-versions": "node scripts/verify-versions.mjs",
-    "scaffold:prepare": "node scripts/prepare-scaffold.mjs",
+    "build:web": "node scripts/build-web.mjs",
     "test": "node --test scripts/*.test.mjs"
   }
 }

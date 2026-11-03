@@ -1,6 +1,6 @@
 // Tests for the release tooling (BW-011, decision D-03 = separate backend / web part versions).
 // Run: npm test (repo root). Works on a temporary copy of the version files – never touches the
-// real repo or scaffold.
+// real repo.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
-  REPO_ROOT, REPO_FILES, SCAFFOLD_FILES, bump, checkFiles, writeVersion, writeVersionsFile
+  REPO_ROOT, REPO_FILES, bump, checkFiles, writeVersion, writeVersionsFile
 } from './versionFiles.mjs';
 
 const script = (name) => join(REPO_ROOT, 'scripts', name);
@@ -43,7 +43,7 @@ test('release web bumps only the web part files and leaves the backend alone', (
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(readJson(join(root, 'versions.json')), { backend: '1.4.2', web: '2.1.0' });
     assert.deepEqual(checkFiles(root, REPO_FILES, { backend: '1.4.2', web: '2.1.0' }), []);
-    const solution = readFileSync(join(root, 'scaffold/config/package-solution.json'), 'utf8');
+    const solution = readFileSync(join(root, 'spfx-client/config/package-solution.json'), 'utf8');
     assert.equal((solution.match(/"2\.1\.0\.0"/g) || []).length, 2, 'solution + feature version');
     assert.match(readFileSync(join(root, 'stateless-backend/shared/version.ts'), 'utf8'), /APP_VERSION = "1\.4\.2"/);
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -124,23 +124,3 @@ test('verify fails when a web part file carries the backend version (halves are 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('verify --scaffold catches a scaffold copy that was not synced', () => {
-  const root = makeRepo({ backend: '1.4.2', web: '2.0.7' });
-  const scaffold = mkdtempSync(join(tmpdir(), 'bw-scaffold-'));
-  try {
-    mkdirSync(join(scaffold, 'src/webparts/backupWatch'), { recursive: true });
-    mkdirSync(join(scaffold, 'config'), { recursive: true });
-    cpSync(join(root, 'spfx-client/package.json'), join(scaffold, 'package.json'));
-    cpSync(join(root, 'spfx-client/src/webparts/backupWatch/BackupWatchWebPart.manifest.json'),
-      join(scaffold, SCAFFOLD_FILES[1].path));
-    cpSync(join(root, 'scaffold/config/package-solution.json'), join(scaffold, 'config/package-solution.json'));
-    assert.equal(run('verify-versions.mjs', '--root', root, '--scaffold-dir', scaffold, '--scaffold').status, 0);
-    writeFileSync(join(scaffold, 'package.json'), readFileSync(join(scaffold, 'package.json'), 'utf8').replace('2.0.7', '2.0.1'));
-    const r = run('verify-versions.mjs', '--root', root, '--scaffold-dir', scaffold, '--scaffold');
-    assert.equal(r.status, 1);
-    assert.match(r.stderr, /\[scaffold\] package\.json/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-    rmSync(scaffold, { recursive: true, force: true });
-  }
-});
