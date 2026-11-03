@@ -202,6 +202,8 @@ This is the single source of truth for every defect found in the October 2026 co
   - To finish: merge; upload the 1.25.1 `.sppkg`; check the header has no version and the footer shows `UI v1.25.1 · Engine v1.24.1`; tag `frontend-1.25.1`. Then `DONE`.
 - 2026-10-12 – PR #8 merged (`8ce87c9`). **Web part 1.25.1 uploaded** to the App Catalog (Malith). Tag `frontend-1.25.1` pushed. Live: backend 1.24.1, web part 1.25.1. `DONE`.
 
+- 2026-11-03 – **Web part build brought into the repo** (owner's request): `spfx-client/` is now the complete SPFx project; `scaffold/` and the external `C:\Projects\BackupWatchScaffold` retired as build locations; `npm run build:web` replaces `scaffold:prepare`. Found and fixed: Teams icons and the working tool list existed only outside git; `spfx-client/package.json` lacked the build tools; a hand-patched Microsoft file skipped SPFx's Node check (build now runs on Node 18 via npx instead). Parity proven: 1.28.1 rebuilt from the repo matches the uploaded package (identical bundle, manifest, icons; only per-build random package IDs differ). External folder kept as a fallback until the owner agrees to delete it.
+
 ---
 
 ### BW-012 – Is the v1.23.2 frontend refactor actually deployed?

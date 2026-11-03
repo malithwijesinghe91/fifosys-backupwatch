@@ -55,70 +55,20 @@ We will compile the TypeScript code and deploy it directly to the Flex Consumpti
 
 ## Part 2: Packaging the SPFx Web Part
 
-The `/spfx-client` directory in this workspace is a source-only package containing the React component and Web Part files. A ready-to-deploy scaffold container exists at `c:\Projects\BackupWatchScaffold`.
+`spfx-client/` is the complete SharePoint Framework 1.19 project (source, `config/`, `gulpfile.js`, Teams icons and the exact tool versions in `package-lock.json`). The old external `C:\Projects\BackupWatchScaffold` folder is no longer used.
 
-Follow one of the two options below to package the solution into a `.sppkg` file.
-
-### Option A: Merge into an Existing SPFx Project (Recommended)
-If you already have a functional SharePoint Framework project:
-
-1. **Copy the Web Part files**:
-   Copy the directory:
-   `c:\AG\FifoDash\spfx-client\src\webparts\backupWatch`
-   And paste it into the `src/webparts/` folder of your existing SPFx project.
-
-2. **Verify Dependencies**:
-   Ensure that the target project has `@microsoft/sp-http` and typical React dependencies installed. If needed, run:
+1. **Install the build tools** (once, or after `package.json` / `package-lock.json` change):
    ```powershell
-   npm install react@17.0.2 react-dom@17.0.2 --save
+   cd c:\Projects\FifoDash\spfx-client
+   npm install
    ```
-
-3. **Package using Gulp**:
-   Open a terminal in your existing project folder and run the build commands.
-   *Tip: If `gulp` is not installed globally on your machine, prefix the commands with `npx` to use the project's local Gulp instance.*
+2. **Build the package** from the repo root:
    ```powershell
-   npx gulp clean
-   npx gulp bundle --ship
-   npx gulp package-solution --ship
+   cd c:\Projects\FifoDash
+   npm run build:web
    ```
-
----
-
-### Option B: Scaffold a New SPFx Project for Packaging
-If you do not have an existing SPFx project, you must scaffold a container project to build the package:
-
-1. **Prepare the workspace directory**:
-   Ensure you are in the parent directory:
-   ```powershell
-   cd c:\AG
-   ```
-
-2. **Generate the SPFx solution non-interactively**:
-   Run the generator using `npx -y` with all the scaffolding parameters pre-defined:
-   ```powershell
-   npx -y --package yo --package @microsoft/generator-sharepoint yo @microsoft/sharepoint --solution-name "BackupWatchScaffold" --component-name "BackupWatch" --component-type "webpart" --framework "react" --environment "spo" --skip-install --skip-feature-deployment
-   ```
-   *This command installs the Yeoman runtime and SharePoint generator on-demand and scaffolds the project directly into the `c:\AG\BackupWatchScaffold` folder without prompting for inputs.*
-
-3. **Navigate to the generated project**:
-   ```powershell
-   cd BackupWatchScaffold
-   ```
-
-3. **Replace the scaffolded Web Part files with our source files**:
-   * Delete the folder `src/webparts/backupWatch` that the generator just created.
-   * Copy the folder `c:\AG\FifoDash\spfx-client\src\webparts\backupWatch` and paste it into your new `src/webparts/` folder.
-
-4. **Verify package dependencies**:
-   Run `npm install` inside `c:\AG\BackupWatchScaffold` to download the packages.
-
-5. **Package the solution**:
-   ```powershell
-   npx gulp clean
-   npx gulp bundle --ship
-   npx gulp package-solution --ship
-   ```
-   *The deployable package will be created at `c:\AG\BackupWatchScaffold\sharepoint\solution\backupwatch-client.sppkg`.*
+   This checks every version file, removes old build output, runs `gulp bundle --ship` and `gulp package-solution --ship` on Node 18 (SPFx 1.19's supported version, fetched by `npx` – the machine's own Node is not changed) and copies `backup-watch-scaffold.sppkg` to the repo root.
+3. **Upload** `backup-watch-scaffold.sppkg` to the SharePoint App Catalog.
 
 ---
 

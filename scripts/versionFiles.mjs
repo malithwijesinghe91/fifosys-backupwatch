@@ -1,14 +1,13 @@
 // Every file that carries a BackupWatch version (BW-011, decision D-03 = separate versions).
 // The backend and the web part each have their own version, held in the repo-root versions.json:
 //   { "backend": "x.y.z", "web": "x.y.z" }
-// Used by release.mjs (writes), verify-versions.mjs (checks) and prepare-scaffold.mjs (copies).
+// Used by release.mjs (writes), verify-versions.mjs (checks) and build-web.mjs (checks before building).
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-export const DEFAULT_SCAFFOLD = 'C:\\Projects\\BackupWatchScaffold';
 export const PARTS = ['backend', 'web'];
 export const PART_LABEL = { backend: 'Backend', web: 'Web part' };
 
@@ -30,14 +29,7 @@ export const REPO_FILES = [
   { part: 'web', path: 'spfx-client/package-lock.json', regex: JSON_VERSION, count: 2, form: plain, firstOnly: true },
   { part: 'web', path: 'spfx-client/src/webparts/backupWatch/BackupWatchWebPart.manifest.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
   // solution.version and every features[].version (the only x.y.z.w versions in the file)
-  { part: 'web', path: 'scaffold/config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
-];
-
-// Copies inside the build project, produced by prepare-scaffold.mjs. Checked with --scaffold.
-export const SCAFFOLD_FILES = [
-  { part: 'web', path: 'package.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
-  { part: 'web', path: 'src/webparts/backupWatch/BackupWatchWebPart.manifest.json', regex: JSON_VERSION, count: 1, form: plain, firstOnly: true },
-  { part: 'web', path: 'config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
+  { part: 'web', path: 'spfx-client/config/package-solution.json', regex: SOLUTION_VERSION, count: 'all', form: fourPart }
 ];
 
 export function readVersionsFile(root = REPO_ROOT) {
@@ -110,13 +102,12 @@ export function writeVersion(base, entry, version) {
   writeFileSync(file, out);
 }
 
-// Parses --root <dir> and --scaffold-dir <dir> (both optional; used by tests and odd checkouts).
+// Parses --root <dir> (optional; used by tests and odd checkouts).
 export function parseArgs(argv) {
-  const args = { root: REPO_ROOT, scaffold: process.env.BW_SCAFFOLD || DEFAULT_SCAFFOLD, rest: [], flags: new Set() };
+  const args = { root: REPO_ROOT, rest: [], flags: new Set() };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--root') args.root = resolve(argv[++i]);
-    else if (a === '--scaffold-dir') args.scaffold = resolve(argv[++i]);
     else if (a.startsWith('--')) args.flags.add(a);
     else args.rest.push(a);
   }

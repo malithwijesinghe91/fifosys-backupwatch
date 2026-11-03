@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Tooling] - 2026-11-03
+
+No version change; nothing to deploy. Web part 1.28.1 rebuilt from the repo is identical to the uploaded package (same bundle, manifest and icons; only the random package IDs SharePoint generates on every build differ).
+
+### Changed
+- **Web part build moved into the repo**: `spfx-client/` is now the complete SPFx 1.19 project (`config/`, `gulpfile.js`, `.yo-rc.json`, `.eslintrc.js`, Teams icons, and the exact tool versions in `package-lock.json`). The separate `scaffold/` folder and the external `C:\Projects\BackupWatchScaffold` build folder are no longer used; `npm run scaffold:prepare` is replaced by **`npm run build:web`** (checks versions, removes old output, bundles, packages, copies the `.sppkg` to the repo root, stops at the first failure).
+- **Found while moving**: the Teams icons and the working tool list existed only in the external folder; `spfx-client/package.json` did not list the build tools at all; and one Microsoft file in the external folder had been hand-edited to skip SPFx's Node version check so it would run on Node 24. Now the build runs on SPFx's supported **Node 18** via `npx` (the machine's Node 24 is unchanged) – no patching.
+- Release tooling and its tests now use `spfx-client/config/package-solution.json`.
+
 ## [Backend 1.26.1] - 2026-10-19
 
 Web part unchanged at 1.28.1 – no SharePoint upload needed.

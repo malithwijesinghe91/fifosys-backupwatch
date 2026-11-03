@@ -65,5 +65,5 @@ if (parts.includes('backend')) {
   console.log('  backend  : stateless-backend -> npm run build, then func azure functionapp publish backupwatch-api --build local');
 }
 if (parts.includes('web')) {
-  console.log('  web part : npm run scaffold:prepare, gulp bundle --ship, gulp package-solution --ship, upload .sppkg');
+  console.log('  web part : npm run build:web, then upload backup-watch-scaffold.sppkg to the App Catalog');
 }

@@ -30,8 +30,8 @@ The frontend and backend are completely decoupled:
 
 ### Release Rule (separate versions – decision D-03, final 2026-10-12):
 - **Backend and web part each have their own version**, held in the repo-root `versions.json` (`{ "backend": "x.y.z", "web": "x.y.z" }`). Only the half that changed gets a new number and is deployed.
-- **Never edit version numbers by hand** – from the repo root run `npm run release -- backend|web|both patch|minor|major` (which half changed; fix = patch, something new = minor, changes how it all works = major). It writes that half's files – backend: `stateless-backend/shared/version.ts`, `package.json`, `package-lock.json`; web part: `spfx-client/package.json`, `package-lock.json`, `BackupWatchWebPart.manifest.json`, `scaffold/config/package-solution.json` (solution + every feature version, `x.y.z.0`) – and adds a CHANGELOG stub labelled `Backend x.y.z`, `Web part x.y.z` or both.
-- `npm run verify-versions` fails if any file disagrees with `versions.json`; it runs automatically before every backend build and in `npm run scaffold:prepare`.
+- **Never edit version numbers by hand** – from the repo root run `npm run release -- backend|web|both patch|minor|major` (which half changed; fix = patch, something new = minor, changes how it all works = major). It writes that half's files – backend: `stateless-backend/shared/version.ts`, `package.json`, `package-lock.json`; web part: `spfx-client/package.json`, `package-lock.json`, `BackupWatchWebPart.manifest.json`, `spfx-client/config/package-solution.json` (solution + every feature version, `x.y.z.0`) – and adds a CHANGELOG stub labelled `Backend x.y.z`, `Web part x.y.z` or both.
+- `npm run verify-versions` fails if any file disagrees with `versions.json`; it runs automatically before every backend build and at the start of `npm run build:web`.
 - **Deploy only what changed** (§4): backend change → Azure only; web part change → `.sppkg` upload only; both → both.
 - **Where versions show:** footer only – `UI v… · Engine v…`. The header shows no version. Different numbers are normal.
 - Git tags per deployed half: `backend-x.y.z`, `frontend-x.y.z`.
@@ -48,11 +48,10 @@ c:/Projects/FifoDash/
 ├── CHANGELOG.md                   # Semantic version changelog
 ├── BACKUPWATCH_OPERATIONAL_SPECIFICATION.md # Comprehensive 700-line operational spec
 ├── backup-watch-scaffold.sppkg    # Compiled production SPFx solution package (git-ignored)
-├── package.json                   # Release scripts (npm run release / verify-versions / scaffold:prepare)
+├── package.json                   # Release scripts (npm run release / verify-versions / build:web)
 ├── versions.json                  # Backend and web part versions (the only place versions are typed)
-├── scripts/                       # release.mjs, verify-versions.mjs, prepare-scaffold.mjs (+ tests)
-├── scaffold/                      # Tracked BackupWatchScaffold config (package-solution.json, gulpfile.js, ...)
-├── spfx-client/                   # SharePoint Framework client workspace
+├── scripts/                       # release.mjs, verify-versions.mjs, build-web.mjs (+ tests)
+├── spfx-client/                   # The complete SPFx project (config/, gulpfile.js, teams/ icons, package-lock.json); build tools in node_modules (git-ignored)
 │   └── src/webparts/backupWatch/
 │       ├── BackupWatchWebPart.ts  # SPFx web part entrypoint & props binder
 │       ├── assets/fifosysLogo.ts  # Base64 embedded official Fifosys emblem
@@ -110,23 +109,17 @@ npm install                   # restore dev dependencies afterwards
 > `--build local` is required: `.funcignore` excludes the TypeScript sources and `tsconfig.json`, so a remote build cannot compile the app. Remote build is not supported for this repo.
 
 ### Frontend Build & Bundle:
-> **Note on Windows**: PowerShell execution policies may restrict `gulp.ps1`. Use direct `node` invocation via `BackupWatchScaffold`.
-> Scaffold config (`package-solution.json`, `gulpfile.js`, etc.) is tracked in `scaffold/` – edit it there, never in `BackupWatchScaffold` directly.
+> `spfx-client/` is the complete SPFx 1.19 project, tracked in this repo (moved in from the old external `C:\Projects\BackupWatchScaffold`, 2026-11-03). Edit its `config/`, `gulpfile.js` and `package.json` there.
+> SPFx 1.19 supports Node 18 only. `build:web` runs gulp on Node 18.20.8 via `npx` whatever Node the machine has – never patch Microsoft's version check.
 
 ```powershell
-# 1. Check versions, delete release\ and temp\ (stale bundles), copy spfx-client/src, package.json and scaffold/ config
+# One-off (or after package.json / package-lock.json changes): install the build tools
+cd c:\Projects\FifoDash\spfx-client
+npm install
+
+# Build: checks versions, removes old output, gulp bundle + package-solution --ship, copies the .sppkg to the repo root
 cd c:\Projects\FifoDash
-npm run scaffold:prepare
-
-# 2. Bundle in Ship Mode (Production)
-cd c:\Projects\BackupWatchScaffold
-node node_modules\gulp\bin\gulp.js bundle --ship
-
-# 3. Package Solution (.sppkg)
-node node_modules\gulp\bin\gulp.js package-solution --ship
-
-# 4. Copy to FifoDash root
-copy-item "c:\Projects\BackupWatchScaffold\sharepoint\solution\backup-watch-scaffold.sppkg" "c:\Projects\FifoDash\backup-watch-scaffold.sppkg" -Force
+npm run build:web
 ```
 
 ### Architecture Map Generation:

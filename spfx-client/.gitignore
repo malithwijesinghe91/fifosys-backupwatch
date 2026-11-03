@@ -1,0 +1,10 @@
+# SPFx build tools and build output - never committed (rebuilt by npm ci / npm run build:web)
+node_modules/
+lib/
+lib-*/
+temp/
+release/
+dist/
+sharepoint/solution/
+*.sppkg
+*.scss.ts
